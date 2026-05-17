@@ -359,7 +359,7 @@ export default function Dashboard() {
 
   // Dynamic Mobile Keyboard Viewport Resizer Fix
   useEffect(() => {
-    if (typeof window === "undefined" || !window.visualViewport) return;
+    if (typeof window === "undefined") return;
     const handleResize = () => {
       const height = window.visualViewport ? window.visualViewport.height : window.innerHeight;
       document.documentElement.style.setProperty(
@@ -367,12 +367,23 @@ export default function Dashboard() {
         `${height}px`
       );
     };
-    window.visualViewport.addEventListener("resize", handleResize);
-    window.visualViewport.addEventListener("scroll", handleResize);
+    
+    window.addEventListener("resize", handleResize);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", handleResize);
+      window.visualViewport.addEventListener("scroll", handleResize);
+    }
+    
+    // Expose resize to window so we can trigger it dynamically on input focus/scroll
+    (window as any).triggerKachaResize = handleResize;
+
     handleResize(); // Initial call
     return () => {
-      window.visualViewport?.removeEventListener("resize", handleResize);
-      window.visualViewport?.removeEventListener("scroll", handleResize);
+      window.removeEventListener("resize", handleResize);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", handleResize);
+        window.visualViewport.removeEventListener("scroll", handleResize);
+      }
     };
   }, []);
 
@@ -795,8 +806,8 @@ export default function Dashboard() {
   return (
     <>
     <div 
-      className="flex bg-black overflow-hidden text-neutral-100 font-sans relative w-full"
-      style={{ height: "var(--viewport-height, 100dvh)" }}
+      className="fixed inset-0 flex bg-black overflow-hidden text-neutral-100 font-sans w-full"
+      style={{ height: "var(--viewport-height, 100%)" }}
     >
       {/* 1. Sidebar - Collapsible on Mobile */}
       <aside 
@@ -1300,11 +1311,21 @@ export default function Dashboard() {
               className="w-full bg-transparent border-0 ring-0 focus:ring-0 focus:outline-none placeholder-neutral-600 text-sm text-neutral-200 px-5 py-4 resize-none h-[64px] min-h-[50px] max-h-[200px]"
               disabled={isLoading}
               onFocus={(e) => {
-                // Mobile keyboard fix: scroll textarea into view after keyboard finishes animating
                 const target = e.currentTarget;
+                if (typeof window !== "undefined" && (window as any).triggerKachaResize) {
+                  (window as any).triggerKachaResize();
+                }
                 setTimeout(() => {
-                  target.scrollIntoView({ behavior: "smooth", block: "center" });
-                }, 350);
+                  target.closest("form")?.scrollIntoView({ behavior: "auto", block: "nearest" });
+                  scrollToBottom();
+                }, 100);
+                setTimeout(() => {
+                  target.closest("form")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                  scrollToBottom();
+                  if (typeof window !== "undefined" && (window as any).triggerKachaResize) {
+                    (window as any).triggerKachaResize();
+                  }
+                }, 300);
               }}
             />
 
