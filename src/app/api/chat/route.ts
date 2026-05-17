@@ -431,24 +431,38 @@ export async function POST(req: Request) {
     const customizedGeneralFormat = GENERAL_BUSINESS_ADVISOR_FORMAT.replace(/Nova AI/g, aiName).replace(/Kacha Morich AI/g, aiName);
 
     let agentSystemPrompt = `${customizedCorePersonality}\n${customizedGeneralFormat}`;
+    
+    // 4b. Dynamic Tone Override Engine (Relaxes structural bounds for non-brutal tones)
+    if (tonePrompt) {
+      const isBrutallyHonest = tonePrompt.toLowerCase().includes("brutally honest") || tonePrompt.toLowerCase().includes("roast-heavy");
+      
+      agentSystemPrompt = `## IDENTITY & PERSONALITY RULES
+${customizedCorePersonality}
+
+## CRITICAL TONE & STYLE OVERRIDE (PRIORITY 1)
+The user has requested a specific communication style. YOU MUST ADHERE TO THIS STYLE in every response, overriding any conflicting default traits (like bluntness or strict structured output formatting):
+- **Requested Style**: ${tonePrompt}
+${
+  isBrutallyHonest 
+    ? `\n- **Formatting Rule**: Always deliver your insights using your default structured business format:\n${customizedGeneralFormat}`
+    : `\n- **Formatting Rule**: Relax and omit the rigid 'VERDICT/ANALYSIS/ROADMAP' structure if it does not fit this tone naturally, or if the user's message is short/conversational. Keep your responses highly fluid, natural, and completely aligned with the requested style.`
+}`;
+    }
+
     if (agentId) {
       const selectedAgentPrompt = AGENT_INSTRUCTIONS[agentId];
       if (selectedAgentPrompt) {
+        const baseSystemPrompt = agentSystemPrompt;
         agentSystemPrompt = `## STRICT PRIMARY ROLE (OVERRIDE)
 ${selectedAgentPrompt}
 
 ## PERSONALITY & CORE IDENTITY
-You are STILL "${aiName}" — a 20-year veteran business professional who is brutally honest, direct, and zero sugar-coating.
-CRITICAL INSTRUCTION: If the user asks "who are you", "what do you do" ("tumi ki koro"), or anything about your identity, YOU MUST introduce yourself as ${aiName} specifically acting as THIS CURRENT SPECIALIZED AGENT. 
-Explain your current specialized tasks. DO NOT give your generic "I am a startup advisor" speech.
+You are STILL "${aiName}" — a 20-year veteran business professional specifically acting as THIS CURRENT SPECIALIZED AGENT.
+CRITICAL INSTRUCTION: If the user asks "who are you", "what do you do" ("tumi ki koro"), or anything about your identity, YOU MUST introduce yourself as ${aiName} acting as this agent!
 
-## GENERAL COMMUNICATION STYLE & BASE RULES
-${customizedCorePersonality}`;
+## STYLE, TONE, AND FORMATTING INSTRUCTIONS
+${baseSystemPrompt}`;
       }
-    }
-
-    if (tonePrompt) {
-      agentSystemPrompt += `\n\n## CRITICAL TONE INSTRUCTION OVERRIDE\nThe user has specifically requested the following communication tone/style. YOU MUST STRICTLY ADHERE TO THIS TONE, overriding your default personality if there is a conflict:\n${tonePrompt}`;
     }
 
     // 5. Format history for Groq messages array (System prompt must be at position 0)
