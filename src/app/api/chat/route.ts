@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabase";
 import Groq from "groq-sdk";
+import { needsWebSearch, performWebSearch, extractSearchQuery } from "@/lib/search";
 
 const Kacha_Morich_CORE_PERSONALITY = `## IDENTITY
 You are "Kacha Morich AI" — a brutally honest Personal Business Advisor who has seen it all.
@@ -465,7 +466,18 @@ ${baseSystemPrompt}`;
       }
     }
 
-    // 5. Format history for Groq messages array (System prompt must be at position 0)
+    // 5a. 🔍 Tavily Web Search — inject real-time data if query is time-sensitive
+    if (needsWebSearch(message, agentId)) {
+      const searchQuery = extractSearchQuery(message);
+      console.log(`[WebSearch] Searching Tavily for: "${searchQuery}"`);
+      const searchContext = await performWebSearch(searchQuery, agentId);
+      if (searchContext) {
+        agentSystemPrompt += `\n\n${searchContext}`;
+        console.log("[WebSearch] ✅ Tavily results injected into system prompt.");
+      }
+    }
+
+    // 5b. Format history for LLM messages array (System prompt must be at position 0)
     const formattedMessages: any[] = [
       {
         role: "system",
