@@ -1060,20 +1060,22 @@ export default function Dashboard() {
             </div>
           ) : (
             /* Historical & Streamed Messages */
-            <div className="max-w-3xl mx-auto space-y-8 pb-12">
+            <div className="max-w-3xl mx-auto w-full space-y-8 pb-12 overflow-hidden">
               {messages.map((msg, index) => {
                 // If it is AI's response
                 if (msg.role === "assistant") {
                   return (
-                    <div key={index} className="flex gap-4 items-start animate-fade-in">
-                      <AIAvatar size={40} className="flex-shrink-0 border border-white/10" />
-                      <div className="flex flex-col gap-1.5 flex-1 min-w-0 group/msg relative">
+                    <div key={index} className="flex gap-2 sm:gap-4 items-start animate-fade-in">
+                      <AIAvatar size={36} className="flex-shrink-0 border border-white/10" />
+                      <div className="flex flex-col gap-1.5 flex-1 min-w-0 overflow-hidden group/msg relative">
                         <span className="text-xs font-black tracking-wider flex items-center gap-1.5" style={{ color: aiColor }}>
                           {aiName.toUpperCase()}
                         </span>
-                        <div className="bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border border-white/5 rounded-2xl rounded-tl-none px-6 py-5 text-neutral-200 leading-relaxed text-sm shadow-md backdrop-blur-md prose prose-invert relative">
+                        <div className="bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border border-white/5 rounded-2xl rounded-tl-none px-4 sm:px-6 py-4 sm:py-5 text-neutral-200 leading-relaxed text-sm shadow-md backdrop-blur-md prose prose-invert prose-sm max-w-full w-full overflow-hidden relative">
                           {msg.content ? (
-                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                            <div className="w-full max-w-full overflow-hidden break-words [&_*]:max-w-full [&_pre]:overflow-x-auto [&_code]:break-all [&_p]:break-words [&_li]:break-words">
+                              <ReactMarkdown>{msg.content}</ReactMarkdown>
+                            </div>
                           ) : (
                             <div className="flex gap-1 items-center py-2">
                               <span className="w-2 h-2 bg-neutral-200 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
