@@ -516,10 +516,9 @@ ${customizedCorePersonality}`;
 
     // 6. Call Groq API with Streaming & multi-model fallback chain
     let responseStream: any;
-    let selectedModel = hasImage ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile";
+    let selectedModel = hasImage ? "meta-llama/llama-4-scout-17b-16e-instruct" : "llama-3.3-70b-versatile";
     const fallbackModels = hasImage ? [
-      "llama-3.2-11b-vision-preview",
-      "llama-3.2-90b-vision-preview"
+      "meta-llama/llama-4-scout-17b-16e-instruct"
     ] : [
       "llama-3.3-70b-versatile",
       "meta-llama/llama-4-scout-17b-16e-instruct",
