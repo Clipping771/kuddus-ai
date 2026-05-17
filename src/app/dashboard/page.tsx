@@ -56,200 +56,199 @@ interface Message {
   role: "user" | "assistant";
   content: string;
 }
-
 const AGENTS_LIST = [
   {
     id: "daily-innovation-idea-agent",
     name: "Daily Innovation Idea Agent",
-    banglaName: "ডেইলি ইনোভেশন আইডিয়া এজেন্ট",
+    banglaName: "Daily Innovation Idea Agent",
     desc: "Provides 4-5 fresh business/tech/income ideas daily",
-    banglaDesc: "প্রতিদিন ৪-৫টা নতুন বিজনেস/টেক/আয়ের আইডিয়া দেয়",
+    banglaDesc: "Provides 4-5 fresh business/tech/income ideas daily",
     icon: Lightbulb,
     placeholder: "Which sector or target country are you looking to generate business ideas for today?",
     suggestions: [
-      "৪-৫টা নতুন বিজনেস আইডিয়া দাও যা ২০২৬ সালে বাংলাদেশে ভালো করবে।",
+      "Give me 4-5 fresh business ideas that will perform well in 2026.",
       "SaaS or tech startup ideas with low starting capital for UK market."
     ]
   },
   {
     id: "personal-cfo-finance-agent",
     name: "Personal CFO / Finance Agent",
-    banglaName: "পার্সোনাল সিএফও / ফাইন্যান্স এজেন্ট",
+    banglaName: "Personal CFO / Finance Agent",
     desc: "Expense tracking, budgeting, investment, tax help",
-    banglaDesc: "খরচ ট্র্যাক, বাজেট, ইনভেস্টমেন্ট, ট্যাক্স হেল্প",
+    banglaDesc: "Expense tracking, budgeting, investment, tax help",
     icon: DollarSign,
     placeholder: "Describe your current finances, monthly budget constraints, or investment goal...",
     suggestions: [
-      "বাংলাদেশি স্টার্টআপের জন্য ট্যাক্স ফাইলিং এবং ভ্যাট গাইডলাইন কী কী?",
+      "What are the key tax filing and VAT guidelines for starting a new business?",
       "How to optimize operational cash flow for a local retail shop?"
     ]
   },
   {
     id: "content-creator-agent",
     name: "Content Creator Agent",
-    banglaName: "কনটেন্ট ক্রিয়েটর এজেন্ট",
+    banglaName: "Content Creator Agent",
     desc: "YouTube, TikTok, FB content ideas & viral scripts",
-    banglaDesc: "YouTube, TikTok, FB-এর জন্য কনটেন্ট আইডিয়া + স্ক্রিপ্ট লিখে দেয়",
+    banglaDesc: "YouTube, TikTok, FB content ideas & viral scripts",
     icon: Video,
     placeholder: "What is your channel niche, target audience, and preferred video format?",
     suggestions: [
-      "একটি নতুন এআই টেকনোলজি প্রোডাক্টের জন্য ৩টি টিকটক হুক এবং ভিডিও স্ক্রিপ্ট দাও।",
+      "Give me 3 TikTok hooks and a video script for a new AI technology product.",
       "Viral YouTube script outlines for a personal finance channel."
     ]
   },
   {
     id: "sales-lead-generator",
     name: "Sales & Lead Generator",
-    banglaName: "সেলস অ্যান্ড লিড জেনারেটর",
+    banglaName: "Sales & Lead Generator",
     desc: "Find prospective customers, write high-converting copy",
-    banglaDesc: "সম্ভাব্য কাস্টমার খুঁজে, ইমেইল/মেসেজ লিখে দেয়",
+    banglaDesc: "Find prospective customers, write high-converting copy",
     icon: Target,
     placeholder: "Describe your product/service and who your primary target buyers are...",
     suggestions: [
-      "ই-কমার্স ব্রান্ডগুলোর জন্য ১টি হাই-কনভার্টিং কোল্ড ইমেইল সিকোয়েন্স লিখে দাও।",
+      "Write a high-converting cold email sequence for an e-commerce brand.",
       "What are the best channels to find corporate leads for a B2B SaaS?"
     ]
   },
   {
     id: "inbox-manager-agent",
     name: "Inbox Manager Agent",
-    banglaName: "ইনবক্স ম্যানেজার এজেন্ট",
+    banglaName: "Inbox Manager Agent",
     desc: "Summarizes emails, drafts important corporate replies",
-    banglaDesc: "মেইল দেখে সামারাইজ করে, গুরুত্বপূর্ণ রিপ্লাই ড্রাফট করে",
+    banglaDesc: "Summarizes emails, drafts important corporate replies",
     icon: Mail,
     placeholder: "Paste an incoming client email or message that you want summarized or replied to...",
     suggestions: [
-      "আমার ক্লায়েন্টের এই মেসেজের জন্য একটি শান্ত কিন্তু প্রফেশনাল ড্রাফট দাও।",
+      "Give me a polite but professional reply draft for this client message.",
       "Summarize key issues and action items from this corporate email."
     ]
   },
   {
     id: "research-agent",
     name: "Research Agent",
-    banglaName: "রিসার্চ এজেন্ট",
+    banglaName: "Research Agent",
     desc: "Deep research on any topic with source citation reports",
-    banglaDesc: "যেকোনো টপিকে গভীর রিসার্চ করে সোর্সসহ রিপোর্ট দেয়",
+    banglaDesc: "Deep research on any topic with source citation reports",
     icon: Search,
     placeholder: "What topic, industry, or concept do you need a comprehensive, fact-backed research report on?",
     suggestions: [
-      "বাংলাদেশে রাইড শেয়ারিং মার্কেটের বর্তমান সাইজ এবং প্রতিযোগীদের নিয়ে রিসার্চ করো।",
+      "Research the current size and key competitors in the ride-sharing market.",
       "Deep market analysis of organic cosmetic demand in Germany."
     ]
   },
   {
     id: "competitor-spy-agent",
     name: "Competitor Spy Agent",
-    banglaName: "কম্পিটিটর স্পাই এজেন্ট",
+    banglaName: "Competitor Spy Agent",
     desc: "Monitors competitor websites, pricing, and marketing",
-    banglaDesc: "প্রতিযোগীদের ওয়েবসাইট, প্রাইসিং, মার্কেটিং নজরদারি করে",
+    banglaDesc: "Monitors competitor websites, pricing, and marketing",
     icon: Eye,
     placeholder: "Paste competitor website URLs or names to analyze their positioning and pricing model...",
     suggestions: [
-      "আমার প্রতিযোগী ব্র্যান্ডের ওয়েবসাইট অডিট করে তাদের উইকনেস খুঁজে দাও।",
+      "Audit my competitor's website to find their key weaknesses.",
       "How do I reverse-engineer a competitor's pricing structure?"
     ]
   },
   {
     id: "personal-assistant",
     name: "Personal Assistant",
-    banglaName: "পার্সোনাল অ্যাসিস্ট্যান্ট",
+    banglaName: "Personal Assistant",
     desc: "Morning briefings, task prioritizing, meeting summaries",
-    banglaDesc: "সকালের ব্রিফিং, টাস্ক লিস্ট, রিমাইন্ডার, মিটিং সামারি",
+    banglaDesc: "Morning briefings, task prioritizing, meeting summaries",
     icon: Calendar,
     placeholder: "Enter today's tasks or paste a messy transcript to structure your daily agenda...",
     suggestions: [
-      "আমার আজকের কাজের তালিকা সাজিয়ে ১টি কমপ্লিট ব্রিফিং তৈরি করো।",
+      "Organize my tasks for today and create a complete morning briefing.",
       "Summarize this messy raw voice meeting note into bullet tasks."
     ]
   },
   {
     id: "social-media-manager",
     name: "Social Media Manager",
-    banglaName: "সোশ্যাল মিডিয়া ম্যানেজার",
+    banglaName: "Social Media Manager",
     desc: "Post ideas, captions, schedules, performance analysis",
-    banglaDesc: "পোস্ট আইডিয়া, ক্যাপশন, শিডিউল, পারফরম্যান্স রিপোর্ট",
+    banglaDesc: "Post ideas, captions, schedules, performance analysis",
     icon: Share2,
     placeholder: "Which brand are you managing, and for which platform (LinkedIn, FB, IG) do you need posts?",
     suggestions: [
-      "আমার ডিজিটাল এজেন্সির জন্য ১ সপ্তাহের ক্যাপশনসহ লিঙ্কডইন কন্টেন্ট ক্যালেন্ডার দাও।",
+      "Provide a 1-week LinkedIn content calendar with captions for a digital agency.",
       "Instagram reel calendar with caption hooks for a fitness brand."
     ]
   },
   {
     id: "learning-coach",
     name: "Learning Coach",
-    banglaName: "লার্নিং কোচ",
+    banglaName: "Learning Coach",
     desc: "Tailored daily learning paths & progress quizzes",
-    banglaDesc: "তোমার লক্ষ্য অনুযায়ী প্রতিদিন লার্নিং প্ল্যান + কুইজ",
+    banglaDesc: "Tailored daily learning paths & progress quizzes",
     icon: GraduationCap,
     placeholder: "What skill or subject do you want to master, and how many days do you have?",
     suggestions: [
-      "React Native এবং Expo শিখতে ৩০ দিনের একটি কমপ্লিট লার্নিং রুটিন ও প্রতিদিনের টাস্ক দাও।",
+      "Give me a complete 30-day learning routine and daily tasks to learn React Native and Expo.",
       "Create a beginner python guide with a 5-question test."
     ]
   },
   {
     id: "job-application-agent",
     name: "Job Application Agent",
-    banglaName: "জব অ্যাপ্লিকেশন এজেন্ট",
+    banglaName: "Job Application Agent",
     desc: "CV revisions, custom cover letters, job search aid",
-    banglaDesc: "CV রিভাইজ, কভার লেটার, জব খুঁজে আবেদন করতে সাহায্য",
+    banglaDesc: "CV revisions, custom cover letters, job search aid",
     icon: Briefcase,
     placeholder: "Paste the job description and your current resume text to optimize them...",
     suggestions: [
-      "সফটওয়্যার ইঞ্জিনিয়ার পদের জন্য ১টি আকর্ষণীয় এবং ইমপ্যাক্টফুল কভার লেটার লিখো।",
+      "Write an attractive and impactful cover letter for a software engineer role.",
       "CV suggestions for a senior product manager career pivot."
     ]
   },
   {
     id: "health-fitness-coach",
     name: "Health & Fitness Coach",
-    banglaName: "হেলথ অ্যান্ড ফিটনেস কোচ",
+    banglaName: "Health & Fitness Coach",
     desc: "Personalized diet schedules, workout routines, tracking",
-    banglaDesc: "ডায়েট প্ল্যান, ওয়ার্কআউট, প্রোগ্রেস ট্র্যাকিং",
+    banglaDesc: "Personalized diet schedules, workout routines, tracking",
     icon: Heart,
     placeholder: "What is your target weight/fitness goal, age, and dietary preferences?",
     suggestions: [
-      "ওজন কমানোর জন্য ১টি হাই-প্রোটিন ডায়েট ও ৩ দিনের হোম ওয়ার্কআউট প্ল্যান দাও।",
+      "Provide a high-protein diet and 3-day home workout plan for weight loss.",
       "Keto diet meal prep roadmap for busy working professionals."
     ]
   },
   {
     id: "crypto-stock-researcher",
     name: "Crypto / Stock Researcher",
-    banglaName: "ক্রিপ্টো / স্টক রিসার্চার",
+    banglaName: "Crypto / Stock Researcher",
     desc: "Market analysis, macroeconomic news, investment ideas",
-    banglaDesc: "মার্কেট অ্যানালাইসিস, নিউজ সামারি, ইনভেস্টমেন্ট আইডিয়া",
+    banglaDesc: "Market analysis, macroeconomic news, investment ideas",
     icon: TrendingUp,
     placeholder: "Which stock, crypto token, or market index do you need deep analysis on?",
     suggestions: [
-      "বর্তমানে ক্রিপ্টো মার্কেটের ম্যাক্রো ইকোনমিক ট্রেন্ড ও নিউজ সামারি দাও।",
+      "Provide a macroeconomic trend and news summary for the current crypto market.",
       "How to evaluate stock volatility using beta metrics."
     ]
   },
   {
     id: "code-helper-developer-agent",
     name: "Code Helper / Developer Agent",
-    banglaName: "কোড হেল্পার / ডেভেলপার এজেন্ট",
+    banglaName: "Code Helper / Developer Agent",
     desc: "Writes robust code, debugs errors, designs projects",
-    banglaDesc: "কোড লিখে দেয়, বাগ ফিক্স, প্রজেক্ট আইডিয়া",
+    banglaDesc: "Writes robust code, debugs errors, designs projects",
     icon: Code,
     placeholder: "Paste the buggy code snippet or describe the feature you want implemented...",
     suggestions: [
-      "Next.js 15-এ API রাউট হ্যান্ডলিং করার সঠিক স্ট্রাকচার দেখিয়ে স্যাম্পল কোড লিখো।",
+      "Write a sample Next.js API route showing the correct structure for handling requests.",
       "Optimize this React state re-rendering bottleneck."
     ]
   },
   {
     id: "womens-beauty-agent",
     name: "Women's Beauty & Skincare Agent",
-    banglaName: "উইমেন্স বিউটি ও স্কিনকেয়ার এজেন্ট",
+    banglaName: "Women's Beauty & Skincare Agent",
     desc: "Science-backed skincare routines, makeup styling & product tips",
-    banglaDesc: "স্কিনকেয়ার রুটিন, মেকআপ স্টাইলিং ও বিউটি টিপস",
+    banglaDesc: "Science-backed skincare routines, makeup styling & product tips",
     icon: Sparkles,
     placeholder: "What is your skin type (oily, dry, combo) and your primary skin concern?",
     suggestions: [
-      "আমার অয়েলি একনে-প্রোন স্কিনের জন্য একটি কমপ্লিট মর্নিং স্কিনকেয়ার রুটিন দাও।",
+      "Provide a complete morning skincare routine for my oily, acne-prone skin.",
       "Which active ingredients should I combine for anti-aging without irritation?"
     ]
   }
@@ -375,15 +374,15 @@ export default function Dashboard() {
           console.error("Speech recognition error:", event.error);
           setIsListening(false);
           if (event.error === "not-allowed") {
-            alert("মাইক্রোফোন পারমিশন ব্লক করা আছে! অনুগ্রহ করে ব্রাউজারের উপরে URL-এর বাম পাশে থাকা Lock (তালা) আইকনটি ক্লিক করুন, Microphone পারমিশনটি Allow (অনুমতি) করুন এবং পেজটি রিফ্রেশ করুন।\n\nMicrophone permission is blocked! Please click the lock icon next to the URL, enable the microphone permission, and refresh the page.");
+            alert("Microphone permission is blocked! Please click the lock icon next to the URL, enable the microphone permission, and refresh the page.");
           } else if (event.error === "no-speech") {
             console.log("Speech recognition stopped due to silence.");
           } else if (event.error === "audio-capture") {
-            alert("আপনার পিসিতে কোনো সচল মাইক্রোফোন পাওয়া যায়নি! অনুগ্রহ করে মাইক্রোফোনটি কানেক্ট করুন অথবা উইন্ডোজ সাউন্ড সেটিংসে ইনপুট ডিভাইসটি ঠিক করুন।\n\nNo microphone was detected! Please plug in a microphone or configure your default input device in Windows sound settings.");
+            alert("No working microphone was detected! Please connect a microphone or fix the input device in your system sound settings.");
           } else if (event.error === "network") {
-            alert("আপনার ব্রাউজারটি (যেমন: Brave) ভয়েস টাইপিং সাপোর্ট করছে না কারণ এটি প্রাইভেসির জন্য স্পিচ এপিআই ব্লক করে রাখে। দয়া করে Google Chrome বা Microsoft Edge ব্রাউজার ব্যবহার করুন।\n\n(Network Error: Privacy browsers like Brave block the Web Speech API. Please use Google Chrome or Edge.)");
+            alert("Your browser (e.g., Brave) is blocking the Speech API for privacy reasons. Please use Google Chrome or Microsoft Edge for voice typing.");
           } else {
-            console.error(`ভয়েস রিকগনিশন ত্রুটি: ${event.error}\n(Speech recognition failed: ${event.error})`);
+            console.error(`Voice recognition error: ${event.error}`);
           }
         };
 
@@ -635,7 +634,7 @@ export default function Dashboard() {
 
     const newUserMessage: Message = { 
       role: "user", 
-      content: (base64Tag ? base64Tag + "\n" : "") + (userMessageContent || `সংযুক্ত ফাইল: ${currentAttachment ? currentAttachment.name : "file"}`) 
+      content: (base64Tag ? base64Tag + "\n" : "") + (userMessageContent || `Attached file: ${currentAttachment ? currentAttachment.name : "file"}`) 
     };
     setMessages((prev) => [...prev, newUserMessage]);
 
