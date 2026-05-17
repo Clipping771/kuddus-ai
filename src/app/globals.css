@@ -10,6 +10,11 @@ html, body {
 * {
   box-sizing: border-box;
 }
+@media (max-width: 640px) {
+  .mobile-hide {
+    display: none !important;
+  }
+}
 
 /* Custom Scrollbar styling */
 ::-webkit-scrollbar {
