@@ -836,7 +836,7 @@ export default function Dashboard() {
       )}
 
       {/* 3. Main Chat Interface Container */}
-      <main className="flex-1 flex flex-col h-full bg-[#020202] relative">
+      <main className="flex-1 min-h-0 flex flex-col bg-[#020202] relative">
         {/* Dynamic header */}
         <header className="h-16 px-4 sm:px-6 border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
@@ -861,12 +861,17 @@ export default function Dashboard() {
                   <button
                     type="button"
                     onClick={() => setToneDropdownOpen(!toneDropdownOpen)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-950/40 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-900/50 transition-colors"
+                    className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-1 rounded bg-emerald-950/40 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-900/50 transition-colors"
                   >
-                    <span className="text-xs font-black tracking-wider uppercase">
+                    <span className="text-[11px] sm:text-xs font-black tracking-wider uppercase">
                       {(() => {
                         const activeTone = TONES_LIST.find((t) => t.id === selectedToneId);
-                        return activeTone ? `${activeTone.icon} ${activeTone.name}` : "🌶️ BRUTALLY HONEST";
+                        return (
+                          <>
+                            <span className="hidden sm:inline">{activeTone ? `${activeTone.icon} ${activeTone.name}` : "🌶️ BRUTALLY HONEST"}</span>
+                            <span className="sm:hidden">{activeTone ? activeTone.icon : "🌶️"}</span>
+                          </>
+                        );
                       })()}
                     </span>
                     <ChevronDown size={12} className={`transition-transform duration-200 ${toneDropdownOpen ? "rotate-180" : ""}`} />
@@ -988,7 +993,7 @@ export default function Dashboard() {
         </header>
  
         {/* Scrollable Conversation area */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6">
           {messages.length === 0 ? (
             /* Welcome / Onboarding Screen */
             <div className="max-w-2xl mx-auto pt-8 pb-12 flex flex-col items-center justify-center text-center relative">
