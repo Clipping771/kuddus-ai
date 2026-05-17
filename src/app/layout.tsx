@@ -6,8 +6,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Kuddus Ali AI - Brutally Honest Personal Business Advisor",
-  description: "Get unfiltered, battle-tested business advice from Kuddus Ali. Powered by Claude AI.",
+  title: "Kacha Morich AI - Brutally Honest Personal Business Advisor",
+  description: "Get unfiltered, battle-tested business advice from Kacha Morich AI. Powered by AI.",
 };
 
 export default function RootLayout({

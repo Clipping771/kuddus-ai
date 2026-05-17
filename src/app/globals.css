@@ -9,16 +9,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #0A0A0A;
+  background: #000000;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #262626;
+  background: #1F1F1F;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #F59E0B;
+  background: #FF8C00;
 }
 
 /* Custom styles for chat markdown response rendering */
@@ -26,7 +26,7 @@
   max-width: 100%;
 }
 .prose h1, .prose h2, .prose h3 {
-  color: #F59E0B;
+  color: #FF8C00;
   font-weight: 700;
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
@@ -51,9 +51,51 @@
   font-weight: 600;
 }
 .prose blockquote {
-  border-left: 4px solid #F59E0B;
+  border-left: 4px solid #FF8C00;
   padding-left: 1rem;
   margin-bottom: 1rem;
-  color: #A3A3A3;
+  color: #D1D5DB;
   font-style: italic;
 }
+
+/* Animated Voice Soundwave Visualizer */
+@keyframes soundwave-pulse {
+  0%, 100% {
+    transform: scaleY(0.2);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.soundwave-bar {
+  display: inline-block;
+  width: 3px;
+  height: 24px;
+  background-color: #FF8C00;
+  border-radius: 9999px;
+  transform-origin: bottom;
+  animation: soundwave-pulse 1.2s ease-in-out infinite;
+  margin: 0 1.5px;
+}
+
+.soundwave-bar:nth-child(1) { animation-delay: 0.1s; }
+.soundwave-bar:nth-child(2) { animation-delay: 0.3s; }
+.soundwave-bar:nth-child(3) { animation-delay: 0.5s; }
+.soundwave-bar:nth-child(4) { animation-delay: 0.2s; }
+.soundwave-bar:nth-child(5) { animation-delay: 0.4s; }
+.soundwave-bar:nth-child(6) { animation-delay: 0.6s; }
+.soundwave-bar:nth-child(7) { animation-delay: 0.15s; }
+.soundwave-bar:nth-child(8) { animation-delay: 0.35s; }
+.soundwave-bar:nth-child(9) { animation-delay: 0.55s; }
+.soundwave-bar:nth-child(10) { animation-delay: 0.25s; }
+
+/* Obsidian Premium Black Theme Utilities */
+.obsidian-border {
+  border-color: #1F1F1F;
+}
+
+.obsidian-glow-btn:hover {
+  box-shadow: 0 0 15px rgba(255, 140, 0, 0.15);
+}
+

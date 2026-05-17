@@ -80,3 +80,40 @@ export async function POST() {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export async function DELETE() {
+  try {
+    const { userId: clerkId } = await auth();
+
+    if (!clerkId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // 1. Fetch user ID from Clerk ID
+    const { data: dbUser, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("clerk_id", clerkId)
+      .single();
+
+    if (userError || !dbUser) {
+      return NextResponse.json({ error: "User profile not found" }, { status: 404 });
+    }
+
+    // 2. Delete all chats belonging to this user (Supabase cascade deletes messages)
+    const { error: deleteError } = await supabase
+      .from("chats")
+      .delete()
+      .eq("user_id", dbUser.id);
+
+    if (deleteError) {
+      console.error("Delete all chats error:", deleteError);
+      return NextResponse.json({ error: "Failed to delete all conversations" }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error in DELETE /api/chats:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
