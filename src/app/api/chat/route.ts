@@ -281,7 +281,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { message, chatId, agentId, aiName = "Specialist AI", tonePrompt } = await req.json();
+    const { message, chatId, agentId, toneId, aiName = "Specialist AI", tonePrompt } = await req.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
@@ -319,12 +319,18 @@ export async function POST(req: Request) {
 
     // 2. If no chatId, create a new Chat
     if (!activeChatId) {
-      const truncatedTitle = message.length > 40 ? `${message.substring(0, 40)}...` : message;
+      let cleanTitle = message.length > 40 ? `${message.substring(0, 40)}...` : message;
+      if (cleanTitle.startsWith("[ATTACHED DOCUMENT:")) {
+        cleanTitle = "Document Analysis";
+      }
+
+      const serializedTitle = `${cleanTitle} | agentId:${agentId || "daily-innovation-idea-agent"} | toneId:${toneId || "brutally-honest"}`;
+
       const { data: newChat, error: chatError } = await supabase
         .from("chats")
         .insert({
           user_id: dbUser.id,
-          title: truncatedTitle,
+          title: serializedTitle,
         })
         .select("*")
         .single();

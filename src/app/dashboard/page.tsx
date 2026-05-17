@@ -268,6 +268,30 @@ const TONES_LIST = [
   { id: "detailed", name: "Detailed", icon: "📝", prompt: "Provide extremely long, in-depth, comprehensive explanations covering all angles." },
 ];
 
+function parseChatTitle(rawTitle: string) {
+  if (!rawTitle) return { title: "New Analysis", agentId: null, toneId: null };
+  const parts = rawTitle.split(" | ");
+  let cleanTitle = parts[0];
+  let agentId = null;
+  let toneId = null;
+
+  for (let i = 1; i < parts.length; i++) {
+    const part = parts[i].trim();
+    if (part.startsWith("agentId:")) {
+      agentId = part.substring("agentId:".length).trim();
+    } else if (part.startsWith("toneId:")) {
+      toneId = part.substring("toneId:".length).trim();
+    }
+  }
+
+  // If the display title has attached document text, clean it up
+  if (cleanTitle.startsWith("[ATTACHED DOCUMENT:")) {
+    cleanTitle = "Document Analysis";
+  }
+
+  return { title: cleanTitle, agentId, toneId };
+}
+
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
   const [chats, setChats] = useState<Chat[]>([]);
@@ -538,6 +562,14 @@ export default function Dashboard() {
         return;
       }
 
+      // Restore active chat's agent and tone if serialized in the title
+      const currentChat = chats.find((c) => c.id === activeChatId);
+      if (currentChat) {
+        const { agentId, toneId } = parseChatTitle(currentChat.title);
+        if (agentId) setSelectedAgentId(agentId);
+        if (toneId) setSelectedToneId(toneId);
+      }
+
       try {
         setIsLoading(true);
         const res = await fetch(`/api/chats/${activeChatId}`);
@@ -553,7 +585,7 @@ export default function Dashboard() {
     }
 
     fetchMessages();
-  }, [activeChatId]);
+  }, [activeChatId, chats]);
 
   // 3. Create a New Chat Thread
   const handleNewChat = () => {
@@ -652,6 +684,7 @@ export default function Dashboard() {
           message: messageToSend,
           chatId: activeChatId,
           agentId: selectedAgentId,
+          toneId: selectedToneId,
           aiName: aiName,
           tonePrompt: TONES_LIST.find(t => t.id === selectedToneId)?.prompt,
         }),
@@ -824,7 +857,7 @@ export default function Dashboard() {
                 >
                   <div className="flex items-center gap-2.5 truncate">
                     <MessageSquare size={15} className={activeChatId === chat.id ? "text-neutral-200" : "text-neutral-500"} />
-                    <span className="truncate pr-2">{chat.title}</span>
+                    <span className="truncate pr-2">{parseChatTitle(chat.title).title}</span>
                   </div>
                   <button 
                     onClick={(e) => handleDeleteChat(e, chat.id)}
@@ -944,7 +977,7 @@ export default function Dashboard() {
                 </div>
               )}
               <span className="mobile-hide sm:block text-sm font-semibold text-neutral-200 truncate max-w-[200px] ml-2">
-                {activeChat ? activeChat.title : ""}
+                {activeChat ? parseChatTitle(activeChat.title).title : ""}
               </span>
             </div>
           </div>
