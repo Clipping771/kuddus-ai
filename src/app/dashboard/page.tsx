@@ -922,7 +922,7 @@ export default function Dashboard() {
                   )}
                 </div>
               )}
-              <span className="text-sm font-semibold text-neutral-200 truncate max-w-[200px] ml-2">
+              <span className="hidden sm:block text-sm font-semibold text-neutral-200 truncate max-w-[200px] ml-2">
                 {activeChat ? activeChat.title : ""}
               </span>
             </div>
