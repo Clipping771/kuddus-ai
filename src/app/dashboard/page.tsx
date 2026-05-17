@@ -333,6 +333,25 @@ export default function Dashboard() {
     setIsLoading(false);
   };
 
+  // Dynamic Mobile Keyboard Viewport Resizer Fix
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+    const handleResize = () => {
+      const height = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      document.documentElement.style.setProperty(
+        "--viewport-height",
+        `${height}px`
+      );
+    };
+    window.visualViewport.addEventListener("resize", handleResize);
+    window.visualViewport.addEventListener("scroll", handleResize);
+    handleResize(); // Initial call
+    return () => {
+      window.visualViewport?.removeEventListener("resize", handleResize);
+      window.visualViewport?.removeEventListener("scroll", handleResize);
+    };
+  }, []);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
@@ -742,7 +761,10 @@ export default function Dashboard() {
 
   return (
     <>
-    <div className="flex h-screen h-[100dvh] bg-black overflow-hidden text-neutral-100 font-sans relative">
+    <div 
+      className="flex bg-black overflow-hidden text-neutral-100 font-sans relative w-full"
+      style={{ height: "var(--viewport-height, 100dvh)" }}
+    >
       {/* 1. Sidebar - Collapsible on Mobile */}
       <aside 
         className={`fixed inset-y-0 left-0 z-40 w-72 bg-[#050505] border-r border-white/5 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
