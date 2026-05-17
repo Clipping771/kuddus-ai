@@ -37,7 +37,10 @@ import {
   Code,
   ChevronDown,
   Camera,
-  XCircle
+  XCircle,
+  Copy,
+  Check,
+  Square
 } from "lucide-react";
 import Link from "next/link";
 import { parseAnyFile } from "@/lib/fileParser";
@@ -274,6 +277,9 @@ export default function Dashboard() {
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const isStreamingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(true);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("daily-innovation-idea-agent");
@@ -310,6 +316,21 @@ export default function Dashboard() {
   // Auto-scroll to bottom of messages
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const stopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    isStreamingRef.current = false;
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -546,8 +567,6 @@ export default function Dashboard() {
 
   // 4b. Delete All Chat Threads
   const handleDeleteAllChats = async () => {
-    if (!confirm("Are you sure you want to delete all conversations? This action is permanent and cannot be undone.")) return;
-
     try {
       const res = await fetch("/api/chats", {
         method: "DELETE",
@@ -557,7 +576,7 @@ export default function Dashboard() {
         setActiveChatId(null);
         setMessages([]);
         setIsSettingsModalOpen(false);
-        alert("All conversations have been successfully deleted.");
+        setConfirmDeleteAll(false);
       } else {
         alert("Failed to delete all conversations. Please try again.");
       }
@@ -606,9 +625,11 @@ export default function Dashboard() {
     setMessages((prev) => [...prev, assistantPlaceholder]);
 
     try {
+      abortControllerRef.current = new AbortController();
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: abortControllerRef.current.signal,
         body: JSON.stringify({
           message: messageToSend,
           chatId: activeChatId,
@@ -1044,13 +1065,13 @@ export default function Dashboard() {
                 // If it is AI's response
                 if (msg.role === "assistant") {
                   return (
-                    <div key={index} className="flex gap-4 items-start">
+                    <div key={index} className="flex gap-4 items-start animate-fade-in">
                       <AIAvatar size={40} className="flex-shrink-0 border border-white/10" />
-                      <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                      <div className="flex flex-col gap-1.5 flex-1 min-w-0 group/msg relative">
                         <span className="text-xs font-black tracking-wider flex items-center gap-1.5" style={{ color: aiColor }}>
                           {aiName.toUpperCase()}
                         </span>
-                        <div className="bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border border-white/5 rounded-2xl rounded-tl-none px-6 py-5 text-neutral-200 leading-relaxed text-sm shadow-md backdrop-blur-md prose prose-invert">
+                        <div className="bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border border-white/5 rounded-2xl rounded-tl-none px-6 py-5 text-neutral-200 leading-relaxed text-sm shadow-md backdrop-blur-md prose prose-invert relative">
                           {msg.content ? (
                             <ReactMarkdown>{msg.content}</ReactMarkdown>
                           ) : (
@@ -1061,6 +1082,28 @@ export default function Dashboard() {
                             </div>
                           )}
                         </div>
+                        {msg.content && (
+                          <div className="flex justify-start">
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(msg.content, `msg-${index}`)}
+                              className="opacity-0 group-hover/msg:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-neutral-500 hover:text-neutral-300 flex items-center gap-1 text-[10px] font-bold"
+                              title="Copy response"
+                            >
+                              {copiedId === `msg-${index}` ? (
+                                <>
+                                  <Check size={12} className="text-emerald-500" />
+                                  <span className="text-emerald-500">Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy size={12} />
+                                  <span>Copy</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -1073,10 +1116,10 @@ export default function Dashboard() {
                 const cleanContent = msg.content ? msg.content.replace(base64Regex, "").trim() : "";
 
                 return (
-                  <div key={index} className="flex gap-4 items-start justify-end">
-                    <div className="flex flex-col gap-1.5 items-end max-w-[80%]">
+                  <div key={index} className="flex gap-4 items-start justify-end animate-fade-in">
+                    <div className="flex flex-col gap-1.5 items-end max-w-[80%] group/msg relative">
                       <span className="text-xs font-semibold text-neutral-500 tracking-wider">YOUR BUSINESS INQUIRY</span>
-                      <div className="bg-gradient-to-bl from-neutral-200/10 to-transparent border border-neutral-200/20 rounded-2xl rounded-tr-none px-5 py-4 text-amber-50 text-sm shadow-sm flex flex-col items-end">
+                      <div className="bg-gradient-to-bl from-neutral-200/10 to-transparent border border-neutral-200/20 rounded-2xl rounded-tr-none px-5 py-4 text-amber-50 text-sm shadow-sm flex flex-col items-end relative">
                         {imageUrl && (
                           <div className="mb-2 relative rounded-xl overflow-hidden border border-white/10 group shadow-md max-w-full">
                             <img 
@@ -1090,6 +1133,28 @@ export default function Dashboard() {
                           <span className="text-left w-full block whitespace-pre-wrap">{cleanContent}</span>
                         )}
                       </div>
+                      {cleanContent && (
+                        <div className="flex justify-end w-full">
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(cleanContent, `msg-${index}`)}
+                            className="opacity-0 group-hover/msg:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-neutral-500 hover:text-neutral-300 flex items-center gap-1 text-[10px] font-bold"
+                            title="Copy input"
+                          >
+                            {copiedId === `msg-${index}` ? (
+                              <>
+                                <Check size={12} className="text-emerald-500" />
+                                <span className="text-emerald-500">Copied</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={12} />
+                                <span>Copy</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -1111,6 +1176,18 @@ export default function Dashboard() {
             onSubmit={handleSubmit}
             className="max-w-3xl mx-auto relative rounded-2xl border border-white/10 bg-[#0A0A0A] shadow-[0_0_40px_rgba(0,0,0,0.8)] focus-within:border-neutral-200/40 focus-within:ring-1 focus-within:ring-neutral-200/20 transition duration-300 overflow-hidden"
           >
+            {/* Stop Generation Button */}
+            {isLoading && (
+              <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-20">
+                <button
+                  type="button"
+                  onClick={stopGeneration}
+                  className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0A0A0A] hover:bg-neutral-900 border border-white/10 text-neutral-300 text-xs shadow-xl backdrop-blur-md transition-all active:scale-95 animate-fade-in font-bold whitespace-nowrap"
+                >
+                  <Square size={10} fill="currentColor" className="text-red-500 animate-pulse" /> Stop generating
+                </button>
+              </div>
+            )}
             <textarea
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
@@ -1359,18 +1436,39 @@ export default function Dashboard() {
                 <p className="text-xs text-neutral-400 leading-relaxed">
                   Permanently delete all your chat logs, consultation history, and any files embedded inside them. This cannot be undone.
                 </p>
-                <button
-                  onClick={handleDeleteAllChats}
-                  disabled={chats.length === 0}
-                  className={`w-full py-2.5 rounded-xl font-bold text-xs text-center transition duration-300 flex items-center justify-center gap-2 ${
-                    chats.length === 0 
-                      ? "bg-neutral-950 text-neutral-700 border border-neutral-900 cursor-not-allowed"
-                      : "bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/20 hover:border-transparent"
-                  }`}
-                >
-                  <Trash2 size={14} />
-                  Delete All Conversations
-                </button>
+                {confirmDeleteAll ? (
+                  <div className="flex gap-2 w-full">
+                    <button
+                      type="button"
+                      onClick={handleDeleteAllChats}
+                      className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white border border-transparent rounded-xl font-bold text-xs text-center transition duration-300 flex items-center justify-center gap-2 shadow-lg shadow-red-950/20"
+                    >
+                      <Trash2 size={14} />
+                      Yes, Delete All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteAll(false)}
+                      className="px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 border border-white/5 rounded-xl font-bold text-xs text-center transition duration-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteAll(true)}
+                    disabled={chats.length === 0}
+                    className={`w-full py-2.5 rounded-xl font-bold text-xs text-center transition duration-300 flex items-center justify-center gap-2 ${
+                      chats.length === 0 
+                        ? "bg-neutral-950 text-neutral-700 border border-neutral-900 cursor-not-allowed"
+                        : "bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/20 hover:border-transparent"
+                    }`}
+                  >
+                    <Trash2 size={14} />
+                    Delete All Conversations
+                  </button>
+                )}
               </div>
             </div>
           </div>
