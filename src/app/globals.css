@@ -23,7 +23,29 @@
 
 /* Custom styles for chat markdown response rendering */
 .prose {
-  max-width: 100%;
+  max-width: 100% !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-x: hidden !important;
+}
+.prose * {
+  max-width: 100% !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  box-sizing: border-box !important;
+}
+.prose pre {
+  overflow-x: auto !important;
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+}
+.prose code {
+  word-break: break-all !important;
+  white-space: pre-wrap !important;
+}
+.prose table {
+  display: block;
+  overflow-x: auto !important;
 }
 .prose h1, .prose h2, .prose h3 {
   color: #FF8C00;

@@ -1014,7 +1014,7 @@ export default function Dashboard() {
         </header>
  
         {/* Scrollable Conversation area */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8 space-y-6">
           {messages.length === 0 ? (
             /* Welcome / Onboarding Screen */
             <div className="max-w-2xl mx-auto pt-8 pb-12 flex flex-col items-center justify-center text-center relative">
@@ -1060,7 +1060,7 @@ export default function Dashboard() {
             </div>
           ) : (
             /* Historical & Streamed Messages */
-            <div className="max-w-3xl mx-auto w-full space-y-8 pb-12 overflow-hidden">
+            <div className="max-w-3xl mx-auto w-full space-y-8 pb-12 overflow-x-hidden">
               {messages.map((msg, index) => {
                 // If it is AI's response
                 if (msg.role === "assistant") {
