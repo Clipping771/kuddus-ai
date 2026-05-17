@@ -2,10 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== GLOBAL MOBILE OVERFLOW FIX ===== */
+/* ===== GLOBAL MOBILE OVERFLOW FIX & WEBVIEW KEYBOARD IMMUNITY ===== */
 html, body {
   overflow-x: hidden !important;
   max-width: 100vw !important;
+}
+
+@media (max-width: 1024px) {
+  html, body {
+    position: fixed !important;
+    overflow: hidden !important;
+    height: 100% !important;
+    width: 100% !important;
+    top: 0;
+    left: 0;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 * {
   box-sizing: border-box;
