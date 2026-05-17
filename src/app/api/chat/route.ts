@@ -433,21 +433,38 @@ export async function POST(req: Request) {
 
     let agentSystemPrompt = `${customizedCorePersonality}\n${customizedGeneralFormat}`;
     
-    // 4b. Dynamic Tone Override Engine (Relaxes structural bounds for non-brutal tones)
+    // 4b. Dynamic Tone Override Engine (Deep string-manipulation for non-brutal tones)
     if (tonePrompt) {
       const isBrutallyHonest = tonePrompt.toLowerCase().includes("brutally honest") || tonePrompt.toLowerCase().includes("roast-heavy");
       
-      agentSystemPrompt = `## IDENTITY & PERSONALITY RULES
+      if (isBrutallyHonest) {
+        agentSystemPrompt = `## IDENTITY & PERSONALITY RULES
 ${customizedCorePersonality}
 
-## CRITICAL TONE & STYLE OVERRIDE (PRIORITY 1)
-The user has requested a specific communication style. YOU MUST ADHERE TO THIS STYLE in every response, overriding any conflicting default traits (like bluntness or strict structured output formatting):
+## CRITICAL TONE & STYLE OVERRIDE
+The user has requested a specific communication style. YOU MUST ADHERE TO THIS STYLE in every response:
 - **Requested Style**: ${tonePrompt}
-${
-  isBrutallyHonest 
-    ? `\n- **Formatting Rule**: Always deliver your insights using your default structured business format:\n${customizedGeneralFormat}`
-    : `\n- **Formatting Rule**: Relax and omit the rigid 'VERDICT/ANALYSIS/ROADMAP' structure if it does not fit this tone naturally, or if the user's message is short/conversational. Keep your responses highly fluid, natural, and completely aligned with the requested style.`
-}`;
+- **Formatting Rule**: Always deliver your insights using your default structured business format:
+${customizedGeneralFormat}`;
+      } else {
+        // NON-BRUTAL TONE: Actively strip and rewrite Kacha Morich's harsh identity rules to prevent prompt conflicts
+        let relaxedPersonality = customizedCorePersonality
+          .replace(/- Direct, blunt, zero sugar-coating/g, `- Direct but supportive, warm, and constructive`)
+          .replace(/- Mentor, not a cheerleader/g, `- Supportive mentor and encouraging cheerleader`)
+          .replace(/brutally honest/gi, `helpful and friendly`)
+          .replace(/roast-heavy/gi, `supportive`)
+          .replace(/bluntness/gi, `helpfulness`)
+          .replace(/Weak idea → say it in line 1./g, `If an idea is weak, explain why kindly and offer solutions.`)
+          .replace(/Bad idea = say it clearly in the FIRST line/g, `Help the user refine their ideas with positive reinforcement.`);
+
+        agentSystemPrompt = `## IDENTITY & PERSONALITY RULES (DYNAMICS UPDATED)
+${relaxedPersonality}
+
+## STRICT STYLE OVERRIDE (CRITICAL - PRIORITY 1)
+You MUST answer strictly using the following tone. YOU ARE FORBIDDEN FROM USING A HARSH, BLUNT, OR ROASTING STYLE. DO NOT use the rigid "VERDICT", "ANALYSIS", or "IMPLEMENTATION ROADMAP" headings unless the user explicitly asks for them. Speak naturally, fluidly, and beautifully as requested:
+- **Requested Tone**: ${tonePrompt}
+- **Formatting Requirement**: Speak in a highly natural, conversational, fluid style. Keep your paragraphs readable, friendly, and fully aligned with the requested tone.`;
+      }
     }
 
     if (agentId) {
