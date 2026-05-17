@@ -514,26 +514,50 @@ ${customizedCorePersonality}`;
       });
     }
 
-    // 6. Call OpenRouter API with Streaming (Gemma 2 27B for text, Gemini Flash 1.5 for vision)
-    const selectedModel = hasImage ? "google/gemini-2.5-flash" : "google/gemma-2-27b-it";
-    
-    console.log(`Successfully initiating OpenRouter stream with model: ${selectedModel}`);
+    // 6. Call OpenRouter API with Streaming (Gemma 4 Free as primary, with robust paid/fast fallbacks)
+    let selectedModel = hasImage ? "google/gemini-2.5-flash" : "google/gemma-4-26b-a4b-it:free";
+    const fallbackModels = hasImage 
+      ? ["google/gemini-2.5-flash"] 
+      : ["google/gemma-4-26b-a4b-it:free", "google/gemma-2-27b-it", "google/gemini-2.5-flash"];
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://kachamorich.vercel.app",
-        "X-Title": "Kacha Morich AI",
-      },
-      body: JSON.stringify({
-        model: selectedModel,
-        messages: formattedMessages,
-        stream: true,
-        max_tokens: 3000,
-      }),
-    });
+    let response: any;
+    for (let i = 0; i < fallbackModels.length; i++) {
+      selectedModel = fallbackModels[i];
+      try {
+        console.log(`Successfully initiating OpenRouter stream with model: ${selectedModel}`);
+        response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://kachamorich.vercel.app",
+            "X-Title": "Kacha Morich AI",
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: formattedMessages,
+            stream: true,
+            max_tokens: 3000,
+          }),
+        });
+
+        if (response.ok) {
+          break; // Stream successfully opened!
+        }
+
+        const errText = await response.text();
+        console.warn(`OpenRouter model ${selectedModel} failed with response: ${response.status} - ${errText}`);
+        if (i === fallbackModels.length - 1) {
+          throw new Error(`OpenRouter API error: ${response.status} - ${errText}`);
+        }
+      } catch (err: any) {
+        console.warn(`Error connecting to model ${selectedModel}:`, err.message || err);
+        if (i === fallbackModels.length - 1) {
+          throw err; // All models failed, rethrow final error
+        }
+        console.log(`Attempting fallback to next OpenRouter model...`);
+      }
+    }
 
     if (!response.ok) {
       const errText = await response.text();
