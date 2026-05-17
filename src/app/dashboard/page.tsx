@@ -721,7 +721,7 @@ export default function Dashboard() {
 
   return (
     <>
-    <div className="flex h-screen bg-black overflow-hidden text-neutral-100 font-sans relative">
+    <div className="flex h-screen h-[100dvh] bg-black overflow-hidden text-neutral-100 font-sans relative">
       {/* 1. Sidebar - Collapsible on Mobile */}
       <aside 
         className={`fixed inset-y-0 left-0 z-40 w-72 bg-[#050505] border-r border-white/5 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
@@ -1101,7 +1101,7 @@ export default function Dashboard() {
         </div>
 
         {/* Input Text Form Area */}
-        <div className="p-3 sm:p-4 md:p-6 border-t border-white/5 bg-gradient-to-t from-[#020202] to-black">
+        <div className="p-3 pb-6 sm:p-4 md:p-6 border-t border-white/5 bg-gradient-to-t from-[#020202] to-black">
           <form 
             onSubmit={handleSubmit}
             className="max-w-3xl mx-auto relative rounded-2xl border border-white/10 bg-[#0A0A0A] shadow-[0_0_40px_rgba(0,0,0,0.8)] focus-within:border-neutral-200/40 focus-within:ring-1 focus-within:ring-neutral-200/20 transition duration-300 overflow-hidden"
