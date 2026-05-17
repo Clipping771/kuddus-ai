@@ -15,6 +15,7 @@ import {
   MessageSquare, 
   CornerDownLeft,
   Sparkles,
+  ShieldCheck,
   Paperclip,
   Mic,
   MicOff,
@@ -883,6 +884,16 @@ export default function Dashboard() {
             </div>
             
             <div className="flex items-center gap-1">
+              {user?.primaryEmailAddress?.emailAddress && 
+               ["koishiquedhrubo@gmail.com", "rahmanmdkoishiqur@gmail.com", "aloniliark@gmail.com"].includes(user.primaryEmailAddress.emailAddress) && (
+                <Link
+                  href="/admin"
+                  className="p-2 text-emerald-500 hover:text-emerald-300 rounded-lg hover:bg-neutral-900 transition duration-200"
+                  title="Admin Dashboard"
+                >
+                  <ShieldCheck size={16} className="animate-pulse" />
+                </Link>
+              )}
               <button 
                 onClick={() => setIsSettingsModalOpen(true)}
                 className="p-2 text-neutral-500 hover:text-neutral-200 rounded-lg hover:bg-neutral-900 transition duration-200"
