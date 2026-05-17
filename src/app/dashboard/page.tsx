@@ -1087,7 +1087,7 @@ export default function Dashboard() {
                             <button
                               type="button"
                               onClick={() => copyToClipboard(msg.content, `msg-${index}`)}
-                              className="opacity-0 group-hover/msg:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-neutral-500 hover:text-neutral-300 flex items-center gap-1 text-[10px] font-bold"
+                              className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-neutral-500 hover:text-neutral-300 flex items-center gap-1 text-[10px] font-bold"
                               title="Copy response"
                             >
                               {copiedId === `msg-${index}` ? (
@@ -1138,7 +1138,7 @@ export default function Dashboard() {
                           <button
                             type="button"
                             onClick={() => copyToClipboard(cleanContent, `msg-${index}`)}
-                            className="opacity-0 group-hover/msg:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-neutral-500 hover:text-neutral-300 flex items-center gap-1 text-[10px] font-bold"
+                            className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-neutral-500 hover:text-neutral-300 flex items-center gap-1 text-[10px] font-bold"
                             title="Copy input"
                           >
                             {copiedId === `msg-${index}` ? (
@@ -1172,22 +1172,23 @@ export default function Dashboard() {
 
         {/* Input Text Form Area */}
         <div className="p-3 pb-6 sm:p-4 md:p-6 border-t border-white/5 bg-gradient-to-t from-[#020202] to-black">
-          <form 
-            onSubmit={handleSubmit}
-            className="max-w-3xl mx-auto relative rounded-2xl border border-white/10 bg-[#0A0A0A] shadow-[0_0_40px_rgba(0,0,0,0.8)] focus-within:border-neutral-200/40 focus-within:ring-1 focus-within:ring-neutral-200/20 transition duration-300 overflow-hidden"
-          >
+          <div className="max-w-3xl mx-auto relative">
             {/* Stop Generation Button */}
             {isLoading && (
-              <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-20">
+              <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-30">
                 <button
                   type="button"
                   onClick={stopGeneration}
-                  className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0A0A0A] hover:bg-neutral-900 border border-white/10 text-neutral-300 text-xs shadow-xl backdrop-blur-md transition-all active:scale-95 animate-fade-in font-bold whitespace-nowrap"
+                  className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0A0A0A]/95 hover:bg-neutral-900 border border-white/10 text-neutral-300 text-xs shadow-xl backdrop-blur-md transition-all active:scale-95 animate-fade-in font-bold whitespace-nowrap"
                 >
                   <Square size={10} fill="currentColor" className="text-red-500 animate-pulse" /> Stop generating
                 </button>
               </div>
             )}
+            <form 
+              onSubmit={handleSubmit}
+              className="w-full relative rounded-2xl border border-white/10 bg-[#0A0A0A] shadow-[0_0_40px_rgba(0,0,0,0.8)] focus-within:border-neutral-200/40 focus-within:ring-1 focus-within:ring-neutral-200/20 transition duration-300 overflow-hidden"
+            >
             <textarea
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
@@ -1321,7 +1322,8 @@ export default function Dashboard() {
                 <Send size={15} />
               </button>
             </div>
-          </form>
+            </form>
+          </div>
         </div>
       </main>
     </div>
