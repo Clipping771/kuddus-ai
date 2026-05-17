@@ -1256,6 +1256,13 @@ export default function Dashboard() {
               placeholder={AGENTS_LIST.find((a) => a.id === selectedAgentId)?.placeholder || "Describe your startup idea and which country/market you are targeting..."}
               className="w-full bg-transparent border-0 ring-0 focus:ring-0 focus:outline-none placeholder-neutral-600 text-sm text-neutral-200 px-5 py-4 resize-none h-[64px] min-h-[50px] max-h-[200px]"
               disabled={isLoading}
+              onFocus={(e) => {
+                // Mobile keyboard fix: scroll textarea into view after keyboard finishes animating
+                const target = e.currentTarget;
+                setTimeout(() => {
+                  target.scrollIntoView({ behavior: "smooth", block: "center" });
+                }, 350);
+              }}
             />
 
             {/* Attached file preview or parsing indicator */}
