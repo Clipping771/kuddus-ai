@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Kuddus Ali AI — Brutally Honest Personal Business Advisor
 
-## Getting Started
+Kuddus Ali AI is a full-stack, premium web application that gives entrepreneurs unfiltered, battle-tested, and brutally honest business advice. Inspired by 20+ years of experience across 4 continents, Kuddus Ali analyzes your startup idea, targets your specific country/market, flags critical regulatory & economic risks, and crafts a concrete 7-day action plan.
 
-First, run the development server:
+Powered by **Anthropic's Claude AI** (`claude-sonnet-4-20250514`), authenticated via **Clerk**, and persisted in **Supabase (PostgreSQL)**.
 
+---
+
+## ⚡ Key Features
+
+1. **Brutally Honest Verdicts:** Direct Go / No-Go / Pivot feedback in the very first line of response.
+2. **Infinite Consultations:** Zero daily limits, fully free for authenticated users.
+3. **Chat Persistence:** Seamlessly save, retrieve, and delete consultation history threads in Supabase.
+4. **Real-time Streaming:** Dynamic, real-time word-by-word streaming updates with responsive typing indicators.
+5. **High-Fidelity UI:** Gorgeous custom vector illustrations, premium glassmorphism grids, warm amber (`#F59E0B`) accents, and a fully responsive collapsible dashboard drawer.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend Framework:** Next.js 14 (App Router)
+- **Programming Language:** TypeScript
+- **Styling Engine:** Tailwind CSS + Lucide Icons + custom global prose configurations
+- **Authentication:** Clerk Client Core
+- **Database Engine:** Supabase (PostgreSQL client)
+- **AI Core:** Anthropic Claude API SDK
+- **Deployment Platform:** Vercel
+
+---
+
+## 🚀 Local Setup Guide
+
+Follow these steps to run the application locally:
+
+### 1. Clone & Bootstrap Dependencies
+
+Navigate to your workspace directory and install packages using:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install --legacy-peer-deps
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configure Database Schema
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Log in to your [Supabase Dashboard](https://supabase.com), create a new project, navigate to the **SQL Editor**, paste the contents of `supabase_schema.sql` (found in the root of this project), and hit **Run**. This establishes:
+* `users` — for lazy profile syncing.
+* `chats` — for user consult threads.
+* `messages` — for persistent conversation arrays.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+### 3. Environment Variables Configuration
 
-## Learn More
+Create a `.env.local` file in the root directory and populate it with your API keys:
+```env
+# Clerk Authentication Keys
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
 
-To learn more about Next.js, take a look at the following resources:
+# Supabase Configurations
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Anthropic Claude API Key
+ANTHROPIC_API_KEY=sk-ant-api03-...
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+# App Base URL
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
-## Deploy on Vercel
+### 4. Run Development Server
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Launch the dev server:
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) to start your consultation!
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+---
+
+## ⚡ Production Compilation Check
+
+Ensure all TypeScript constraints, ESLint rules, and route generation paths are 100% stable:
+```bash
+npm run build
+```
+
+---
+
+## 📄 License
+
+Made with 💛 by the Kuddus Ali AI Team. Built for founders serious about building something real.

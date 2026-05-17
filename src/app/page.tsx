@@ -1,113 +1,166 @@
-import Image from "next/image";
+"use client";
+
+import React from "react";
+import Link from "next/link";
+import { useUser, SignInButton } from "@clerk/nextjs";
+import KuddusAvatar from "@/components/KuddusAvatar";
+import { ArrowRight, Flame, ShieldAlert, Award, Compass, Sparkles } from "lucide-react";
 
 export default function Home() {
+  const { isSignedIn, isLoaded } = useUser();
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
+    <div className="flex flex-col min-h-screen bg-[#0A0A0A] overflow-hidden">
+      {/* Dynamic Grid Background Overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f1f1f_1px,transparent_1px),linear-gradient(to_bottom,#1f1f1f_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none opacity-40"></div>
+
+      {/* Top Header / Nav */}
+      <header className="relative z-10 max-w-7xl w-full mx-auto px-6 py-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <KuddusAvatar size={40} />
+          <span className="text-xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-amber-600">
+            KUDDUS ALI AI
+          </span>
+        </div>
+        
+        <div>
+          {isLoaded && isSignedIn ? (
+            <Link 
+              href="/dashboard" 
+              className="px-5 py-2.5 rounded-full text-sm font-semibold border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition duration-300 shadow-[0_0_15px_rgba(245,158,11,0.1)] flex items-center gap-1.5"
+            >
+              Go to Dashboard <ArrowRight size={16} />
+            </Link>
+          ) : (
+            <SignInButton mode="modal">
+              <button className="px-5 py-2.5 rounded-full text-sm font-semibold border border-neutral-800 bg-neutral-900 text-neutral-300 hover:bg-neutral-800 transition duration-300">
+                Sign In
+              </button>
+            </SignInButton>
+          )}
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <main className="relative z-10 flex-grow max-w-7xl w-full mx-auto px-6 pt-16 pb-24 flex flex-col items-center text-center">
+        {/* Smirk Badge */}
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-950/40 border border-amber-900/60 text-amber-500 text-xs font-semibold mb-8 animate-pulse">
+          <Sparkles size={14} className="text-amber-400" />
+          Unusual name. Unusual honesty.
+        </div>
+
+        {/* Hero Title */}
+        <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight max-w-4xl leading-tight">
+          Meet Kuddus Ali — The Advisor Who{" "}
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500">
+            Tells You The Truth.
+          </span>
+        </h1>
+
+        {/* Hero Description */}
+        <p className="mt-8 text-lg sm:text-xl text-neutral-400 max-w-2xl leading-relaxed">
+          Forget the sweet talk and startup cheerleaders. Kuddus Ali gives you brutally honest, battle-tested advice to save you from expensive failures and lead you to real profits.
         </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        {/* Hero CTAs */}
+        <div className="mt-10 flex flex-col sm:flex-row gap-4 items-center justify-center">
+          {isLoaded && isSignedIn ? (
+            <Link 
+              href="/dashboard"
+              className="px-8 py-4 rounded-full text-base font-bold bg-amber-500 text-neutral-950 hover:bg-amber-400 hover:scale-105 transition duration-300 shadow-[0_4px_20px_rgba(245,158,11,0.4)] flex items-center gap-2"
+            >
+              Start Your Free Consultation <ArrowRight size={18} />
+            </Link>
+          ) : (
+            <SignInButton mode="modal">
+              <button className="px-8 py-4 rounded-full text-base font-bold bg-amber-500 text-neutral-950 hover:bg-amber-400 hover:scale-105 transition duration-300 shadow-[0_4px_20px_rgba(245,158,11,0.4)] flex items-center gap-2">
+                Ask Kuddus Ali Now <ArrowRight size={18} />
+              </button>
+            </SignInButton>
+          )}
+          
+          <a 
+            href="#features" 
+            className="px-8 py-4 rounded-full text-base font-bold border border-neutral-800 bg-neutral-900/60 text-neutral-300 hover:bg-neutral-800/80 transition duration-300 backdrop-blur"
           >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
+            How it works
           </a>
         </div>
-      </div>
 
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
+        {/* Features Grid */}
+        <section id="features" className="mt-32 w-full pt-16 border-t border-neutral-900">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-amber-500 text-center mb-16">
+            What You Get (No Sugarcoating Guaranteed)
           </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Feature 1 */}
+            <div className="p-8 rounded-2xl border border-neutral-800/80 bg-neutral-900/30 backdrop-blur hover:border-amber-500/20 hover:bg-neutral-900/50 transition duration-300 flex flex-col items-center text-center">
+              <div className="p-3.5 rounded-xl bg-amber-500/10 text-amber-400 mb-6">
+                <Flame size={28} />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-neutral-100">⚡ brutal VERDICT</h3>
+              <p className="text-sm text-neutral-400 leading-relaxed">
+                You get a direct Go, No-Go, or Pivot verdict in the very first line. No beating around the bush.
+              </p>
+            </div>
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+            {/* Feature 2 */}
+            <div className="p-8 rounded-2xl border border-neutral-800/80 bg-neutral-900/30 backdrop-blur hover:border-amber-500/20 hover:bg-neutral-900/50 transition duration-300 flex flex-col items-center text-center">
+              <div className="p-3.5 rounded-xl bg-amber-500/10 text-amber-400 mb-6">
+                <Compass size={28} />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-neutral-100">📊 Market Deep-Dive</h3>
+              <p className="text-sm text-neutral-400 leading-relaxed">
+                {"Specific analyses tailored to your country's culture, regulations, competition, and search trends."}
+              </p>
+            </div>
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
+            {/* Feature 3 */}
+            <div className="p-8 rounded-2xl border border-neutral-800/80 bg-neutral-900/30 backdrop-blur hover:border-amber-500/20 hover:bg-neutral-900/50 transition duration-300 flex flex-col items-center text-center">
+              <div className="p-3.5 rounded-xl bg-amber-500/10 text-amber-400 mb-6">
+                <ShieldAlert size={28} />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-neutral-100">⚠️ Risk Assessment</h3>
+              <p className="text-sm text-neutral-400 leading-relaxed">
+                At least 3 critical, market-specific risks and realistic mitigations for regulatory and economic issues.
+              </p>
+            </div>
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+            {/* Feature 4 */}
+            <div className="p-8 rounded-2xl border border-neutral-800/80 bg-neutral-900/30 backdrop-blur hover:border-amber-500/20 hover:bg-neutral-900/50 transition duration-300 flex flex-col items-center text-center">
+              <div className="p-3.5 rounded-xl bg-amber-500/10 text-amber-400 mb-6">
+                <Award size={28} />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-neutral-100">➡️ 7-Day Action Plan</h3>
+              <p className="text-sm text-neutral-400 leading-relaxed">
+                A highly concrete, actionable roadmap with tasks that can be completed in 24 to 48 hours.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Smirking Kuddus Quote */}
+        <section className="mt-32 max-w-4xl mx-auto rounded-3xl border border-amber-500/10 bg-gradient-to-b from-amber-500/5 to-transparent p-8 sm:p-12 relative overflow-hidden flex flex-col sm:flex-row items-center gap-8">
+          <KuddusAvatar size={100} className="border-2 border-amber-500" />
+          <div className="flex-1 text-left">
+            <p className="text-xl sm:text-2xl font-medium italic text-neutral-300 leading-relaxed">
+              {"“I've seen brilliant ideas fail and stupid ideas make millions. I won't tell you what you want to hear. I will tell you what is real.”"}
+            </p>
+            <p className="mt-4 text-sm font-bold text-amber-500 uppercase tracking-widest">— Kuddus Ali</p>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="relative z-10 max-w-7xl w-full mx-auto px-6 py-12 border-t border-neutral-950 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-neutral-500">
+        <div>&copy; {new Date().getFullYear()} Kuddus Ali AI. All rights reserved.</div>
+        <div className="flex gap-6">
+          <Link href="/dashboard" className="hover:text-amber-500 transition duration-300">Dashboard</Link>
+          <a href="#" className="hover:text-amber-500 transition duration-300">Terms</a>
+          <a href="#" className="hover:text-amber-500 transition duration-300">Privacy</a>
+        </div>
+      </footer>
+    </div>
   );
 }
