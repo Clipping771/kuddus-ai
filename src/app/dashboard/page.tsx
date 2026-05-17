@@ -838,7 +838,7 @@ export default function Dashboard() {
       {/* 3. Main Chat Interface Container */}
       <main className="flex-1 flex flex-col h-full bg-[#020202] relative">
         {/* Dynamic header */}
-        <header className="h-16 px-6 border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl flex items-center justify-between z-10">
+        <header className="h-16 px-4 sm:px-6 border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <button 
               className="lg:hidden p-1.5 text-neutral-400 hover:text-neutral-100 rounded-lg hover:bg-neutral-950"
@@ -988,7 +988,7 @@ export default function Dashboard() {
         </header>
  
         {/* Scrollable Conversation area */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6">
           {messages.length === 0 ? (
             /* Welcome / Onboarding Screen */
             <div className="max-w-2xl mx-auto pt-8 pb-12 flex flex-col items-center justify-center text-center relative">
@@ -1101,7 +1101,7 @@ export default function Dashboard() {
         </div>
 
         {/* Input Text Form Area */}
-        <div className="p-4 md:p-6 border-t border-white/5 bg-gradient-to-t from-[#020202] to-black">
+        <div className="p-3 sm:p-4 md:p-6 border-t border-white/5 bg-gradient-to-t from-[#020202] to-black">
           <form 
             onSubmit={handleSubmit}
             className="max-w-3xl mx-auto relative rounded-2xl border border-white/10 bg-[#0A0A0A] shadow-[0_0_40px_rgba(0,0,0,0.8)] focus-within:border-neutral-200/40 focus-within:ring-1 focus-within:ring-neutral-200/20 transition duration-300 overflow-hidden"

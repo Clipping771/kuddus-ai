@@ -26,10 +26,10 @@ export default function Home() {
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f1f1f_1px,transparent_1px),linear-gradient(to_bottom,#1f1f1f_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none opacity-40"></div>
 
       {/* Top Header / Nav */}
-      <header className="relative z-10 max-w-7xl w-full mx-auto px-6 py-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <AIAvatar size={40} />
-          <span className="text-xl font-extrabold tracking-widest text-white uppercase" style={{ color: aiColor }}>
+      <header className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 flex items-center justify-between">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <AIAvatar size={32} />
+          <span className="text-sm sm:text-base md:text-lg font-extrabold tracking-widest text-white uppercase" style={{ color: aiColor }}>
             {aiName}
           </span>
         </div>
@@ -38,13 +38,13 @@ export default function Home() {
           {isLoaded && isSignedIn ? (
             <Link 
               href="/dashboard" 
-              className="px-5 py-2.5 rounded-full text-sm font-semibold border border-white/20 bg-white/5 text-white hover:bg-white/10 transition duration-300 shadow-[0_0_15px_rgba(255,255,255,0.05)] flex items-center gap-1.5"
+              className="px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold border border-white/20 bg-white/5 text-white hover:bg-white/10 transition duration-300 shadow-[0_0_15px_rgba(255,255,255,0.05)] flex items-center gap-1.5"
             >
-              Go to Dashboard <ArrowRight size={16} />
+              <span className="hidden xs:inline">Go to</span> Dashboard <ArrowRight size={14} />
             </Link>
           ) : (
             <SignInButton mode="modal">
-              <button className="px-5 py-2.5 rounded-full text-sm font-semibold border border-neutral-800 bg-neutral-900 text-neutral-300 hover:bg-neutral-800 transition duration-300">
+              <button className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold border border-neutral-800 bg-neutral-900 text-neutral-300 hover:bg-neutral-800 transition duration-300">
                 Sign In
               </button>
             </SignInButton>
