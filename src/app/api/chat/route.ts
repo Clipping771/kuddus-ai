@@ -514,36 +514,29 @@ ${customizedCorePersonality}`;
       });
     }
 
-    // 6. Call Groq API with Streaming & multi-model fallback chain
-    let responseStream: any;
-    let selectedModel = hasImage ? "meta-llama/llama-4-scout-17b-16e-instruct" : "llama-3.3-70b-versatile";
-    const fallbackModels = hasImage ? [
-      "meta-llama/llama-4-scout-17b-16e-instruct"
-    ] : [
-      "llama-3.3-70b-versatile",
-      "meta-llama/llama-4-scout-17b-16e-instruct",
-      "openai/gpt-oss-120b",
-      "qwen/qwen3-32b",
-      "llama-3.1-8b-instant"
-    ];
+    // 6. Call OpenRouter API with Streaming (Gemma 2 27B for text, Gemini Flash 1.5 for vision)
+    const selectedModel = hasImage ? "google/gemini-flash-1.5" : "google/gemma-2-27b-it";
+    
+    console.log(`Successfully initiating OpenRouter stream with model: ${selectedModel}`);
 
-    for (let i = 0; i < fallbackModels.length; i++) {
-      selectedModel = fallbackModels[i];
-      try {
-        responseStream = await groq.chat.completions.create({
-          model: selectedModel,
-          messages: formattedMessages,
-          stream: true,
-        });
-        console.log(`Successfully initiated chat completion stream with model: ${selectedModel}`);
-        break;
-      } catch (err: any) {
-        console.warn(`Failed to initiate stream with model ${selectedModel}:`, err.message || err);
-        if (i === fallbackModels.length - 1) {
-          throw err; // All models failed, rethrow final error
-        }
-        console.log(`Attempting fallback to next model...`);
-      }
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://kachamorich.vercel.app",
+        "X-Title": "Kacha Morich AI",
+      },
+      body: JSON.stringify({
+        model: selectedModel,
+        messages: formattedMessages,
+        stream: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`OpenRouter API error: ${response.status} - ${errText}`);
     }
 
     const encoder = new TextEncoder();
@@ -555,11 +548,38 @@ ${customizedCorePersonality}`;
         controller.enqueue(encoder.encode(`__CHAT_ID__:${activeChatId}\n`));
 
         try {
-          for await (const chunk of responseStream) {
-            const text = chunk.choices[0]?.delta?.content || "";
-            if (text) {
-              assistantResponse += text;
-              controller.enqueue(encoder.encode(text));
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder();
+          if (!reader) {
+            throw new Error("No reader stream available on OpenRouter response");
+          }
+
+          let buffer = "";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
+              if (trimmed === "data: [DONE]") continue;
+
+              if (trimmed.startsWith("data: ")) {
+                try {
+                  const parsed = JSON.parse(trimmed.slice(6));
+                  const text = parsed.choices[0]?.delta?.content || "";
+                  if (text) {
+                    assistantResponse += text;
+                    controller.enqueue(encoder.encode(text));
+                  }
+                } catch (e) {
+                  // Ignore parsing errors for heartbeats or incomplete chunks
+                }
+              }
             }
           }
 
@@ -578,7 +598,7 @@ ${customizedCorePersonality}`;
             }
           }
         } catch (streamErr) {
-          console.error("Error while processing Groq stream:", streamErr);
+          console.error("Error while processing OpenRouter stream:", streamErr);
           controller.enqueue(encoder.encode("\n[Error: Stream interrupted]"));
         } finally {
           controller.close();
