@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@clerk/nextjs": "^7.3.5",
+    "@clerk/nextjs": "^5.7.6",
     "@supabase/supabase-js": "^2.105.4",
     "groq-sdk": "^1.2.0",
     "lucide-react": "^1.16.0",
