@@ -50,12 +50,12 @@ If data unavailable → say so clearly.
 5. Need more info → ask max 2 questions first.
 6. Never repeat advice. Push conversation forward.
 
-## ATTACHMENT & OCR HANDLING RULE (CRITICAL)
-When the user provides an attached document, image, or text snippet:
-- NEVER EVER say "I am a text-based AI", "I cannot visually see the image", or "I cannot read the entire book". This breaks the illusion and annoys the user!
-- Treat the provided OCR text as the sole content of the image. Analyze the provided text directly and answer their request confidently using your specialized agent persona.
-- If the extracted text is a book cover, product name, or snippet, analyze what that item is and give your business/innovation insights on it directly! Do NOT complain about not being able to read the whole thing.
-- If the extracted text is empty or contains gibberish/noise: Politely explain (in the user's language) that no readable text could be automatically extracted, and ask them to briefly describe it or type the key text so you can help them. Maintain your honest, direct Kacha Morich AI personality!`;
+## ATTACHMENT & VISION HANDLING RULE (CRITICAL)
+When the user provides an image, photo, or document attachment:
+- You are a fully multimodal AI. You CAN visually see, inspect, and analyze the image perfectly!
+- If the image contains a product, design, storefront, logo, kitchen, or any visual asset, analyze it directly and give your brutally honest, expert business and innovation insights on it!
+- Never say "I am a text-based AI" or "I cannot visually see". You see the image perfectly.
+- Analyze both the visual details in the image and any user typed text to give incredibly sharp, realistic, and battle-tested advice.`;
 
 const GENERAL_BUSINESS_ADVISOR_FORMAT = `
 ## OUTPUT FORMAT (never break this structure)
@@ -378,7 +378,7 @@ export async function POST(req: Request) {
       return ocrText.length < 15;
     };
 
-    if (isImageOnlyWithoutOCR(message)) {
+    if (isImageOnlyWithoutOCR(message) && false) { // Disabled in favor of Groq Vision LLaMA 3.2 model
       const encoder = new TextEncoder();
       const responseText = `আমি আপনার ছবিটি সফলভাবে পেয়েছি! 🌶️ 
 
@@ -459,10 +459,31 @@ ${customizedCorePersonality}`;
       },
     ];
 
+    const hasImage = message.includes("[IMAGE_BASE64:") || (history && history.some((h: any) => h.content.includes("[IMAGE_BASE64:")));
+
     const parseMessageContent = (role: string, rawContent: string) => {
       if (role !== "user" || !rawContent) return rawContent;
       
       const base64Regex = /\[IMAGE_BASE64:(data:image\/[^\]]+)\]/;
+      const match = rawContent.match(base64Regex);
+
+      if (match && hasImage) {
+        const imageUrl = match[1];
+        const textPrompt = rawContent.replace(base64Regex, "").trim();
+        return [
+          {
+            type: "text",
+            text: textPrompt || "Analyze this image.",
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: imageUrl,
+            },
+          },
+        ];
+      }
+
       return rawContent.replace(base64Regex, "").trim();
     };
 
@@ -495,8 +516,11 @@ ${customizedCorePersonality}`;
 
     // 6. Call Groq API with Streaming & multi-model fallback chain
     let responseStream: any;
-    let selectedModel = "llama-3.3-70b-versatile";
-    const fallbackModels = [
+    let selectedModel = hasImage ? "llama-3.2-11b-vision-preview" : "llama-3.3-70b-versatile";
+    const fallbackModels = hasImage ? [
+      "llama-3.2-11b-vision-preview",
+      "llama-3.2-90b-vision-preview"
+    ] : [
       "llama-3.3-70b-versatile",
       "meta-llama/llama-4-scout-17b-16e-instruct",
       "openai/gpt-oss-120b",
