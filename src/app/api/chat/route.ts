@@ -515,7 +515,7 @@ ${customizedCorePersonality}`;
     }
 
     // 6. Call OpenRouter API with Streaming (Gemma 2 27B for text, Gemini Flash 1.5 for vision)
-    const selectedModel = hasImage ? "google/gemini-flash-1.5" : "google/gemma-2-27b-it";
+    const selectedModel = hasImage ? "google/gemini-2.5-flash" : "google/gemma-2-27b-it";
     
     console.log(`Successfully initiating OpenRouter stream with model: ${selectedModel}`);
 
@@ -531,6 +531,7 @@ ${customizedCorePersonality}`;
         model: selectedModel,
         messages: formattedMessages,
         stream: true,
+        max_tokens: 3000,
       }),
     });
 
