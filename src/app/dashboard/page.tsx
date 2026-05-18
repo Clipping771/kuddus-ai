@@ -239,6 +239,19 @@ const AGENTS_LIST = [
       "Suggest a low-cost tech stack (CRM, Email, Billing) for a new consulting business.",
       "How do I automate lead capture from Facebook Ads directly to my HubSpot CRM?"
     ]
+  },
+  {
+    id: "pain-point-scraper-agent",
+    name: "Pain-Point Scraper & Problem Finder",
+    banglaName: "Pain-Point Scraper & Problem Finder",
+    desc: "Scrapes web forums and reviews to find real customer complaints and unmet market needs",
+    banglaDesc: "Scrapes web forums and reviews to find real customer complaints and unmet market needs",
+    icon: MessageSquare,
+    placeholder: "What industry, product, or niche do you want to scrape for customer complaints?",
+    suggestions: [
+      "Find out what people are complaining about most regarding modern dating apps.",
+      "What are the biggest frustrations small business owners have with their accounting software?"
+    ]
   }
 ];
 
