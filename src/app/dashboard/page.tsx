@@ -6,6 +6,17 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 // NovaAvatar removed — using dynamic AIAvatar now
 import TypingIndicator from "@/components/TypingIndicator";
+
+// Helper to clean LaTeX arrows in AI response
+function cleanArrows(text: string | null | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/\$?\\rightarrow\$?/gi, "→")
+    .replace(/\$?\\Rightarrow\$?/gi, "⇒")
+    .replace(/\$?\\to\$?/gi, "→")
+    .replace(/\$?\\leftarrow\$?/gi, "←")
+    .replace(/\$?\\Leftarrow\$?/gi, "⇐");
+}
 import { 
   Plus, 
   Trash2, 
@@ -325,6 +336,41 @@ export default function Dashboard() {
   // Multi-Agent Brain Trust State
   const [isBrainTrust, setIsBrainTrust] = useState(false);
 
+  // Robust Hydrated Persistence Engine
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedTone = localStorage.getItem("kacha_selected_tone");
+      const savedAgent = localStorage.getItem("kacha_selected_agent");
+      const savedModel = localStorage.getItem("kacha_selected_model");
+      const savedBrainTrust = localStorage.getItem("kacha_is_braintrust");
+
+      if (savedTone) setSelectedToneId(savedTone);
+      if (savedAgent) setSelectedAgentId(savedAgent);
+      if (savedModel) setSelectedModelId(savedModel);
+      if (savedBrainTrust) setIsBrainTrust(savedBrainTrust === "true");
+    }
+  }, []);
+
+  const handleToneChange = (toneId: string) => {
+    setSelectedToneId(toneId);
+    localStorage.setItem("kacha_selected_tone", toneId);
+  };
+
+  const handleAgentChange = (agentId: string) => {
+    setSelectedAgentId(agentId);
+    localStorage.setItem("kacha_selected_agent", agentId);
+  };
+
+  const handleModelChange = (modelId: string) => {
+    setSelectedModelId(modelId);
+    localStorage.setItem("kacha_selected_model", modelId);
+  };
+
+  const handleBrainTrustToggle = (val: boolean) => {
+    setIsBrainTrust(val);
+    localStorage.setItem("kacha_is_braintrust", String(val));
+  };
+
   // AI Personalization State (user chooses name & color on first visit)
   const aiName = "Kacha Morich AI";
   const aiColor = "#10b981";
@@ -359,6 +405,155 @@ export default function Dashboard() {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const exportToPDF = (content: string) => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Please allow popups to export as PDF");
+      return;
+    }
+    
+    const cleanText = cleanArrows(content);
+    
+    // Convert basic markdown formatting to clean HTML for the print preview
+    let html = cleanText
+      .replace(/^### (.*$)/gim, '<h3 style="color:#FF8C00;font-family:sans-serif;margin-top:20px;">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 style="color:#FF8C00;font-family:sans-serif;margin-top:25px;">$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1 style="color:#FF8C00;font-family:sans-serif;margin-top:30px;border-bottom:1px solid #ddd;padding-bottom:10px;">$1</h1>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code style="background:#f4f4f4;padding:2px 4px;border-radius:4px;">$1</code>')
+      .replace(/\n/g, '<br/>');
+
+    // Convert markdown tables to styled HTML tables
+    if (html.includes('|')) {
+      const lines = html.split('<br/>');
+      let inTable = false;
+      let tableHtml = '<table style="width:100%;border-collapse:collapse;margin:20px 0;font-family:sans-serif;">';
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith('|')) {
+          inTable = true;
+          const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+          if (line.includes('---')) continue; 
+          
+          tableHtml += '<tr style="border-bottom:1px solid #ddd;">';
+          cells.forEach(cell => {
+            tableHtml += `<td style="padding:10px;border:1px solid #ddd;">${cell}</td>`;
+          });
+          tableHtml += '</tr>';
+        } else {
+          if (inTable) {
+            inTable = false;
+            tableHtml += '</table>';
+            lines[i] = tableHtml + '<br/>' + lines[i];
+          }
+        }
+      }
+      html = lines.join('<br/>');
+    }
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Kacha Morich AI - Business Intelligence Report</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
+            h1, h2, h3 { font-family: 'Segoe UI', sans-serif; color: #111; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+            th { background-color: #f5f5f5; }
+            tr:nth-child(even) { background-color: #fafafa; }
+            @media print {
+              body { padding: 0; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div style="text-align:center;margin-bottom:30px;border-bottom:2px solid #FF8C00;padding-bottom:10px;">
+            <h2 style="margin:0;color:#FF8C00;">🌶️ KACHA MORICH AI</h2>
+            <p style="margin:5px 0 0 0;font-size:12px;color:#666;text-transform:uppercase;letter-spacing:1px;">Elite Business Advisory Report</p>
+          </div>
+          <div>${html}</div>
+          <div style="margin-top:50px;font-size:10px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:10px;">
+            Generated dynamically by Kacha Morich AI Platform. Confidential & Proprietary.
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const exportToWord = (content: string) => {
+    const cleanText = cleanArrows(content);
+    let html = cleanText
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br/>');
+
+    const wordContent = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head><title>Kacha Morich AI Report</title><style>body { font-family: Arial, sans-serif; }</style></head>
+        <body>
+          <h2 style="color:#FF8C00;">🌶️ Kacha Morich AI Business Report</h2>
+          <hr/>
+          <div>${html}</div>
+        </body>
+      </html>
+    `;
+    
+    const blob = new Blob(['\ufeff' + wordContent], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kacha_morich_report_${Date.now()}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToExcel = (content: string) => {
+    const lines = content.split('\n');
+    let csvContent = "";
+    let hasTable = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('|')) {
+        if (line.includes('---')) continue; 
+        hasTable = true;
+        const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+        const csvRow = cells.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',');
+        csvContent += csvRow + '\r\n';
+      }
+    }
+
+    if (!hasTable) {
+      csvContent = `"${content.replace(/"/g, '""')}"`;
+    }
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kacha_morich_data_${Date.now()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const stopGeneration = () => {
@@ -587,12 +782,11 @@ export default function Dashboard() {
         return;
       }
 
-      // Restore active chat's agent and tone if serialized in the title
+      // Restore active chat's agent if serialized in the title (tone stays globally persistent)
       const currentChat = chats.find((c) => c.id === activeChatId);
       if (currentChat) {
-        const { agentId, toneId } = parseChatTitle(currentChat.title);
+        const { agentId } = parseChatTitle(currentChat.title);
         if (agentId) setSelectedAgentId(agentId);
-        if (toneId) setSelectedToneId(toneId);
       }
 
       try {
@@ -997,7 +1191,7 @@ export default function Dashboard() {
                             key={tone.id}
                             type="button"
                             onClick={() => {
-                              setSelectedToneId(tone.id);
+                              handleToneChange(tone.id);
                               setToneDropdownOpen(false);
                             }}
                             className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-semibold rounded-xl transition duration-200 ${
@@ -1049,7 +1243,7 @@ export default function Dashboard() {
                             key={model.id}
                             type="button"
                             onClick={() => {
-                              setSelectedModelId(model.id);
+                              handleModelChange(model.id);
                               setModelDropdownOpen(false);
                             }}
                             className={`w-full text-left flex items-center justify-between p-2.5 rounded-lg transition duration-200 ${
@@ -1110,7 +1304,7 @@ export default function Dashboard() {
                             key={agent.id}
                             type="button"
                             onClick={() => {
-                              setSelectedAgentId(agent.id);
+                              handleAgentChange(agent.id);
                               setAgentDropdownOpen(false);
                               // Start a new chat if there are already messages in the current one
                               if (messages.length > 0) {
@@ -1217,7 +1411,7 @@ export default function Dashboard() {
                         <div className="bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border border-white/5 rounded-2xl rounded-tl-none px-4 sm:px-6 py-4 sm:py-5 text-neutral-200 leading-relaxed text-sm shadow-md backdrop-blur-md prose prose-invert prose-sm max-w-full w-full overflow-hidden relative">
                           {msg.content ? (
                             <div className="w-full max-w-full overflow-hidden break-words [&_*]:max-w-full [&_pre]:overflow-x-auto [&_code]:break-all [&_p]:break-words [&_li]:break-words">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>{cleanArrows(msg.content)}</ReactMarkdown>
                             </div>
                           ) : (
                             <div className="flex gap-1 items-center py-2">
@@ -1228,7 +1422,7 @@ export default function Dashboard() {
                           )}
                         </div>
                         {msg.content && (
-                          <div className="flex justify-start">
+                          <div className="flex justify-start items-center gap-1">
                             <button
                               type="button"
                               onClick={() => copyToClipboard(msg.content, `msg-${index}`)}
@@ -1246,6 +1440,60 @@ export default function Dashboard() {
                                   <span>Copy</span>
                                 </>
                               )}
+                            </button>
+
+                            {/* Export to PDF */}
+                            <button
+                              type="button"
+                              onClick={() => exportToPDF(msg.content)}
+                              className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-red-500/80 hover:text-red-400 flex items-center gap-1 text-[10px] font-bold border border-transparent hover:border-red-500/10"
+                              title="Download as PDF Document"
+                            >
+                              <FileText size={12} />
+                              <span>PDF</span>
+                            </button>
+
+                            {/* Export to Word */}
+                            <button
+                              type="button"
+                              onClick={() => exportToWord(msg.content)}
+                              className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-blue-500/80 hover:text-blue-400 flex items-center gap-1 text-[10px] font-bold border border-transparent hover:border-blue-500/10"
+                              title="Download as MS Word Document"
+                            >
+                              <Briefcase size={12} />
+                              <span>Word</span>
+                            </button>
+
+                            {/* Export to Excel */}
+                            <button
+                              type="button"
+                              onClick={() => exportToExcel(msg.content)}
+                              className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-emerald-500/80 hover:text-emerald-400 flex items-center gap-1 text-[10px] font-bold border border-transparent hover:border-emerald-500/10"
+                              title="Download Spreadshet / CSV"
+                            >
+                              <DollarSign size={12} />
+                              <span>Excel</span>
+                            </button>
+
+                            {/* Export to Text */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const blob = new Blob([cleanArrows(msg.content)], { type: 'text/plain;charset=utf-8;' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `kacha_morich_raw_${Date.now()}.txt`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                              }}
+                              className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-neutral-400/80 hover:text-neutral-300 flex items-center gap-1 text-[10px] font-bold border border-transparent hover:border-white/10"
+                              title="Download raw Text file"
+                            >
+                              <Square size={12} />
+                              <span>Text</span>
                             </button>
                           </div>
                         )}
@@ -1456,7 +1704,7 @@ export default function Dashboard() {
                 {/* Brain Trust Toggle */}
                 <button
                   type="button"
-                  onClick={() => setIsBrainTrust(!isBrainTrust)}
+                  onClick={() => handleBrainTrustToggle(!isBrainTrust)}
                   disabled={isLoading || isFileParsing}
                   title="Brain Trust Mode: Multi-Agent Deep Research"
                   className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 ml-2 rounded-full border text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${
