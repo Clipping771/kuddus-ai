@@ -549,6 +549,13 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
         try {
           if (isBrainTrust && !hasImage) { 
             // MULTI-AGENT BRAIN TRUST PIPELINE
+
+            // Detect user's language from their message
+            const hasBangla = /[\u0980-\u09FF]/.test(message);
+            const langInstruction = hasBangla
+              ? "CRITICAL: You MUST respond entirely in Bengali (Bangla) script. Do NOT use English in your response."
+              : "Respond in the same language as the user's original message.";
+
             controller.enqueue(encoder.encode("\n\n> 🧠 **KACHA MORICH BRAIN TRUST ACTIVATED**\n> Assembling the 15-Agent Executive Board for Deep Analysis...\n\n"));
             
             // Readable model name helpers
@@ -556,9 +563,9 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
             const critiqueModelName = critiqueModel.includes("gemma") ? "Google Gemma 4 31B" : critiqueModel.split("/")[1];
             const synthModelName = synthModel.includes("gemma") ? "Google Gemma 4 31B" : synthModel.includes("trinity") ? "DeepSeek Trinity" : synthModel.includes("deepseek-v4-flash") ? "DeepSeek Flash" : synthModel.split("/")[1];
 
-            // Step 1: Draft by CFO & Project Manager Specialist Agents
+            // Step 1: Draft by CFO & Project Manager
             controller.enqueue(encoder.encode(`> 📝 **[CFO & Project Manager]** *(powered by ${draftModelName})* is drafting the financial runway and operational roadmap...\n`));
-            const draftMessages = [...formattedMessages, { role: "user", content: "Act as the CFO and Project Manager. Draft the initial business model, financial metrics, and week-by-week implementation roadmap. Focus strictly on numbers, execution timelines, and costs." }];
+            const draftMessages = [...formattedMessages, { role: "user", content: `Act as the CFO and Project Manager. Draft the initial business model, financial metrics, and week-by-week implementation roadmap. Focus strictly on numbers, execution timelines, and costs. ${langInstruction}` }];
             const draftText = await fetchSyncOpenRouter(draftModel, draftMessages);
             controller.enqueue(encoder.encode(`> ✅ **${draftModelName}** → Financial Runway & Roadmap Draft Completed.\n\n`));
 
@@ -567,7 +574,7 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
             const critiqueMessages = [
               ...formattedMessages, 
               { role: "assistant", content: `Here is the initial CFO & PM roadmap:\n\n${draftText}` }, 
-              { role: "user", content: "Act as the CTO and Chief Marketing Officer. Critically review the draft above. Identify technical bottlenecks, marketing gaps, competitive threats, and structural loopholes. Be brutally honest, highly technical, and deeply analytical." }
+              { role: "user", content: `Act as the CTO and Chief Marketing Officer. Critically review the draft above. Identify technical bottlenecks, marketing gaps, competitive threats, and structural loopholes. Be brutally honest, highly technical, and deeply analytical. ${langInstruction}` }
             ];
             const critiqueText = await fetchSyncOpenRouter(critiqueModel, critiqueMessages);
             controller.enqueue(encoder.encode(`> ✅ **${critiqueModelName}** → Tech-Stack & Market-Fit Peer Review Completed.\n\n`));
@@ -589,7 +596,7 @@ Here is the CTO & CMO's critical peer-review of that draft:
 ${critiqueText}
 </critique>
 
-As the CEO, combine the best parts of the operational draft, resolve all the tech/marketing flaws pointed out in the critique, and synthesize the ultimate, flawless master strategy. You MUST follow your specialized formatting rules. ${tonePrompt ? `CRITICAL: Your emotional tone MUST be exactly: [ ${tonePrompt} ]. Completely drop your default personality and speak entirely in this requested tone.` : ""} Do NOT mention the internal draft or critique directly; just provide the final polished, hyper-detailed answer as if it came directly from the CEO's office.` }
+As the CEO, combine the best parts of the operational draft, resolve all the tech/marketing flaws pointed out in the critique, and synthesize the ultimate, flawless master strategy. You MUST follow your specialized formatting rules. ${tonePrompt ? `CRITICAL: Your emotional tone MUST be exactly: [ ${tonePrompt} ]. Completely drop your default personality and speak entirely in this requested tone.` : ""} ${langInstruction} Do NOT mention the internal draft or critique directly; just provide the final polished, hyper-detailed answer as if it came directly from the CEO's office.` }
             ];
             
             const synthRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
