@@ -242,15 +242,28 @@ const AGENTS_LIST = [
   },
   {
     id: "womens-beauty-agent",
-    name: "Women's Beauty & Skincare Agent",
-    banglaName: "Women's Beauty & Skincare Agent",
-    desc: "Science-backed skincare routines, makeup styling & product tips",
-    banglaDesc: "Science-backed skincare routines, makeup styling & product tips",
+    name: "Beauty & Skincare Agent",
+    banglaName: "Beauty & Skincare Agent",
+    desc: "Science-backed skincare, grooming, makeup & product tips for all genders",
+    banglaDesc: "Science-backed skincare, grooming, makeup & product tips for all genders",
     icon: Sparkles,
-    placeholder: "What is your skin type (oily, dry, combo) and your primary skin concern?",
+    placeholder: "What is your skin type (oily, dry, combo) and your primary skin or grooming concern?",
     suggestions: [
       "Provide a complete morning skincare routine for my oily, acne-prone skin.",
-      "Which active ingredients should I combine for anti-aging without irritation?"
+      "What is a simple, effective skincare and grooming routine for men?"
+    ]
+  },
+  {
+    id: "project-manager-agent",
+    name: "Project & Product Manager Agent",
+    banglaName: "Project & Product Manager Agent",
+    desc: "Agile sprints, Work Breakdown Structure (WBS), milestones & roadmap planner",
+    banglaDesc: "Agile sprints, Work Breakdown Structure (WBS), milestones & roadmap planner",
+    icon: FileText,
+    placeholder: "What project, product, or application features do you want to plan and break down today?",
+    suggestions: [
+      "Create a 4-week Scrum sprint plan and task breakdown for an e-commerce website.",
+      "Break down the WBS and MoSCoW priorities for building a mobile SaaS app."
     ]
   }
 ];
