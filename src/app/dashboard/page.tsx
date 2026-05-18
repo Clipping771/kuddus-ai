@@ -196,6 +196,183 @@ import {
 import Link from "next/link";
 import { parseAnyFile } from "@/lib/fileParser";
 
+// --- CLAUDE-STYLE DOCUMENT ARTIFACTS ---
+const PDFArtifactCard = ({ content }: { content: string }) => {
+  const handleDownload = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Please allow popups to export as PDF");
+      return;
+    }
+    
+    let html = content
+      .replace(/^### (.*$)/gim, '<h3 style="color:#E11D48;font-family:sans-serif;margin-top:20px;">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 style="color:#E11D48;font-family:sans-serif;margin-top:25px;">$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1 style="color:#E11D48;font-family:sans-serif;margin-top:30px;border-bottom:1px solid #ddd;padding-bottom:10px;">$1</h1>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code style="background:#f4f4f4;padding:2px 4px;border-radius:4px;">$1</code>')
+      .replace(/\n/g, '<br/>');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Kacha Morich AI - Business Intelligence Report</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
+            h1, h2, h3 { font-family: 'Segoe UI', sans-serif; color: #111; }
+            @media print {
+              body { padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div style="text-align:center;margin-bottom:30px;border-bottom:2px solid #E11D48;padding-bottom:10px;">
+            <h2 style="margin:0;color:#E11D48;">🌶️ KACHA MORICH AI</h2>
+            <p style="margin:5px 0 0 0;font-size:12px;color:#666;text-transform:uppercase;letter-spacing:1px;">Generated Business Artifact</p>
+          </div>
+          <div>${html}</div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  return (
+    <div className="my-5 border border-red-500/10 rounded-2xl bg-gradient-to-r from-red-950/15 via-[#0A0A0A] to-[#0A0A0A] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl backdrop-blur-md">
+      <div className="flex items-center gap-3.5">
+        <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
+          <FileText size={22} />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-sm font-bold text-neutral-100">PDF Report Document</span>
+          <span className="text-xs text-neutral-500 mt-0.5">Enterprise-Grade Intelligence Report</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleDownload}
+        className="self-start sm:self-center px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-red-500/10 hover:shadow-red-500/30 hover:scale-[1.02] active:scale-95"
+      >
+        📥 Download PDF
+      </button>
+    </div>
+  );
+};
+
+const WordArtifactCard = ({ content }: { content: string }) => {
+  const handleDownload = () => {
+    let html = content
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br/>');
+
+    const wordContent = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head><title>Kacha Morich AI Report</title></head>
+        <body>
+          <h2 style="color:#FF8C00;">🌶️ Generated Business Report</h2>
+          <hr/>
+          <div>${html}</div>
+        </body>
+      </html>
+    `;
+    
+    const blob = new Blob(['\ufeff' + wordContent], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kacha_morich_artifact_${Date.now()}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="my-5 border border-blue-500/10 rounded-2xl bg-gradient-to-r from-blue-950/15 via-[#0A0A0A] to-[#0A0A0A] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl backdrop-blur-md">
+      <div className="flex items-center gap-3.5">
+        <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+          <Briefcase size={22} />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-sm font-bold text-neutral-100">Microsoft Word Document</span>
+          <span className="text-xs text-neutral-500 mt-0.5">Editable Advisory Report (.doc)</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleDownload}
+        className="self-start sm:self-center px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-blue-500/10 hover:shadow-blue-500/30 hover:scale-[1.02] active:scale-95"
+      >
+        📥 Download Word
+      </button>
+    </div>
+  );
+};
+
+const ExcelArtifactCard = ({ content }: { content: string }) => {
+  const handleDownload = () => {
+    const lines = content.split('\n');
+    let csvContent = "";
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('|')) {
+        if (line.includes('---')) continue; 
+        const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+        const csvRow = cells.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',');
+        csvContent += csvRow + '\r\n';
+      } else if (line.includes(',')) {
+        csvContent += line + '\r\n';
+      }
+    }
+
+    if (!csvContent) {
+      csvContent = `"${content.replace(/"/g, '""')}"`;
+    }
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kacha_morich_data_${Date.now()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="my-5 border border-emerald-500/10 rounded-2xl bg-gradient-to-r from-emerald-950/15 via-[#0A0A0A] to-[#0A0A0A] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl backdrop-blur-md">
+      <div className="flex items-center gap-3.5">
+        <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+          <DollarSign size={22} />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-sm font-bold text-neutral-100">Excel Spreadsheet (.csv)</span>
+          <span className="text-xs text-neutral-500 mt-0.5">Tabular Data & Financial Models</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleDownload}
+        className="self-start sm:self-center px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-95"
+      >
+        📥 Download Excel
+      </button>
+    </div>
+  );
+};
+
 interface Chat {
   id: string;
   title: string;
@@ -1554,11 +1731,20 @@ export default function Dashboard() {
                                 components={{
                                   code({ node, className, children, ...props }) {
                                     const match = /language-(\w+)/.exec(className || "");
-                                    const isMermaid = match && match[1] === "mermaid";
+                                    const lang = match ? match[1] : "";
                                     const codeString = String(children).replace(/\n$/, "");
                                     
-                                    if (isMermaid) {
+                                    if (lang === "mermaid") {
                                       return <MermaidDiagram chart={codeString} />;
+                                    }
+                                    if (lang === "pdf") {
+                                      return <PDFArtifactCard content={codeString} />;
+                                    }
+                                    if (lang === "word" || lang === "docx") {
+                                      return <WordArtifactCard content={codeString} />;
+                                    }
+                                    if (lang === "excel" || lang === "csv") {
+                                      return <ExcelArtifactCard content={codeString} />;
                                     }
                                     
                                     return (
@@ -1585,74 +1771,20 @@ export default function Dashboard() {
                             <button
                               type="button"
                               onClick={() => copyToClipboard(msg.content, `msg-${index}`)}
-                              className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-neutral-500 hover:text-neutral-300 flex items-center gap-1 text-[10px] font-bold"
+                              className="opacity-75 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded-md bg-[#0F0F0F] border border-white/5 text-neutral-400 hover:text-neutral-200 flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 shadow-inner"
                               title="Copy response"
                             >
                               {copiedId === `msg-${index}` ? (
                                 <>
-                                  <Check size={12} className="text-emerald-500" />
-                                  <span className="text-emerald-500">Copied</span>
+                                  <Check size={11} className="text-emerald-400" />
+                                  <span className="text-emerald-400 font-extrabold">COPIED</span>
                                 </>
                               ) : (
                                 <>
-                                  <Copy size={12} />
-                                  <span>Copy</span>
+                                  <Copy size={11} />
+                                  <span>COPY RESPONSE</span>
                                 </>
                               )}
-                            </button>
-
-                            {/* Export to PDF */}
-                            <button
-                              type="button"
-                              onClick={() => exportToPDF(msg.content)}
-                              className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-red-500/80 hover:text-red-400 flex items-center gap-1 text-[10px] font-bold border border-transparent hover:border-red-500/10"
-                              title="Download as PDF Document"
-                            >
-                              <FileText size={12} />
-                              <span>PDF</span>
-                            </button>
-
-                            {/* Export to Word */}
-                            <button
-                              type="button"
-                              onClick={() => exportToWord(msg.content)}
-                              className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-blue-500/80 hover:text-blue-400 flex items-center gap-1 text-[10px] font-bold border border-transparent hover:border-blue-500/10"
-                              title="Download as MS Word Document"
-                            >
-                              <Briefcase size={12} />
-                              <span>Word</span>
-                            </button>
-
-                            {/* Export to Excel */}
-                            <button
-                              type="button"
-                              onClick={() => exportToExcel(msg.content)}
-                              className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-emerald-500/80 hover:text-emerald-400 flex items-center gap-1 text-[10px] font-bold border border-transparent hover:border-emerald-500/10"
-                              title="Download Spreadshet / CSV"
-                            >
-                              <DollarSign size={12} />
-                              <span>Excel</span>
-                            </button>
-
-                            {/* Export to Text */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const blob = new Blob([cleanArrows(msg.content)], { type: 'text/plain;charset=utf-8;' });
-                                const url = URL.createObjectURL(blob);
-                                const a = document.createElement('a');
-                                a.href = url;
-                                a.download = `kacha_morich_raw_${Date.now()}.txt`;
-                                document.body.appendChild(a);
-                                a.click();
-                                document.body.removeChild(a);
-                                URL.revokeObjectURL(url);
-                              }}
-                              className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-neutral-400/80 hover:text-neutral-300 flex items-center gap-1 text-[10px] font-bold border border-transparent hover:border-white/10"
-                              title="Download raw Text file"
-                            >
-                              <Square size={12} />
-                              <span>Text</span>
                             </button>
                           </div>
                         )}
