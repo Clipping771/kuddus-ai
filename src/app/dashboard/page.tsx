@@ -602,6 +602,7 @@ const MODELS_LIST = [
   { id: "google/gemma-4-31b-it", name: "Google Gemma 31B", icon: "💎", badge: "Primary" },
   { id: "deepseek/deepseek-v4-flash:free", name: "DeepSeek V4 Flash", icon: "⚡", badge: "Fast" },
   { id: "arcee-ai/trinity-large-thinking:free", name: "DeepSeek Trinity", icon: "🧠", badge: "Thinking" },
+  { id: "openrouter/owl-alpha", name: "Owl Alpha", icon: "🦉", badge: "Free Reasoning" },
 ];
 
 function parseChatTitle(rawTitle: string) {
