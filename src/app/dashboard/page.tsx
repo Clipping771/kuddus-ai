@@ -213,6 +213,32 @@ const AGENTS_LIST = [
       "Draft a 10-slide outline for a Pre-Seed investor pitch deck.",
       "How to justify a $5M valuation multiple for a B2B SaaS startup?"
     ]
+  },
+  {
+    id: "performance-marketer-agent",
+    name: "Performance & Digital Marketer",
+    banglaName: "Performance & Digital Marketer",
+    desc: "Paid Ads (Facebook/Google), SEO, CRO, and ROAS optimization strategies",
+    banglaDesc: "Paid Ads (Facebook/Google), SEO, CRO, and ROAS optimization strategies",
+    icon: TrendingUp,
+    placeholder: "Describe your current marketing budget, active ad channels, or SEO goals...",
+    suggestions: [
+      "How can I lower my Customer Acquisition Cost (CAC) on Facebook Ads?",
+      "Audit my e-commerce funnel and suggest Conversion Rate Optimization (CRO) strategies."
+    ]
+  },
+  {
+    id: "it-automation-consultant",
+    name: "IT Strategy & Automation Consultant",
+    banglaName: "IT Strategy & Automation Consultant",
+    desc: "SaaS tool selection, No-Code workflows, Zapier integrations & tech stack audits",
+    banglaDesc: "SaaS tool selection, No-Code workflows, Zapier integrations & tech stack audits",
+    icon: Settings,
+    placeholder: "What manual business processes are slowing you down, or what systems are you using?",
+    suggestions: [
+      "Suggest a low-cost tech stack (CRM, Email, Billing) for a new consulting business.",
+      "How do I automate lead capture from Facebook Ads directly to my HubSpot CRM?"
+    ]
   }
 ];
 
