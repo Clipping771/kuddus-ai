@@ -33,6 +33,7 @@ const MermaidDiagram = ({ chart }: { chart: string }) => {
   const [svg, setSvg] = useState<string>("");
   const [error, setError] = useState<boolean>(false);
   const elementId = useRef(`mermaid-${Math.floor(Math.random() * 1000000)}`);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function renderChart() {
@@ -48,6 +49,58 @@ const MermaidDiagram = ({ chart }: { chart: string }) => {
     }
     renderChart();
   }, [chart]);
+
+  const downloadPNG = () => {
+    if (!containerRef.current) return;
+    const svgElement = containerRef.current.querySelector("svg");
+    if (!svgElement) return;
+
+    // Convert SVG to XML string and create binary blob
+    const svgString = new XMLSerializer().serializeToString(svgElement);
+    const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const URL = window.URL || window.webkitURL || window;
+    const blobURL = URL.createObjectURL(svgBlob);
+    
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      // Scale up by 2.5x for crisp high-resolution images
+      canvas.width = (svgElement.clientWidth || 1000) * 2.5;
+      canvas.height = (svgElement.clientHeight || 700) * 2.5;
+      const context = canvas.getContext("2d");
+      if (context) {
+        context.fillStyle = "#0D0D0D"; // Dark futuristic background for enterprise diagrams
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const png = canvas.toDataURL("image/png");
+        
+        const a = document.createElement("a");
+        a.href = png;
+        a.download = `kacha_morich_uml_${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    };
+    image.src = blobURL;
+  };
+
+  const downloadSVG = () => {
+    if (!containerRef.current) return;
+    const svgElement = containerRef.current.querySelector("svg");
+    if (!svgElement) return;
+
+    const svgString = new XMLSerializer().serializeToString(svgElement);
+    const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kacha_morich_uml_${Date.now()}.svg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   if (error) {
     return (
@@ -66,10 +119,40 @@ const MermaidDiagram = ({ chart }: { chart: string }) => {
   }
 
   return (
-    <div 
-      className="p-4 bg-neutral-950/50 rounded-xl border border-white/5 my-4 flex justify-center overflow-x-auto shadow-inner [&_svg]:max-w-full [&_svg]:h-auto"
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
+    <div className="my-6 border border-white/10 rounded-2xl bg-[#080808]/90 overflow-hidden shadow-2xl backdrop-blur-md">
+      {/* Claude-style Premium Artifact Header */}
+      <div className="px-4 py-3 bg-[#0D0D0D]/90 border-b border-white/5 flex items-center justify-between text-xs font-black tracking-widest text-amber-400 uppercase select-none">
+        <div className="flex items-center gap-2">
+          <span className="animate-pulse text-amber-500">🛠️</span>
+          <span>Claude-Style UML Diagram Artifact</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={downloadPNG}
+            className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold transition-all text-[10px] uppercase tracking-wider"
+            title="Download high-resolution PNG image"
+          >
+            🖼️ Download PNG
+          </button>
+          <button
+            type="button"
+            onClick={downloadSVG}
+            className="px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-750 text-neutral-200 font-bold transition-all text-[10px] uppercase tracking-wider"
+            title="Download vector SVG file"
+          >
+            📥 Download SVG
+          </button>
+        </div>
+      </div>
+      
+      {/* SVG Diagram Output Render Container */}
+      <div 
+        ref={containerRef}
+        className="p-6 flex justify-center overflow-x-auto bg-[#030303] shadow-inner [&_svg]:max-w-full [&_svg]:h-auto [&_svg_rect]:fill-neutral-900 [&_svg_rect]:stroke-amber-500/30 [&_svg_rect]:stroke-1 [&_svg_text]:fill-neutral-100 [&_svg_.actor]:fill-neutral-900 [&_svg_.actor]:stroke-amber-500/40 [&_svg_.messageLine0]:stroke-amber-500/60 [&_svg_.messageLine1]:stroke-amber-500/60 [&_svg_#arrowhead]:fill-amber-500"
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
+    </div>
   );
 };
 import { 
