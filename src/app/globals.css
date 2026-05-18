@@ -75,14 +75,18 @@ html, body {
   margin: 1.5rem 0 !important;
   font-size: 0.875rem !important;
   text-align: left !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  background: rgba(15, 15, 15, 0.5) !important;
   backdrop-filter: blur(4px) !important;
   border-radius: 8px !important;
   overflow: hidden !important;
   display: table !important;
 }
-.prose th {
+
+/* Obsidian Black Theme Scoped Prose Styling */
+.theme-black .prose table {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(15, 15, 15, 0.5) !important;
+}
+.theme-black .prose th {
   background-color: rgba(255, 140, 0, 0.06) !important;
   color: #FFFFFF !important;
   font-weight: 700 !important;
@@ -90,56 +94,71 @@ html, body {
   border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
   border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
-.prose td {
+.theme-black .prose td {
   padding: 12px 16px !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
   border-right: 1px solid rgba(255, 255, 255, 0.03) !important;
   color: #D1D5DB !important;
 }
-.prose tr:nth-child(even) {
+.theme-black .prose tr:nth-child(even) {
   background-color: rgba(255, 255, 255, 0.02) !important;
 }
-.prose tr:hover {
+.theme-black .prose tr:hover {
   background-color: rgba(255, 140, 0, 0.03) !important;
 }
-.prose th:last-child, .prose td:last-child {
-  border-right: none !important;
-}
-.prose h1, .prose h2, .prose h3 {
-  color: #FF8C00;
-  font-weight: 700;
-  margin-top: 1.5rem;
-  margin-bottom: 0.5rem;
-  white-space: normal !important;
-  word-break: break-word !important;
-  overflow-wrap: break-word !important;
-  max-width: 100% !important;
-}
-.prose p {
-  margin-bottom: 1rem;
-  line-height: 1.625;
-}
-.prose ul, .prose ol {
-  margin-left: 1.5rem;
-  margin-bottom: 1rem;
-  list-style-type: decimal;
-}
-.prose ul {
-  list-style-type: disc;
-}
-.prose li {
-  margin-bottom: 0.25rem;
-}
-.prose strong {
-  color: #FFFFFF;
+.theme-black .prose strong {
+  color: #FFFFFF !important;
   font-weight: 600;
 }
-.prose blockquote {
+.theme-black .prose blockquote {
   border-left: 4px solid #FF8C00;
   padding-left: 1rem;
   margin-bottom: 1rem;
   color: #D1D5DB;
   font-style: italic;
+}
+.theme-black .prose p, .theme-black .prose li {
+  color: #E2E8F0 !important;
+}
+
+/* System Light Theme Scoped Prose Styling */
+.theme-light .prose table {
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+}
+.theme-light .prose th {
+  background-color: rgba(255, 140, 0, 0.04) !important;
+  color: #0F172A !important;
+  font-weight: 700 !important;
+  padding: 12px 16px !important;
+  border-bottom: 2px solid rgba(15, 23, 42, 0.1) !important;
+  border-right: 1px solid rgba(15, 23, 42, 0.05) !important;
+}
+.theme-light .prose td {
+  padding: 12px 16px !important;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05) !important;
+  border-right: 1px solid rgba(15, 23, 42, 0.03) !important;
+  color: #334155 !important;
+}
+.theme-light .prose tr:nth-child(even) {
+  background-color: rgba(15, 23, 42, 0.02) !important;
+}
+.theme-light .prose tr:hover {
+  background-color: rgba(255, 140, 0, 0.02) !important;
+}
+.theme-light .prose strong {
+  color: #0F172A !important;
+  font-weight: 700;
+}
+.theme-light .prose blockquote {
+  border-left: 4px solid #FF8C00;
+  padding-left: 1rem;
+  margin-bottom: 1rem;
+  color: #475569;
+  font-style: italic;
+}
+.theme-light .prose p, .theme-light .prose li {
+  color: #1E293B !important;
 }
 
 /* Animated Voice Soundwave Visualizer */

@@ -1351,7 +1351,7 @@ export default function Dashboard() {
     <>
     <div 
       className={`fixed inset-0 flex overflow-hidden font-sans w-full transition-colors duration-300 ${
-        themeMode === "black" ? "bg-black text-neutral-100" : "bg-[#F8FAFC] text-neutral-900"
+        themeMode === "black" ? "bg-black text-neutral-100 theme-black" : "bg-[#F8FAFC] text-neutral-900 theme-light"
       }`}
       style={{ height: "var(--viewport-height, 100%)" }}
     >
