@@ -197,6 +197,37 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { parseAnyFile } from "@/lib/fileParser";
+const parseThoughtAndContent = (text: string): { thought: string; content: string } => {
+  if (!text) return { thought: "", content: "" };
+  
+  // 1. Try <thought> tags
+  let thoughtStart = text.indexOf("<thought>");
+  let thoughtEnd = text.indexOf("</thought>");
+  let tagOffset = 9;
+  
+  // 2. Fallback to <think> tags (DeepSeek native)
+  if (thoughtStart === -1) {
+    thoughtStart = text.indexOf("<think>");
+    thoughtEnd = text.indexOf("</think>");
+    tagOffset = 7;
+  }
+  
+  if (thoughtStart !== -1) {
+    if (thoughtEnd !== -1) {
+      // Completed thought block
+      const thought = text.substring(thoughtStart + tagOffset, thoughtEnd).trim();
+      const content = (text.substring(0, thoughtStart) + text.substring(thoughtEnd + tagOffset + 1)).trim();
+      return { thought, content };
+    } else {
+      // In-progress thought block
+      const thought = text.substring(thoughtStart + tagOffset).trim();
+      const content = text.substring(0, thoughtStart).trim();
+      return { thought, content };
+    }
+  }
+  
+  return { thought: "", content: text };
+};
 
 // --- CLAUDE-STYLE DOCUMENT ARTIFACTS ---
 const parseMarkdownForPDF = (markdown: string): string => {
@@ -718,8 +749,8 @@ const TONES_LIST = [
 
 const MODELS_LIST = [
   { id: "google/gemma-4-31b-it", name: "Google Gemma 31B", icon: "💎", badge: "Primary" },
-  { id: "deepseek/deepseek-v4-flash:free", name: "DeepSeek V4 Flash", icon: "⚡", badge: "Fast" },
-  { id: "arcee-ai/trinity-large-thinking:free", name: "DeepSeek Trinity", icon: "🧠", badge: "Thinking" },
+  { id: "deepseek/deepseek-chat", name: "DeepSeek V3 (Chat)", icon: "⚡", badge: "Super Fast" },
+  { id: "deepseek/deepseek-r1", name: "DeepSeek R1", icon: "🧠", badge: "Max Reasoning" },
   { id: "openrouter/owl-alpha", name: "Owl Alpha", icon: "🦉", badge: "Free Reasoning" },
 ];
 
@@ -798,6 +829,25 @@ export default function Dashboard() {
       }
     }
   }, []);
+
+  // Dynamic HTML & Body Theme Syncer
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const root = document.documentElement;
+      const body = document.body;
+      if (themeMode === "light") {
+        root.classList.remove("dark");
+        root.classList.add("light");
+        body.style.backgroundColor = "#F1F5F9";
+        body.style.color = "#1E293B";
+      } else {
+        root.classList.remove("light");
+        root.classList.add("dark");
+        body.style.backgroundColor = "#020202";
+        body.style.color = "#F5F5F5";
+      }
+    }
+  }, [themeMode]);
 
   const toggleTheme = () => {
     const nextTheme = themeMode === "black" ? "light" : "black";
@@ -2099,41 +2149,62 @@ export default function Dashboard() {
                             ? "bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border-white/5 text-neutral-200 prose-invert"
                             : "bg-gradient-to-br from-[#FFFFFF] to-[#F8FAFC] border-neutral-200/80 text-neutral-800 shadow-md prose-neutral"
                         }`}>
-                          {msg.content ? (
-                            <div className="w-full max-w-full overflow-hidden break-words [&_*]:max-w-full [&_pre]:overflow-x-auto [&_code]:break-all [&_p]:break-words [&_li]:break-words">
-                              <ReactMarkdown 
-                                remarkPlugins={[remarkGfm]}
-                                components={{
-                                  code({ node, className, children, ...props }) {
-                                    const match = /language-(\w+)/.exec(className || "");
-                                    const lang = match ? match[1] : "";
-                                    const codeString = String(children).replace(/\n$/, "");
-                                    
-                                    if (lang === "mermaid") {
-                                      return <MermaidDiagram chart={codeString} />;
-                                    }
-                                    if (lang === "pdf") {
-                                      return <PDFArtifactCard content={codeString} />;
-                                    }
-                                    if (lang === "word" || lang === "docx") {
-                                      return <WordArtifactCard content={codeString} />;
-                                    }
-                                    if (lang === "excel" || lang === "csv") {
-                                      return <ExcelArtifactCard content={codeString} />;
-                                    }
-                                    
-                                    return (
-                                      <code className={className} {...props}>
-                                        {children}
-                                      </code>
-                                    );
-                                  }
-                                }}
-                              >
-                                {cleanArrows(msg.content)}
-                              </ReactMarkdown>
-                            </div>
-                          ) : (
+                          {msg.content ? (() => {
+                            const { thought, content: finalContent } = parseThoughtAndContent(msg.content);
+                            const isMessageLast = index === messages.length - 1;
+                            const showSpinner = isMessageLast && isLoading && !finalContent;
+                            
+                            // If streaming has finished but finalContent is empty, fallback to show thoughts so it is not blank
+                            const contentToRender = finalContent || ((!isLoading || !isMessageLast) ? thought : "");
+                            
+                            return (
+                              <div className="w-full max-w-full overflow-hidden break-words [&_*]:max-w-full [&_pre]:overflow-x-auto [&_code]:break-all [&_p]:break-words [&_li]:break-words">
+                                {showSpinner ? (
+                                  // Show a clean, premium spinner while generating, hiding raw internal thoughts
+                                  <div className="flex items-center gap-2.5 py-2.5">
+                                    <Loader2 size={16} className="animate-spin text-amber-500" />
+                                    <span className={`text-xs font-black tracking-wider uppercase animate-pulse ${
+                                      themeMode === "black" ? "text-neutral-400" : "text-neutral-500"
+                                    }`}>
+                                      Specialist is preparing response...
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <ReactMarkdown 
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                      code({ node, className, children, ...props }) {
+                                        const match = /language-(\w+)/.exec(className || "");
+                                        const lang = match ? match[1] : "";
+                                        const codeString = String(children).replace(/\n$/, "");
+                                        
+                                        if (lang === "mermaid") {
+                                          return <MermaidDiagram chart={codeString} />;
+                                        }
+                                        if (lang === "pdf") {
+                                          return <PDFArtifactCard content={codeString} />;
+                                        }
+                                        if (lang === "word" || lang === "docx") {
+                                          return <WordArtifactCard content={codeString} />;
+                                        }
+                                        if (lang === "excel" || lang === "csv") {
+                                          return <ExcelArtifactCard content={codeString} />;
+                                        }
+                                        
+                                        return (
+                                          <code className={className} {...props}>
+                                            {children}
+                                          </code>
+                                        );
+                                      }
+                                    }}
+                                  >
+                                    {cleanArrows(contentToRender)}
+                                  </ReactMarkdown>
+                                )}
+                              </div>
+                            );
+                          })() : (
                             <div className="flex gap-1 items-center py-2">
                               <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:-0.3s] ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
                               <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:-0.15s] ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>

@@ -499,24 +499,27 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
       const truncatedHistory = history.slice(-maxHistory);
 
       truncatedHistory.forEach((msg, idx) => {
-        // Force the LLM to remember its current selected agent right before answering the latest query
-        if (idx === truncatedHistory.length - 1 && agentId) {
-          formattedMessages.push({
-            role: "system",
-            content: `[URGENT ROLE REMINDER: You are ${aiName} currently acting strictly in your specialized role. Do NOT fall back to your general persona from earlier in this chat. If the user asks what you do, explain your specialized agent role!]`
-          });
+        let msgContent = parseMessageContent(msg.role, msg.content);
+        
+        // Safe role reminder injected directly into user's latest query to respect Alternating Roles Chat Template rule
+        if (idx === truncatedHistory.length - 1 && agentId && msg.role === "user") {
+          msgContent = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}". Do NOT fall back to your general persona. Keep your responses direct and professional.]\n\n${msgContent}`;
         }
 
         formattedMessages.push({
           role: msg.role === "user" ? "user" : "assistant",
-          content: parseMessageContent(msg.role, msg.content),
+          content: msgContent,
         });
       });
     } else {
       // Fallback if history query returns empty but we know we just saved the user message
+      let msgContent = parseMessageContent("user", message);
+      if (agentId) {
+        msgContent = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}". Do NOT fall back to your general persona.]\n\n${msgContent}`;
+      }
       formattedMessages.push({
         role: "user",
-        content: parseMessageContent("user", message),
+        content: msgContent,
       });
     }
 
@@ -524,7 +527,7 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
     const primaryModel = modelId || "google/gemma-4-31b-it";
     
     // Brain Trust models hardcoded
-    const draftModel = "arcee-ai/trinity-large-thinking:free";
+    const draftModel = "deepseek/deepseek-r1";
     const critiqueModel = "google/gemma-4-31b-it";
     const synthModel = primaryModel; // The user's selected model synthesizes the final response
 
@@ -565,9 +568,9 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
             controller.enqueue(encoder.encode("\n\n> 🧠 **KACHA MORICH BRAIN TRUST ACTIVATED**\n> Assembling the 15-Agent Executive Board for Deep Analysis...\n\n"));
             
             // Readable model name helpers
-            const draftModelName = draftModel.includes("trinity") ? "DeepSeek Trinity" : draftModel.split("/")[1];
+            const draftModelName = draftModel.includes("deepseek-r1") ? "DeepSeek R1" : draftModel.split("/")[1];
             const critiqueModelName = critiqueModel.includes("gemma") ? "Google Gemma 4 31B" : critiqueModel.split("/")[1];
-            const synthModelName = synthModel.includes("gemma") ? "Google Gemma 4 31B" : synthModel.includes("trinity") ? "DeepSeek Trinity" : synthModel.includes("deepseek-v4-flash") ? "DeepSeek Flash" : synthModel.includes("owl-alpha") ? "OpenRouter Owl Alpha" : synthModel.split("/")[1];
+            const synthModelName = synthModel.includes("gemma") ? "Google Gemma 4 31B" : synthModel.includes("deepseek-r1") ? "DeepSeek R1" : synthModel.includes("deepseek-chat") ? "DeepSeek V3 Chat" : synthModel.includes("owl-alpha") ? "OpenRouter Owl Alpha" : synthModel.split("/")[1];
 
             // Step 1: Draft by CFO & Project Manager
             controller.enqueue(encoder.encode(`> 📝 **[CFO & Project Manager]** *(powered by ${draftModelName})* is drafting the financial runway and operational roadmap...\n`));
@@ -619,9 +622,15 @@ As the CEO, combine the best parts of the operational draft, resolve all the tec
             const reader = synthRes.body?.getReader();
             const decoder = new TextDecoder();
             let buffer = "";
+            let isThinking = false;
             while (reader) {
               const { done, value } = await reader.read();
-              if (done) break;
+              if (done) {
+                if (isThinking) {
+                  controller.enqueue(encoder.encode("</thought>\n"));
+                }
+                break;
+              }
               buffer += decoder.decode(value, { stream: true });
               const lines = buffer.split("\n");
               buffer = lines.pop() || "";
@@ -630,8 +639,22 @@ As the CEO, combine the best parts of the operational draft, resolve all the tec
                 if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
                   try {
                     const parsed = JSON.parse(trimmed.slice(6));
-                    const text = parsed.choices[0]?.delta?.content || "";
-                    if (text) {
+                    const delta = parsed.choices[0]?.delta;
+                    const text = delta?.content || "";
+                    const reasoning = delta?.reasoning || delta?.reasoning_content || "";
+
+                    if (reasoning) {
+                      if (!isThinking) {
+                        isThinking = true;
+                        controller.enqueue(encoder.encode("<thought>\n"));
+                      }
+                      assistantResponse += reasoning;
+                      controller.enqueue(encoder.encode(reasoning));
+                    } else if (text) {
+                      if (isThinking) {
+                        isThinking = false;
+                        controller.enqueue(encoder.encode("\n</thought>\n"));
+                      }
                       assistantResponse += text;
                       controller.enqueue(encoder.encode(text));
                     }
@@ -644,12 +667,13 @@ As the CEO, combine the best parts of the operational draft, resolve all the tec
             let selectedModel = hasImage ? "google/gemini-2.5-flash" : primaryModel;
             const fallbackModels = hasImage 
               ? ["google/gemini-2.5-flash"] 
-              : [primaryModel, "google/gemma-4-26b-a4b-it:free", "google/gemini-2.5-flash"];
+              : [primaryModel, "google/gemma-4-31b-it", "deepseek/deepseek-chat", "google/gemini-2.5-flash"];
 
             let response: any;
             for (let i = 0; i < fallbackModels.length; i++) {
               selectedModel = fallbackModels[i];
               try {
+                console.log(`[API Chat] Dispatching stream request directly to selected model: "${selectedModel}"`);
                 response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                   method: "POST",
                   headers: {
@@ -662,6 +686,7 @@ As the CEO, combine the best parts of the operational draft, resolve all the tec
                 if (response.ok) break;
                 if (i === fallbackModels.length - 1) throw new Error("All fallback models failed");
               } catch (err) {
+                console.error(`[API Chat] Model dispatch failed for "${selectedModel}", trying fallback...`, err);
                 if (i === fallbackModels.length - 1) throw err;
               }
             }
@@ -669,9 +694,15 @@ As the CEO, combine the best parts of the operational draft, resolve all the tec
             const reader = response.body?.getReader();
             const decoder = new TextDecoder();
             let buffer = "";
+            let isThinking = false;
             while (reader) {
               const { done, value } = await reader.read();
-              if (done) break;
+              if (done) {
+                if (isThinking) {
+                  controller.enqueue(encoder.encode("</thought>\n"));
+                }
+                break;
+              }
               buffer += decoder.decode(value, { stream: true });
               const lines = buffer.split("\n");
               buffer = lines.pop() || "";
@@ -680,8 +711,22 @@ As the CEO, combine the best parts of the operational draft, resolve all the tec
                 if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
                   try {
                     const parsed = JSON.parse(trimmed.slice(6));
-                    const text = parsed.choices[0]?.delta?.content || "";
-                    if (text) {
+                    const delta = parsed.choices[0]?.delta;
+                    const text = delta?.content || "";
+                    const reasoning = delta?.reasoning || delta?.reasoning_content || "";
+
+                    if (reasoning) {
+                      if (!isThinking) {
+                        isThinking = true;
+                        controller.enqueue(encoder.encode("<thought>\n"));
+                      }
+                      assistantResponse += reasoning;
+                      controller.enqueue(encoder.encode(reasoning));
+                    } else if (text) {
+                      if (isThinking) {
+                        isThinking = false;
+                        controller.enqueue(encoder.encode("\n</thought>\n"));
+                      }
                       assistantResponse += text;
                       controller.enqueue(encoder.encode(text));
                     }
