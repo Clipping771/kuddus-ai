@@ -191,7 +191,9 @@ import {
   XCircle,
   Copy,
   Check,
-  Square
+  Square,
+  Sun,
+  Moon
 } from "lucide-react";
 import Link from "next/link";
 import { parseAnyFile } from "@/lib/fileParser";
@@ -651,6 +653,9 @@ export default function Dashboard() {
   // Multi-Agent Brain Trust State
   const [isBrainTrust, setIsBrainTrust] = useState(false);
 
+  // Theme Mode State: "black" (dark) or "light" (clean light)
+  const [themeMode, setThemeMode] = useState<"black" | "light">("black");
+
   // Robust Hydrated Persistence Engine
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -658,13 +663,28 @@ export default function Dashboard() {
       const savedAgent = localStorage.getItem("kacha_selected_agent");
       const savedModel = localStorage.getItem("kacha_selected_model");
       const savedBrainTrust = localStorage.getItem("kacha_is_braintrust");
+      const savedTheme = localStorage.getItem("kacha_selected_theme") as "black" | "light";
 
       if (savedTone) setSelectedToneId(savedTone);
       if (savedAgent) setSelectedAgentId(savedAgent);
       if (savedModel) setSelectedModelId(savedModel);
       if (savedBrainTrust) setIsBrainTrust(savedBrainTrust === "true");
+      
+      if (savedTheme) {
+        setThemeMode(savedTheme);
+      } else {
+        // Automatic System Light/Dark scheme reader!
+        const systemPrefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+        setThemeMode(systemPrefersLight ? "light" : "black");
+      }
     }
   }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = themeMode === "black" ? "light" : "black";
+    setThemeMode(nextTheme);
+    localStorage.setItem("kacha_selected_theme", nextTheme);
+  };
 
   const handleToneChange = (toneId: string) => {
     setSelectedToneId(toneId);
@@ -1330,33 +1350,47 @@ export default function Dashboard() {
   return (
     <>
     <div 
-      className="fixed inset-0 flex bg-black overflow-hidden text-neutral-100 font-sans w-full"
+      className={`fixed inset-0 flex overflow-hidden font-sans w-full transition-colors duration-300 ${
+        themeMode === "black" ? "bg-black text-neutral-100" : "bg-[#F8FAFC] text-neutral-900"
+      }`}
       style={{ height: "var(--viewport-height, 100%)" }}
     >
       {/* 1. Sidebar - Collapsible on Mobile */}
       <aside 
-        className={`fixed inset-y-0 left-0 z-40 w-72 bg-[#050505] border-r border-white/5 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-72 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 transition-colors duration-300 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } ${
+          themeMode === "black" 
+            ? "bg-[#050505] border-r border-white/5" 
+            : "bg-[#FFFFFF] border-r border-neutral-200"
         }`}
       >
         <div className="flex flex-col h-full">
           {/* Sidebar Top Nav Brand */}
-          <div className="p-5 border-b border-white/5 flex flex-col gap-1 text-left">
+          <div className={`p-5 border-b flex flex-col gap-1 text-left ${
+            themeMode === "black" ? "border-white/5" : "border-neutral-200"
+          }`}>
             <div className="flex items-center justify-between">
               <Link href="/" className="flex items-center gap-2.5">
-                <AIAvatar size={34} className="border border-white/10" />
-                <span className="font-extrabold tracking-widest text-white/90 text-xs uppercase">
+                <AIAvatar size={34} className={themeMode === "black" ? "border border-white/10" : "border border-neutral-200"} />
+                <span className={`font-extrabold tracking-widest text-xs uppercase ${
+                  themeMode === "black" ? "text-white/90" : "text-neutral-800"
+                }`}>
                   {aiName}
                 </span>
               </Link>
               <button 
-                className="lg:hidden p-1 text-neutral-400 hover:text-neutral-100" 
+                className={`lg:hidden p-1 transition-colors ${
+                  themeMode === "black" ? "text-neutral-400 hover:text-neutral-100" : "text-neutral-600 hover:text-neutral-900"
+                }`} 
                 onClick={() => setSidebarOpen(false)}
               >
                 <X size={20} />
               </button>
             </div>
-            <span className="text-[10px] font-medium text-neutral-500 leading-normal">
+            <span className={`text-[10px] font-medium leading-normal ${
+              themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
+            }`}>
               Your personal multi-specialist AI assistant.
             </span>
           </div>
@@ -1365,7 +1399,11 @@ export default function Dashboard() {
           <div className="px-4 py-3">
             <button 
               onClick={handleNewChat}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent hover:from-white/[0.08] text-neutral-200 hover:text-white text-sm font-bold transition duration-300 shadow-sm"
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border transition duration-300 shadow-sm text-sm font-bold ${
+                themeMode === "black"
+                  ? "border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent hover:from-white/[0.08] text-neutral-200 hover:text-white"
+                  : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-800 hover:text-neutral-900"
+              }`}
             >
               <Plus size={16} /> New Analysis
             </button>
@@ -1374,9 +1412,9 @@ export default function Dashboard() {
           {/* Chats History List */}
           <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
             {isSyncing ? (
-              <div className="p-4 text-center text-xs text-neutral-600">Syncing consultations...</div>
+              <div className={`p-4 text-center text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>Syncing consultations...</div>
             ) : chats.length === 0 ? (
-              <div className="p-4 text-center text-xs text-neutral-600">No previous consultations</div>
+              <div className={`p-4 text-center text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>No previous consultations</div>
             ) : (
               chats.map((chat) => (
                 <div 
@@ -1387,17 +1425,25 @@ export default function Dashboard() {
                   }}
                   className={`group w-full flex items-center justify-between px-3 py-3 rounded-xl cursor-pointer transition duration-300 text-sm ${
                     activeChatId === chat.id 
-                      ? "bg-neutral-200/10 border border-neutral-200/20 text-white font-medium" 
-                      : "border border-transparent text-neutral-400 hover:bg-neutral-900/60 hover:text-neutral-200"
+                      ? themeMode === "black"
+                        ? "bg-neutral-200/10 border border-neutral-200/20 text-white font-medium" 
+                        : "bg-amber-500/10 border border-amber-500/20 text-amber-950 font-bold shadow-sm"
+                      : themeMode === "black"
+                        ? "border border-transparent text-neutral-400 hover:bg-neutral-900/60 hover:text-neutral-200"
+                        : "border border-transparent text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
                   }`}
                 >
                   <div className="flex items-center gap-2.5 truncate">
-                    <MessageSquare size={15} className={activeChatId === chat.id ? "text-neutral-200" : "text-neutral-500"} />
+                    <MessageSquare size={15} className={activeChatId === chat.id ? (themeMode === "black" ? "text-neutral-200" : "text-neutral-800") : "text-neutral-500"} />
                     <span className="truncate pr-2">{parseChatTitle(chat.title).title}</span>
                   </div>
                   <button 
                     onClick={(e) => handleDeleteChat(e, chat.id)}
-                    className="p-1 rounded text-neutral-600 hover:text-red-400 hover:bg-red-950/20 opacity-0 group-hover:opacity-100 transition duration-300"
+                    className={`p-1 rounded opacity-0 group-hover:opacity-100 transition duration-300 ${
+                      themeMode === "black"
+                        ? "text-neutral-600 hover:text-red-400 hover:bg-red-950/20"
+                        : "text-neutral-400 hover:text-red-500 hover:bg-red-50"
+                    }`}
                   >
                     <Trash2 size={13} />
                   </button>
@@ -1407,14 +1453,20 @@ export default function Dashboard() {
           </div>
 
           {/* Sidebar User Footer */}
-          <div className="p-4 border-t border-neutral-900 bg-[#050505] flex items-center justify-between">
+          <div className={`p-4 border-t transition-colors duration-300 flex items-center justify-between ${
+            themeMode === "black" ? "border-neutral-900 bg-[#050505]" : "border-neutral-200 bg-[#FAFAFA]"
+          }`}>
             <div className="flex items-center gap-3">
               <UserButton />
               <div className="flex flex-col text-left">
-                <span className="text-xs font-bold text-neutral-200 truncate max-w-[120px]">
+                <span className={`text-xs font-bold truncate max-w-[120px] ${
+                  themeMode === "black" ? "text-neutral-200" : "text-neutral-850 font-extrabold"
+                }`}>
                   {user?.firstName || user?.username || "Consultant"}
                 </span>
-                <span className="text-[10px] text-neutral-200 font-bold tracking-wider">PREMIUM ADVISORY MEMBER</span>
+                <span className={`text-[10px] font-bold tracking-wider ${
+                  themeMode === "black" ? "text-neutral-400" : "text-neutral-500"
+                }`}>PREMIUM MEMBER</span>
               </div>
             </div>
             
@@ -1423,7 +1475,9 @@ export default function Dashboard() {
                ["koishiquedhrubo@gmail.com", "rahmanmdkoishiqur@gmail.com", "aloniliark@gmail.com"].includes(user.primaryEmailAddress.emailAddress) && (
                 <Link
                   href="/admin"
-                  className="p-2 text-emerald-500 hover:text-emerald-300 rounded-lg hover:bg-neutral-900 transition duration-200"
+                  className={`p-2 rounded-lg transition duration-200 ${
+                    themeMode === "black" ? "text-emerald-500 hover:text-emerald-300 hover:bg-neutral-900" : "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-50"
+                  }`}
                   title="Admin Dashboard"
                 >
                   <ShieldCheck size={16} className="animate-pulse" />
@@ -1431,14 +1485,18 @@ export default function Dashboard() {
               )}
               <button 
                 onClick={() => setIsSettingsModalOpen(true)}
-                className="p-2 text-neutral-500 hover:text-neutral-200 rounded-lg hover:bg-neutral-900 transition duration-200"
+                className={`p-2 rounded-lg transition duration-200 ${
+                  themeMode === "black" ? "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
+                }`}
                 title="Manage Account"
               >
                 <Settings size={16} />
               </button>
               <Link 
                 href="/" 
-                className="p-2 text-neutral-500 hover:text-neutral-200 rounded-lg hover:bg-neutral-900 transition duration-200"
+                className={`p-2 rounded-lg transition duration-200 ${
+                  themeMode === "black" ? "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
+                }`}
                 title="Exit to home"
               >
                 <ArrowLeft size={16} />
@@ -1457,12 +1515,20 @@ export default function Dashboard() {
       )}
 
       {/* 3. Main Chat Interface Container */}
-      <main className="flex-1 min-h-0 flex flex-col bg-[#020202] relative">
+      <main className={`flex-1 min-h-0 flex flex-col relative transition-colors duration-300 ${
+        themeMode === "black" ? "bg-[#020202]" : "bg-[#F1F5F9]"
+      }`}>
         {/* Dynamic header */}
-        <header className="h-16 px-4 sm:px-6 border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl flex items-center justify-between z-10">
+        <header className={`h-16 px-4 sm:px-6 border-b backdrop-blur-xl flex items-center justify-between z-10 transition-colors duration-300 ${
+          themeMode === "black" 
+            ? "border-white/5 bg-[#050505]/80" 
+            : "border-neutral-200 bg-[#FFFFFF]/80 shadow-sm"
+        }`}>
           <div className="flex items-center gap-3">
             <button 
-              className="lg:hidden p-1.5 text-neutral-400 hover:text-neutral-100 rounded-lg hover:bg-neutral-950"
+              className={`lg:hidden p-1.5 rounded-lg transition duration-200 ${
+                themeMode === "black" ? "text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100"
+              }`}
               onClick={() => setSidebarOpen(true)}
             >
               <Menu size={20} />
@@ -1482,7 +1548,11 @@ export default function Dashboard() {
                   <button
                     type="button"
                     onClick={() => setToneDropdownOpen(!toneDropdownOpen)}
-                    className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-1 rounded bg-emerald-950/40 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-900/50 transition-colors"
+                    className={`flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-1 rounded-xl transition-all font-extrabold shadow-sm border ${
+                      themeMode === "black"
+                        ? "bg-emerald-950/40 text-emerald-400 border-emerald-500/20 hover:bg-emerald-900/50"
+                        : "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 hover:bg-emerald-500/20"
+                    }`}
                   >
                     <span className="text-[11px] sm:text-xs font-black tracking-wider uppercase">
                       {(() => {
@@ -1499,8 +1569,12 @@ export default function Dashboard() {
                   </button>
                   
                   {toneDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-2 w-56 bg-[#0A0A0A]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-1 shadow-2xl z-50">
-                      <div className="max-h-64 overflow-y-auto">
+                    <div className={`absolute top-full left-0 mt-2 w-56 backdrop-blur-xl border rounded-2xl p-1 shadow-2xl z-50 transition-colors duration-300 ${
+                      themeMode === "black" 
+                        ? "bg-[#0A0A0A]/95 border-white/10" 
+                        : "bg-[#FFFFFF]/95 border-neutral-200"
+                    }`}>
+                      <div className="max-h-64 overflow-y-auto font-sans">
                         {TONES_LIST.map((tone) => (
                           <button
                             key={tone.id}
@@ -1510,7 +1584,13 @@ export default function Dashboard() {
                               setToneDropdownOpen(false);
                             }}
                             className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-semibold rounded-xl transition duration-200 ${
-                              selectedToneId === tone.id ? "bg-emerald-500/10 text-emerald-400" : "text-neutral-400 hover:bg-white/5 hover:text-white"
+                              selectedToneId === tone.id 
+                                ? themeMode === "black"
+                                  ? "bg-emerald-500/10 text-emerald-400" 
+                                  : "bg-emerald-500/10 text-emerald-700 font-black shadow-inner"
+                                : themeMode === "black"
+                                  ? "text-neutral-400 hover:bg-white/5 hover:text-white"
+                                  : "text-neutral-600 hover:bg-neutral-150 hover:text-neutral-900"
                             }`}
                           >
                             <span className="text-base">{tone.icon}</span>
@@ -1522,7 +1602,9 @@ export default function Dashboard() {
                   )}
                 </div>
               )}
-              <span className="mobile-hide sm:block text-sm font-semibold text-neutral-200 truncate max-w-[200px] ml-2">
+              <span className={`mobile-hide sm:block text-sm font-semibold truncate max-w-[200px] ml-2 ${
+                themeMode === "black" ? "text-neutral-200" : "text-neutral-800"
+              }`}>
                 {activeChat ? parseChatTitle(activeChat.title).title : ""}
               </span>
             </div>
@@ -1534,7 +1616,11 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 backdrop-blur-md text-xs text-neutral-300 hover:text-white hover:border-neutral-200/30 transition duration-300 font-bold shadow-sm"
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition duration-300 font-bold shadow-sm text-xs ${
+                  themeMode === "black"
+                    ? "border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 text-neutral-300 hover:text-white hover:border-neutral-200/30"
+                    : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
+                }`}
               >
                 <span>{MODELS_LIST.find((m) => m.id === selectedModelId)?.icon}</span>
                 <span className="truncate max-w-[100px]">
@@ -1546,11 +1632,17 @@ export default function Dashboard() {
               {modelDropdownOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setModelDropdownOpen(false)} />
-                  <div className="absolute right-0 mt-2.5 w-60 rounded-xl border border-neutral-800 bg-[#090909]/95 backdrop-blur-md p-2 shadow-[0_15px_40px_rgba(0,0,0,0.7)] z-50 divide-y divide-neutral-900 space-y-1">
-                    <div className="px-3 py-1.5 text-[9px] font-black text-neutral-500 tracking-widest uppercase">
+                  <div className={`absolute right-0 mt-2.5 w-60 rounded-xl border p-2 shadow-2xl z-50 divide-y space-y-1 ${
+                    themeMode === "black"
+                      ? "border-neutral-800 bg-[#090909]/95 backdrop-blur-md divide-neutral-900 text-neutral-300"
+                      : "border-neutral-200 bg-white divide-neutral-100 text-neutral-800 shadow-xl"
+                  }`}>
+                    <div className={`px-3 py-1.5 text-[9px] font-black tracking-widest uppercase ${
+                      themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
+                    }`}>
                       Select AI Brain Model
                     </div>
-                    <div className="pt-1.5 space-y-0.5">
+                    <div className="pt-1.5 space-y-0.5 font-sans">
                       {MODELS_LIST.map((model) => {
                         const isSelected = selectedModelId === model.id;
                         return (
@@ -1564,14 +1656,18 @@ export default function Dashboard() {
                             className={`w-full text-left flex items-center justify-between p-2.5 rounded-lg transition duration-200 ${
                               isSelected 
                                 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
-                                : "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
+                                : themeMode === "black"
+                                  ? "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
+                                  : "border border-transparent hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
                             }`}
                           >
                             <div className="flex items-center gap-2">
                               <span>{model.icon}</span>
                               <span className="text-xs font-bold">{model.name}</span>
                             </div>
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-neutral-400 font-semibold">{model.badge}</span>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${
+                              themeMode === "black" ? "bg-white/5 text-neutral-400" : "bg-neutral-100 text-neutral-500"
+                            }`}>{model.badge}</span>
                           </button>
                         );
                       })}
@@ -1586,13 +1682,17 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => setAgentDropdownOpen(!agentDropdownOpen)}
-                className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 backdrop-blur-md text-xs text-neutral-300 hover:text-white hover:border-neutral-200/30 transition duration-300 font-bold shadow-sm"
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border transition duration-300 font-bold shadow-sm text-xs ${
+                  themeMode === "black"
+                    ? "border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 text-neutral-300 hover:text-white hover:border-neutral-200/30"
+                    : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
+                }`}
               >
                 {(() => {
                   const activeAgent = AGENTS_LIST.find((a) => a.id === selectedAgentId);
                   if (activeAgent) {
                     const AgentIcon = activeAgent.icon;
-                    return <AgentIcon size={14} className="text-neutral-200 flex-shrink-0 animate-pulse" />;
+                    return <AgentIcon size={14} className={`${themeMode === "black" ? "text-neutral-200" : "text-neutral-700"} flex-shrink-0 animate-pulse`} />;
                   }
                   return null;
                 })()}
@@ -1606,11 +1706,17 @@ export default function Dashboard() {
               {agentDropdownOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setAgentDropdownOpen(false)} />
-                  <div className="absolute right-0 mt-2.5 w-80 max-h-[420px] overflow-y-auto rounded-xl border border-neutral-800 bg-[#090909]/95 backdrop-blur-md p-2 shadow-[0_15px_40px_rgba(0,0,0,0.7)] z-50 divide-y divide-neutral-900 space-y-1 scrollbar-thin">
-                    <div className="px-3 py-1.5 text-[9px] font-black text-neutral-500 tracking-widest uppercase">
+                  <div className={`absolute right-0 mt-2.5 w-80 max-h-[420px] overflow-y-auto rounded-xl border p-2 shadow-2xl z-50 divide-y space-y-1 scrollbar-thin ${
+                    themeMode === "black"
+                      ? "border-neutral-800 bg-[#090909]/95 backdrop-blur-md divide-neutral-900"
+                      : "border-neutral-200 bg-white divide-neutral-100 shadow-xl"
+                  }`}>
+                    <div className={`px-3 py-1.5 text-[9px] font-black tracking-widest uppercase ${
+                      themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
+                    }`}>
                       Select Specialist AI Agent
                     </div>
-                    <div className="pt-1.5 space-y-0.5">
+                    <div className="pt-1.5 space-y-0.5 font-sans">
                       {AGENTS_LIST.map((agent) => {
                         const AgentIcon = agent.icon;
                         const isSelected = selectedAgentId === agent.id;
@@ -1629,13 +1735,15 @@ export default function Dashboard() {
                             className={`w-full text-left flex items-start gap-3 p-2.5 rounded-lg transition duration-200 ${
                               isSelected 
                                 ? "bg-neutral-200/10 text-white border border-neutral-200/20" 
-                                : "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
+                                : themeMode === "black"
+                                  ? "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
+                                  : "border border-transparent hover:bg-[#F1F5F9] text-neutral-700 hover:text-neutral-900"
                             }`}
                           >
-                            <AgentIcon size={16} className={`mt-0.5 flex-shrink-0 ${isSelected ? "text-neutral-200" : "text-neutral-500"}`} />
+                            <AgentIcon size={16} className={`mt-0.5 flex-shrink-0 ${isSelected ? (themeMode === "black" ? "text-neutral-200" : "text-neutral-700") : "text-neutral-500"}`} />
                             <div className="flex flex-col text-xs leading-normal">
-                              <span className="font-bold">{agent.banglaName}</span>
-                              <span className="text-[10px] text-neutral-500 leading-normal mt-0.5">
+                              <span className={`font-bold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-850"}`}>{agent.banglaName}</span>
+                              <span className="text-[10px] text-neutral-550 leading-normal mt-0.5">
                                 {agent.banglaDesc}
                               </span>
                             </div>
@@ -1650,13 +1758,33 @@ export default function Dashboard() {
 
             <Link 
               href="/"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-800 bg-neutral-900/40 text-xs text-neutral-400 hover:text-white hover:bg-neutral-850 transition duration-300"
+              className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition duration-300 text-xs ${
+                themeMode === "black"
+                  ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:bg-neutral-850"
+                  : "border-neutral-200 bg-white text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 shadow-sm"
+              }`}
             >
               Home
             </Link>
+
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-lg transition duration-200 ${
+                themeMode === "black" 
+                  ? "text-neutral-500 hover:text-amber-400 hover:bg-neutral-900" 
+                  : "text-neutral-500 hover:text-amber-650 hover:bg-neutral-100"
+              }`}
+              title={themeMode === "black" ? "Switch to System Light Theme" : "Switch to Obsidian Black Theme"}
+            >
+              {themeMode === "black" ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+
             <button 
               onClick={() => setIsSettingsModalOpen(true)}
-              className="p-2 text-neutral-500 hover:text-neutral-200 rounded-lg hover:bg-neutral-900 transition duration-200"
+              className={`p-2 rounded-lg transition duration-200 ${
+                themeMode === "black" ? "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
+              }`}
               title="Manage Account"
             >
               <Settings size={16} />
@@ -1672,28 +1800,38 @@ export default function Dashboard() {
             <div className="max-w-2xl mx-auto pt-8 pb-12 flex flex-col items-center justify-center text-center relative">
               <div className="relative group">
                 <div className="absolute -inset-1 rounded-full opacity-60 blur-md group-hover:opacity-90 transition duration-1000" style={{ background: `radial-gradient(circle, ${aiColor}44, transparent)` }}></div>
-                <AIAvatar size={88} className="relative border-2 border-white/10 mb-6" />
+                <AIAvatar size={88} className={`relative mb-6 border-2 ${themeMode === "black" ? "border-white/10" : "border-neutral-200"}`} />
               </div>
  
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-neutral-100 mt-4 leading-normal">
+              <h2 className={`text-xl sm:text-2xl md:text-3xl font-extrabold mt-4 leading-normal ${
+                themeMode === "black" ? "text-neutral-100" : "text-neutral-900"
+              }`}>
                 {aiName}:{" "}
-                <span className="text-neutral-400">
+                <span className={themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}>
                   {AGENTS_LIST.find((a) => a.id === selectedAgentId)?.banglaName || "Specialist"}
                 </span>
               </h2>
-              <p className="mt-4 text-neutral-400/80 leading-relaxed max-w-xl text-sm">
+              <p className={`mt-4 leading-relaxed max-w-xl text-sm ${
+                themeMode === "black" ? "text-neutral-400/80" : "text-neutral-600"
+              }`}>
                 {AGENTS_LIST.find((a) => a.id === selectedAgentId)?.banglaDesc || "কুদ্দুস আলীর ২০+ বছরের বাস্তব বিজনেস অভিজ্ঞতার আলোকে যেকোনো আইডিয়া যাচাই করুন।"}
               </p>
  
               {/* Warning box */}
-              <div className="mt-6 w-full p-4 rounded-xl border border-neutral-200/20 bg-neutral-200/5 text-white text-xs flex items-center gap-2 justify-center shadow-[0_0_15px_rgba(245,158,11,0.02)]">
-                <Sparkles size={14} className="flex-shrink-0 text-neutral-200 animate-pulse" />
+              <div className={`mt-6 w-full p-4 rounded-xl border text-xs flex items-center gap-2 justify-center shadow-sm transition duration-300 ${
+                themeMode === "black"
+                  ? "border-neutral-800 bg-neutral-900/40 text-neutral-300 shadow-[0_0_15px_rgba(245,158,11,0.02)]"
+                  : "border-amber-200 bg-amber-500/10 text-amber-955 shadow-[0_0_15px_rgba(245,158,11,0.05)] font-semibold"
+              }`}>
+                <Sparkles size={14} className={`flex-shrink-0 animate-pulse ${themeMode === "black" ? "text-neutral-200" : "text-amber-700"}`} />
                 <span>● <strong>Operational Advisor Warning:</strong> Please specify your <strong>target country and primary market</strong> first for accurate feedback.</span>
               </div>
  
               {/* Prompt Suggestions Grid */}
               <div className="mt-10 w-full text-left">
-                <span className="text-xs font-semibold text-neutral-200 uppercase tracking-widest block mb-4 border-b border-neutral-900 pb-2">
+                <span className={`text-xs font-semibold uppercase tracking-widest block mb-4 border-b pb-2 ${
+                  themeMode === "black" ? "text-neutral-200 border-neutral-900" : "text-neutral-850 border-neutral-250"
+                }`}>
                   Select a Case / Consultation Prompt
                 </span>
                 
@@ -1702,7 +1840,11 @@ export default function Dashboard() {
                     <button 
                       key={sIdx}
                       onClick={() => handleQuickSuggest(suggestText)}
-                      className="p-4 text-left rounded-xl border border-neutral-900/60 hover:border-neutral-200/30 bg-neutral-900/20 hover:bg-neutral-900/50 transition duration-300 text-xs text-neutral-300 leading-relaxed shadow-sm hover:shadow-[0_0_15px_rgba(255,140,0,0.03)]"
+                      className={`p-4 text-left rounded-xl border transition duration-300 text-xs leading-relaxed shadow-sm ${
+                        themeMode === "black"
+                          ? "border-neutral-900/60 hover:border-neutral-200/30 bg-neutral-900/20 hover:bg-neutral-900/50 text-neutral-300 hover:shadow-[0_0_15px_rgba(255,140,0,0.03)]"
+                          : "border-neutral-200 hover:border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:shadow-md"
+                      }`}
                     >
                       ✨ &ldquo;{suggestText}&rdquo;
                     </button>
@@ -1718,12 +1860,16 @@ export default function Dashboard() {
                 if (msg.role === "assistant") {
                   return (
                     <div key={index} className="flex gap-2 sm:gap-4 items-start animate-fade-in">
-                      <AIAvatar size={36} className="flex-shrink-0 border border-white/10" />
+                      <AIAvatar size={36} className={`flex-shrink-0 border ${themeMode === "black" ? "border-white/10" : "border-neutral-200"}`} />
                       <div className="flex flex-col gap-1.5 flex-1 min-w-0 overflow-hidden group/msg relative">
                         <span className="text-xs font-black tracking-wider flex items-center gap-1.5" style={{ color: aiColor }}>
                           {aiName.toUpperCase()}
                         </span>
-                        <div className="bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border border-white/5 rounded-2xl rounded-tl-none px-4 sm:px-6 py-4 sm:py-5 text-neutral-200 leading-relaxed text-sm shadow-md backdrop-blur-md prose prose-invert prose-sm max-w-full w-full overflow-hidden relative">
+                        <div className={`border rounded-2xl rounded-tl-none px-4 sm:px-6 py-4 sm:py-5 leading-relaxed text-sm shadow-md backdrop-blur-md prose prose-sm max-w-full w-full overflow-hidden relative transition-colors duration-300 ${
+                          themeMode === "black"
+                            ? "bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border-white/5 text-neutral-200 prose-invert"
+                            : "bg-gradient-to-br from-[#FFFFFF] to-[#F8FAFC] border-neutral-200/80 text-neutral-800 shadow-md prose-neutral"
+                        }`}>
                           {msg.content ? (
                             <div className="w-full max-w-full overflow-hidden break-words [&_*]:max-w-full [&_pre]:overflow-x-auto [&_code]:break-all [&_p]:break-words [&_li]:break-words">
                               <ReactMarkdown 
@@ -1760,9 +1906,9 @@ export default function Dashboard() {
                             </div>
                           ) : (
                             <div className="flex gap-1 items-center py-2">
-                              <span className="w-2 h-2 bg-neutral-200 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                              <span className="w-2 h-2 bg-neutral-200 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                              <span className="w-2 h-2 bg-neutral-200 rounded-full animate-bounce"></span>
+                              <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:-0.3s] ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
+                              <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:-0.15s] ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
+                              <span className={`w-2 h-2 rounded-full animate-bounce ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
                             </div>
                           )}
                         </div>
@@ -1771,7 +1917,11 @@ export default function Dashboard() {
                             <button
                               type="button"
                               onClick={() => copyToClipboard(msg.content, `msg-${index}`)}
-                              className="opacity-75 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded-md bg-[#0F0F0F] border border-white/5 text-neutral-400 hover:text-neutral-200 flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 shadow-inner"
+                              className={`opacity-75 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded-md border flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 shadow-inner ${
+                                themeMode === "black"
+                                  ? "bg-[#0F0F0F] border-white/5 text-neutral-400 hover:text-neutral-200"
+                                  : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 shadow-sm"
+                              }`}
                               title="Copy response"
                             >
                               {copiedId === `msg-${index}` ? (
@@ -1800,12 +1950,18 @@ export default function Dashboard() {
                 const cleanContent = msg.content ? msg.content.replace(base64Regex, "").trim() : "";
 
                 return (
-                  <div key={index} className="flex gap-4 items-start justify-end animate-fade-in">
+                  <div key={index} className="flex gap-4 items-start justify-end animate-fade-in font-sans">
                     <div className="flex flex-col gap-1.5 items-end max-w-[80%] group/msg relative">
-                      <span className="text-xs font-semibold text-neutral-500 tracking-wider">YOUR BUSINESS INQUIRY</span>
-                      <div className="bg-gradient-to-bl from-neutral-200/10 to-transparent border border-neutral-200/20 rounded-2xl rounded-tr-none px-5 py-4 text-amber-50 text-sm shadow-sm flex flex-col items-end relative">
+                      <span className={`text-[10px] font-bold tracking-wider ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>YOUR BUSINESS INQUIRY</span>
+                      <div className={`border rounded-2xl rounded-tr-none px-5 py-4 text-sm shadow-sm flex flex-col items-end relative transition-all duration-300 ${
+                        themeMode === "black"
+                          ? "bg-gradient-to-bl from-neutral-200/10 to-transparent border-neutral-200/20 text-amber-50"
+                          : "bg-amber-500/10 border-amber-500/20 text-neutral-800"
+                      }`}>
                         {imageUrl && (
-                          <div className="mb-2 relative rounded-xl overflow-hidden border border-white/10 group shadow-md max-w-full">
+                          <div className={`mb-2 relative rounded-xl overflow-hidden border group shadow-md max-w-full ${
+                            themeMode === "black" ? "border-white/10" : "border-neutral-200"
+                          }`}>
                             <img 
                               src={imageUrl} 
                               alt="Uploaded visual context" 
@@ -1855,7 +2011,11 @@ export default function Dashboard() {
         </div>
 
         {/* Input Text Form Area */}
-        <div className="p-3 pb-6 sm:p-4 md:p-6 border-t border-white/5 bg-gradient-to-t from-[#020202] to-black">
+        <div className={`p-3 pb-6 sm:p-4 md:p-6 border-t transition-colors duration-300 ${
+          themeMode === "black" 
+            ? "border-white/5 bg-gradient-to-t from-[#020202] to-black" 
+            : "border-neutral-200 bg-gradient-to-t from-[#F8FAFC] to-[#F1F5F9]"
+        }`}>
           <div className="max-w-3xl mx-auto relative">
             {/* Stop Generation Button */}
             {isLoading && (
@@ -1871,7 +2031,11 @@ export default function Dashboard() {
             )}
             <form 
               onSubmit={handleSubmit}
-              className="w-full relative rounded-2xl border border-white/10 bg-[#0A0A0A] shadow-[0_0_40px_rgba(0,0,0,0.8)] focus-within:border-neutral-200/40 focus-within:ring-1 focus-within:ring-neutral-200/20 transition duration-300 overflow-hidden"
+              className={`w-full relative rounded-2xl border transition duration-300 overflow-hidden ${
+                themeMode === "black"
+                  ? "border-white/10 bg-[#0A0A0A] shadow-[0_0_40px_rgba(0,0,0,0.8)] focus-within:border-neutral-200/40 focus-within:ring-1 focus-within:ring-neutral-200/20"
+                  : "border-neutral-200 bg-white shadow-[0_5px_30px_rgba(0,0,0,0.05)] focus-within:border-neutral-400 focus-within:ring-1 focus-within:ring-neutral-300"
+              }`}
             >
             <textarea
               value={inputMessage}
@@ -1914,7 +2078,11 @@ export default function Dashboard() {
                 }
               }}
               placeholder={AGENTS_LIST.find((a) => a.id === selectedAgentId)?.placeholder || "Describe your startup idea and which country/market you are targeting..."}
-              className="w-full bg-transparent border-0 ring-0 focus:ring-0 focus:outline-none placeholder-neutral-600 text-sm text-neutral-200 px-5 py-4 resize-none h-[64px] min-h-[50px] max-h-[200px]"
+              className={`w-full bg-transparent border-0 ring-0 focus:ring-0 focus:outline-none text-sm px-5 py-4 resize-none h-[64px] min-h-[50px] max-h-[200px] ${
+                themeMode === "black"
+                  ? "placeholder-neutral-600 text-neutral-200"
+                  : "placeholder-neutral-400 text-neutral-800 font-medium"
+              }`}
               disabled={isLoading}
               onFocus={(e) => {
                 const target = e.currentTarget;
@@ -1937,28 +2105,40 @@ export default function Dashboard() {
 
             {/* Attached file preview or parsing indicator */}
             {attachedFile && (
-              <div className="mx-5 my-2 px-3 py-1.5 rounded-lg bg-neutral-200/10 border border-neutral-200/20 text-xs text-white flex items-center justify-between max-w-sm">
+              <div className={`mx-5 my-2 px-3 py-1.5 rounded-lg border text-xs flex items-center justify-between max-w-sm ${
+                themeMode === "black"
+                  ? "bg-neutral-200/10 border-neutral-200/20 text-white"
+                  : "bg-neutral-100 border-neutral-200 text-neutral-850"
+              }`}>
                 <div className="flex items-center gap-2 truncate">
-                  <FileText size={14} className="text-neutral-200 flex-shrink-0" />
+                  <FileText size={14} className={themeMode === "black" ? "text-neutral-200" : "text-neutral-600"} />
                   <span className="truncate font-semibold">{attachedFile.name}</span>
                 </div>
                 <button 
                   type="button" 
                   onClick={() => setAttachedFile(null)}
-                  className="p-0.5 text-neutral-500 hover:text-red-400 transition"
+                  className={`p-0.5 transition ${
+                    themeMode === "black" ? "text-neutral-500 hover:text-red-400" : "text-neutral-400 hover:text-red-500"
+                  }`}
                 >
                   <X size={14} />
                 </button>
               </div>
             )}
             {isFileParsing && (
-              <div className="mx-5 my-2 text-xs text-neutral-500 flex items-center gap-1.5 animate-pulse">
-                <Loader2 size={12} className="animate-spin text-neutral-200" />
+              <div className={`mx-5 my-2 text-xs flex items-center gap-1.5 animate-pulse ${
+                themeMode === "black" ? "text-neutral-500" : "text-neutral-450"
+              }`}>
+                <Loader2 size={12} className={`animate-spin ${themeMode === "black" ? "text-neutral-200" : "text-neutral-600"}`} />
                 <span>Parsing document data...</span>
               </div>
             )}
 
-            <div className="flex items-center justify-between px-5 pb-3 bg-[#0D0D0D] border-t border-neutral-900 pt-2.5">
+            <div className={`flex items-center justify-between px-5 pb-3 border-t pt-2.5 transition-colors duration-300 ${
+              themeMode === "black"
+                ? "bg-[#0D0D0D] border-neutral-900"
+                : "bg-[#FAFAFA] border-neutral-150"
+            }`}>
               {/* Media tools */}
               <div className="flex items-center gap-2">
                 {/* Hidden File Input */}
@@ -1976,7 +2156,11 @@ export default function Dashboard() {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isLoading || isFileParsing}
                   title="Attach file (PDF, Word, Excel, Images, Text)"
-                  className="p-2 rounded-xl border border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20 transition duration-300"
+                  className={`p-2 rounded-xl border transition duration-300 ${
+                    themeMode === "black"
+                      ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20"
+                      : "border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800 hover:border-neutral-300"
+                  }`}
                 >
                   <Paperclip size={15} />
                 </button>
@@ -1987,7 +2171,11 @@ export default function Dashboard() {
                   onClick={startCamera}
                   disabled={isLoading || isFileParsing}
                   title="Take Photo"
-                  className="p-2 rounded-xl border border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20 transition duration-300"
+                  className={`p-2 rounded-xl border transition duration-300 ${
+                    themeMode === "black"
+                      ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20"
+                      : "border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800 hover:border-neutral-300"
+                  }`}
                 >
                   <Camera size={15} />
                 </button>
@@ -2001,11 +2189,13 @@ export default function Dashboard() {
                   className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 ml-2 rounded-full border text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${
                     isBrainTrust 
                       ? "bg-amber-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)]" 
-                      : "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600"
+                      : themeMode === "black"
+                        ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600"
+                        : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 shadow-sm"
                   }`}
                 >
                   <span>🧠 Brain Trust</span>
-                  <div className={`w-2 h-2 rounded-full ${isBrainTrust ? "bg-amber-400 animate-pulse" : "bg-neutral-700"}`}></div>
+                  <div className={`w-2 h-2 rounded-full ${isBrainTrust ? "bg-amber-400 animate-pulse" : "bg-neutral-750"}`}></div>
                 </button>
 
                 {/* Mic Button */}
@@ -2016,24 +2206,32 @@ export default function Dashboard() {
                   className={`p-2 rounded-xl border transition duration-300 ${
                     isListening 
                       ? "bg-red-500/10 border-red-500/30 text-red-500 animate-pulse" 
-                      : "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-red-400 hover:border-red-500/20"
+                      : themeMode === "black"
+                        ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-red-400 hover:border-red-500/20"
+                        : "border-neutral-200 bg-white text-neutral-500 hover:text-red-500 hover:border-red-200"
                   }`}
                 >
                   {isListening ? <MicOff size={15} /> : <Mic size={15} />}
                 </button>
               </div>
 
-              <span className="text-[10px] text-neutral-600 select-none hidden md:inline-flex items-center gap-1 ml-4">
+              <span className={`text-[10px] select-none hidden md:inline-flex items-center gap-1 ml-4 ${
+                themeMode === "black" ? "text-neutral-600" : "text-neutral-400"
+              }`}>
                 <CornerDownLeft size={10} /> Press Enter to send consultation
               </span>
               
               <button 
                 type="submit"
                 disabled={isLoading || (!inputMessage.trim() && !attachedFile)}
-                className={`ml-auto p-2.5 rounded-xl text-neutral-950 flex items-center justify-center transition duration-300 ${
+                className={`ml-auto p-2.5 rounded-xl flex items-center justify-center transition duration-300 ${
                   isLoading || (!inputMessage.trim() && !attachedFile)
-                    ? "bg-neutral-900 text-neutral-600 cursor-not-allowed border border-neutral-900/40" 
-                    : "bg-neutral-200 hover:bg-white hover:scale-105 active:scale-95 text-neutral-950 font-bold"
+                    ? themeMode === "black"
+                      ? "bg-neutral-900 text-neutral-600 cursor-not-allowed border border-neutral-900/40" 
+                      : "bg-neutral-100 text-neutral-450 cursor-not-allowed border border-neutral-200"
+                    : themeMode === "black"
+                      ? "bg-neutral-200 hover:bg-white hover:scale-105 active:scale-95 text-neutral-950 font-bold"
+                      : "bg-neutral-900 hover:bg-black hover:scale-105 active:scale-95 text-white font-bold"
                 }`}
               >
                 <Send size={15} />
