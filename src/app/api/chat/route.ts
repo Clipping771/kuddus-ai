@@ -608,14 +608,14 @@ ${baseSystemPrompt}`;
 
             // Step 2: Critique
             controller.enqueue(encoder.encode("> 🕵️ **Agent 2 (Google Gemma)** is brutally reviewing the strategy for flaws and edge cases...\n"));
-            const critiqueMessages = [...formattedMessages, { role: "assistant", content: draftText }, { role: "user", content: "CRITIQUE THE ABOVE DRAFT. Find weaknesses, edge cases, missing data, and structural flaws. Be brutal and highly analytical." }];
+            const critiqueMessages = [...formattedMessages, { role: "assistant", content: draftText }, { role: "user", content: "CRITIQUE THE ABOVE DRAFT. Find weaknesses, edge cases, missing data, and structural flaws. Analyze it STRICTLY from the perspective of your specialized agent role. Be brutal and highly analytical." }];
             const critiqueText = await fetchSyncOpenRouter(critiqueModel, critiqueMessages);
             controller.enqueue(encoder.encode("> ✅ Peer Review Completed.\n\n"));
 
             // Step 3: Synthesis Stream
             controller.enqueue(encoder.encode(`> ✨ **Agent 3 (${synthModel.split("/")[1]})** is synthesizing the perfect master strategy...\n\n---\n\n`));
             
-            const synthMessages = [...formattedMessages, { role: "user", content: `You are the final Executive Synthesizer. Based on my original request, here is the initial draft:\n\n<draft>\n${draftText}\n</draft>\n\nHere is the critical peer-review of that draft:\n\n<critique>\n${critiqueText}\n</critique>\n\nCombine the best parts of the draft, resolve all the flaws pointed out in the critique, and generate the ultimate, flawless master strategy for me. Do NOT mention the internal draft or critique directly; just provide the final polished answer as if it came directly from you.` }];
+            const synthMessages = [...formattedMessages, { role: "user", content: `You are the final Executive Synthesizer, but you MUST remain strictly within your specialized agent persona. Based on my original request, here is the initial draft:\n\n<draft>\n${draftText}\n</draft>\n\nHere is the critical peer-review of that draft:\n\n<critique>\n${critiqueText}\n</critique>\n\nCombine the best parts of the draft, resolve all the flaws pointed out in the critique, and generate the ultimate, flawless master strategy for me. You MUST follow your specialized agent formatting rules and style. Do NOT mention the internal draft or critique directly; just provide the final polished answer as if it came directly from you.` }];
             
             const synthRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
               method: "POST",
