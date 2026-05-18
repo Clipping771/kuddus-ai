@@ -62,8 +62,8 @@ const AGENTS_LIST = [
     id: "daily-innovation-idea-agent",
     name: "Daily Innovation Idea Agent",
     banglaName: "Daily Innovation Idea Agent",
-    desc: "Provides 4-5 fresh business/tech/income ideas daily",
-    banglaDesc: "Provides 4-5 fresh business/tech/income ideas daily",
+    desc: "Provides 4-5 fresh business, tech, and income generation ideas daily",
+    banglaDesc: "Provides 4-5 fresh business, tech, and income generation ideas daily",
     icon: Lightbulb,
     placeholder: "Which sector or target country are you looking to generate business ideas for today?",
     suggestions: [
@@ -73,64 +73,25 @@ const AGENTS_LIST = [
   },
   {
     id: "personal-cfo-finance-agent",
-    name: "Personal CFO / Finance Agent",
-    banglaName: "Personal CFO / Finance Agent",
-    desc: "Expense tracking, budgeting, investment, tax help",
-    banglaDesc: "Expense tracking, budgeting, investment, tax help",
+    name: "CFO & Business Finance Agent",
+    banglaName: "CFO & Business Finance Agent",
+    desc: "Business budgeting, runway calculations, tax strategy & cost audits",
+    banglaDesc: "Business budgeting, runway calculations, tax strategy & cost audits",
     icon: DollarSign,
-    placeholder: "Describe your current finances, monthly budget constraints, or investment goal...",
+    placeholder: "Describe your current business finances, overhead expenses, or investment goals...",
     suggestions: [
       "What are the key tax filing and VAT guidelines for starting a new business?",
       "How to optimize operational cash flow for a local retail shop?"
     ]
   },
   {
-    id: "content-creator-agent",
-    name: "Content Creator Agent",
-    banglaName: "Content Creator Agent",
-    desc: "YouTube, TikTok, FB content ideas & viral scripts",
-    banglaDesc: "YouTube, TikTok, FB content ideas & viral scripts",
-    icon: Video,
-    placeholder: "What is your channel niche, target audience, and preferred video format?",
-    suggestions: [
-      "Give me 3 TikTok hooks and a video script for a new AI technology product.",
-      "Viral YouTube script outlines for a personal finance channel."
-    ]
-  },
-  {
-    id: "sales-lead-generator",
-    name: "Sales & Lead Generator",
-    banglaName: "Sales & Lead Generator",
-    desc: "Find prospective customers, write high-converting copy",
-    banglaDesc: "Find prospective customers, write high-converting copy",
-    icon: Target,
-    placeholder: "Describe your product/service and who your primary target buyers are...",
-    suggestions: [
-      "Write a high-converting cold email sequence for an e-commerce brand.",
-      "What are the best channels to find corporate leads for a B2B SaaS?"
-    ]
-  },
-  {
-    id: "inbox-manager-agent",
-    name: "Inbox Manager Agent",
-    banglaName: "Inbox Manager Agent",
-    desc: "Summarizes emails, drafts important corporate replies",
-    banglaDesc: "Summarizes emails, drafts important corporate replies",
-    icon: Mail,
-    placeholder: "Paste an incoming client email or message that you want summarized or replied to...",
-    suggestions: [
-      "Give me a polite but professional reply draft for this client message.",
-      "Summarize key issues and action items from this corporate email."
-    ]
-  },
-  {
     id: "research-agent",
-    name: "Research Agent",
-    banglaName: "Research Agent",
-    desc: "Deep research on any topic with source citation reports",
-    banglaDesc: "Deep research on any topic with source citation reports",
+    name: "Market Research & SWOT Agent",
+    banglaName: "Market Research & SWOT Agent",
+    desc: "Deep industry reports, SWOT analyses, and TAM/SAM/SOM sizing",
+    banglaDesc: "Deep industry reports, SWOT analyses, and TAM/SAM/SOM sizing",
     icon: Search,
-    placeholder: "What topic, industry, or concept do you need a comprehensive, fact-backed research report on?",
+    placeholder: "What industry, niche, or product do you need a comprehensive research and SWOT report on?",
     suggestions: [
       "Research the current size and key competitors in the ride-sharing market.",
       "Deep market analysis of organic cosmetic demand in Germany."
@@ -138,10 +99,10 @@ const AGENTS_LIST = [
   },
   {
     id: "competitor-spy-agent",
-    name: "Competitor Spy Agent",
-    banglaName: "Competitor Spy Agent",
-    desc: "Monitors competitor websites, pricing, and marketing",
-    banglaDesc: "Monitors competitor websites, pricing, and marketing",
+    name: "Competitor Intelligence Agent",
+    banglaName: "Competitor Intelligence Agent",
+    desc: "Audits competitor websites, pricing models, and marketing weaknesses",
+    banglaDesc: "Audits competitor websites, pricing models, and marketing weaknesses",
     icon: Eye,
     placeholder: "Paste competitor website URLs or names to analyze their positioning and pricing model...",
     suggestions: [
@@ -150,24 +111,63 @@ const AGENTS_LIST = [
     ]
   },
   {
-    id: "personal-assistant",
-    name: "Personal Assistant",
-    banglaName: "Personal Assistant",
-    desc: "Morning briefings, task prioritizing, meeting summaries",
-    banglaDesc: "Morning briefings, task prioritizing, meeting summaries",
-    icon: Calendar,
-    placeholder: "Enter today's tasks or paste a messy transcript to structure your daily agenda...",
+    id: "project-manager-agent",
+    name: "Agile Project & Product Manager",
+    banglaName: "Agile Project & Product Manager",
+    desc: "Agile sprints, Work Breakdown Structure (WBS), milestones & roadmap planner",
+    banglaDesc: "Agile sprints, Work Breakdown Structure (WBS), milestones & roadmap planner",
+    icon: FileText,
+    placeholder: "What project, product, or application features do you want to plan and break down today?",
     suggestions: [
-      "Organize my tasks for today and create a complete morning briefing.",
-      "Summarize this messy raw voice meeting note into bullet tasks."
+      "Create a 4-week Scrum sprint plan and task breakdown for an e-commerce website.",
+      "Break down the WBS and MoSCoW priorities for building a mobile SaaS app."
+    ]
+  },
+  {
+    id: "code-helper-developer-agent",
+    name: "CTO & Technical Architect",
+    banglaName: "CTO & Technical Architect",
+    desc: "Technical architecture design, secure optimized code, and CTO advisory",
+    banglaDesc: "Technical architecture design, secure optimized code, and CTO advisory",
+    icon: Code,
+    placeholder: "Paste code to optimize, or describe the technical architecture/database design you need...",
+    suggestions: [
+      "Design a scalable PostgreSQL database schema for a multi-tenant SaaS application.",
+      "Write a secure and optimized Next.js API route for handling subscription payments."
+    ]
+  },
+  {
+    id: "sales-lead-generator",
+    name: "Sales & Lead Generation Agent",
+    banglaName: "Sales & Lead Generation Agent",
+    desc: "Find prospective customers, map channels, and write cold sequences",
+    banglaDesc: "Find prospective customers, map channels, and write cold sequences",
+    icon: Target,
+    placeholder: "Describe your product/service and who your primary target buyers are...",
+    suggestions: [
+      "Write a high-converting cold email sequence for an e-commerce brand.",
+      "What are the best channels to find corporate leads for a B2B SaaS?"
+    ]
+  },
+  {
+    id: "content-creator-agent",
+    name: "Marketing & Content Creator Agent",
+    banglaName: "Marketing & Content Creator Agent",
+    desc: "Engineering viral marketing copy, script hooks & StoryBrand campaigns",
+    banglaDesc: "Engineering viral marketing copy, script hooks & StoryBrand campaigns",
+    icon: Video,
+    placeholder: "What is your product niche, target audience, and preferred campaign format?",
+    suggestions: [
+      "Give me 3 TikTok hooks and a video script for a new AI technology product.",
+      "Viral YouTube script outlines for a personal finance channel."
     ]
   },
   {
     id: "social-media-manager",
-    name: "Social Media Manager",
-    banglaName: "Social Media Manager",
-    desc: "Post ideas, captions, schedules, performance analysis",
-    banglaDesc: "Post ideas, captions, schedules, performance analysis",
+    name: "Social Media Brand Manager",
+    banglaName: "Social Media Brand Manager",
+    desc: "Multi-platform calendars, SEO captions, and post direction",
+    banglaDesc: "Multi-platform calendars, SEO captions, and post direction",
     icon: Share2,
     placeholder: "Which brand are you managing, and for which platform (LinkedIn, FB, IG) do you need posts?",
     suggestions: [
@@ -176,94 +176,42 @@ const AGENTS_LIST = [
     ]
   },
   {
-    id: "learning-coach",
-    name: "Learning Coach",
-    banglaName: "Learning Coach",
-    desc: "Tailored daily learning paths & progress quizzes",
-    banglaDesc: "Tailored daily learning paths & progress quizzes",
+    id: "legal-compliance-agent",
+    name: "Legal & Compliance Agent",
+    banglaName: "Legal & Compliance Agent",
+    desc: "Contracts drafting, terms audit, and local compliance regulation checks",
+    banglaDesc: "Contracts drafting, terms audit, and local compliance regulation checks",
+    icon: ShieldCheck,
+    placeholder: "Paste terms to review, or describe the contract/document you need drafted...",
+    suggestions: [
+      "Draft a standard, comprehensive mutual NDA (Non-Disclosure Agreement).",
+      "Audit these contract terms and highlight potential liabilities or risks."
+    ]
+  },
+  {
+    id: "hr-recruiting-agent",
+    name: "HR & Talent Acquisition Agent",
+    banglaName: "HR & Talent Acquisition Agent",
+    desc: "Writes Job Descriptions (JD), prepares competency STAR questions & onboarding",
+    banglaDesc: "Writes Job Descriptions (JD), prepares competency STAR questions & onboarding",
     icon: GraduationCap,
-    placeholder: "What skill or subject do you want to master, and how many days do you have?",
+    placeholder: "What role are you hiring for, and what are the key requirements?",
     suggestions: [
-      "Give me a complete 30-day learning routine and daily tasks to learn React Native and Expo.",
-      "Create a beginner python guide with a 5-question test."
+      "Write a Job Description (JD) and KPIs for a Senior Full-Stack Engineer.",
+      "Generate 5 STAR-method interview questions to assess problem-solving skills."
     ]
   },
   {
-    id: "job-application-agent",
-    name: "Job Application Agent",
-    banglaName: "Job Application Agent",
-    desc: "CV revisions, custom cover letters, job search aid",
-    banglaDesc: "CV revisions, custom cover letters, job search aid",
+    id: "investor-pitch-agent",
+    name: "Investor Pitch & Fundraising Agent",
+    banglaName: "Investor Pitch & Fundraising Agent",
+    desc: "Guy Kawasaki pitch decks, VC fundraising & startup valuations",
+    banglaDesc: "Guy Kawasaki pitch decks, VC fundraising & startup valuations",
     icon: Briefcase,
-    placeholder: "Paste the job description and your current resume text to optimize them...",
+    placeholder: "Describe your startup, business model, and target funding round...",
     suggestions: [
-      "Write an attractive and impactful cover letter for a software engineer role.",
-      "CV suggestions for a senior product manager career pivot."
-    ]
-  },
-  {
-    id: "health-fitness-coach",
-    name: "Health & Fitness Coach",
-    banglaName: "Health & Fitness Coach",
-    desc: "Personalized diet schedules, workout routines, tracking",
-    banglaDesc: "Personalized diet schedules, workout routines, tracking",
-    icon: Heart,
-    placeholder: "What is your target weight/fitness goal, age, and dietary preferences?",
-    suggestions: [
-      "Provide a high-protein diet and 3-day home workout plan for weight loss.",
-      "Keto diet meal prep roadmap for busy working professionals."
-    ]
-  },
-  {
-    id: "crypto-stock-researcher",
-    name: "Crypto / Stock Researcher",
-    banglaName: "Crypto / Stock Researcher",
-    desc: "Market analysis, macroeconomic news, investment ideas",
-    banglaDesc: "Market analysis, macroeconomic news, investment ideas",
-    icon: TrendingUp,
-    placeholder: "Which stock, crypto token, or market index do you need deep analysis on?",
-    suggestions: [
-      "Provide a macroeconomic trend and news summary for the current crypto market.",
-      "How to evaluate stock volatility using beta metrics."
-    ]
-  },
-  {
-    id: "code-helper-developer-agent",
-    name: "Code Helper / Developer Agent",
-    banglaName: "Code Helper / Developer Agent",
-    desc: "Writes robust code, debugs errors, designs projects",
-    banglaDesc: "Writes robust code, debugs errors, designs projects",
-    icon: Code,
-    placeholder: "Paste the buggy code snippet or describe the feature you want implemented...",
-    suggestions: [
-      "Write a sample Next.js API route showing the correct structure for handling requests.",
-      "Optimize this React state re-rendering bottleneck."
-    ]
-  },
-  {
-    id: "womens-beauty-agent",
-    name: "Beauty & Skincare Agent",
-    banglaName: "Beauty & Skincare Agent",
-    desc: "Science-backed skincare, grooming, makeup & product tips for all genders",
-    banglaDesc: "Science-backed skincare, grooming, makeup & product tips for all genders",
-    icon: Sparkles,
-    placeholder: "What is your skin type (oily, dry, combo) and your primary skin or grooming concern?",
-    suggestions: [
-      "Provide a complete morning skincare routine for my oily, acne-prone skin.",
-      "What is a simple, effective skincare and grooming routine for men?"
-    ]
-  },
-  {
-    id: "project-manager-agent",
-    name: "Project & Product Manager Agent",
-    banglaName: "Project & Product Manager Agent",
-    desc: "Agile sprints, Work Breakdown Structure (WBS), milestones & roadmap planner",
-    banglaDesc: "Agile sprints, Work Breakdown Structure (WBS), milestones & roadmap planner",
-    icon: FileText,
-    placeholder: "What project, product, or application features do you want to plan and break down today?",
-    suggestions: [
-      "Create a 4-week Scrum sprint plan and task breakdown for an e-commerce website.",
-      "Break down the WBS and MoSCoW priorities for building a mobile SaaS app."
+      "Draft a 10-slide outline for a Pre-Seed investor pitch deck.",
+      "How to justify a $5M valuation multiple for a B2B SaaS startup?"
     ]
   }
 ];
