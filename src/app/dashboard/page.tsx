@@ -269,6 +269,12 @@ const TONES_LIST = [
   { id: "detailed", name: "Detailed", icon: "📝", prompt: "Provide extremely long, in-depth, comprehensive explanations covering all angles." },
 ];
 
+const MODELS_LIST = [
+  { id: "google/gemma-4-31b-it", name: "Google Gemma 31B", icon: "💎", badge: "Primary" },
+  { id: "deepseek/deepseek-v4-flash:free", name: "DeepSeek V4 Flash", icon: "⚡", badge: "Fast" },
+  { id: "arcee-ai/trinity-large-thinking:free", name: "DeepSeek Trinity", icon: "🧠", badge: "Thinking" },
+];
+
 function parseChatTitle(rawTitle: string) {
   if (!rawTitle) return { title: "New Analysis", agentId: null, toneId: null };
   const parts = rawTitle.split(" | ");
@@ -311,6 +317,9 @@ export default function Dashboard() {
   
   const [selectedToneId, setSelectedToneId] = useState<string>("brutally-honest");
   const [toneDropdownOpen, setToneDropdownOpen] = useState(false);
+
+  const [selectedModelId, setSelectedModelId] = useState<string>("google/gemma-4-31b-it");
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
 
   // AI Personalization State (user chooses name & color on first visit)
   const aiName = "Kacha Morich AI";
@@ -697,6 +706,7 @@ export default function Dashboard() {
           chatId: activeChatId,
           agentId: selectedAgentId,
           toneId: selectedToneId,
+          modelId: selectedModelId,
           aiName: aiName,
           tonePrompt: TONES_LIST.find(t => t.id === selectedToneId)?.prompt,
         }),
@@ -1005,6 +1015,58 @@ export default function Dashboard() {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* AI Brain Selector Dropdown */}
+            <div className="relative hidden md:block">
+              <button
+                type="button"
+                onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 backdrop-blur-md text-xs text-neutral-300 hover:text-white hover:border-neutral-200/30 transition duration-300 font-bold shadow-sm"
+              >
+                <span>{MODELS_LIST.find((m) => m.id === selectedModelId)?.icon}</span>
+                <span className="truncate max-w-[100px]">
+                  {MODELS_LIST.find((m) => m.id === selectedModelId)?.name || "Select AI Brain"}
+                </span>
+                <ChevronDown size={13} className={`text-neutral-500 transition duration-300 ${modelDropdownOpen ? "rotate-180 text-neutral-200" : ""}`} />
+              </button>
+
+              {modelDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setModelDropdownOpen(false)} />
+                  <div className="absolute right-0 mt-2.5 w-60 rounded-xl border border-neutral-800 bg-[#090909]/95 backdrop-blur-md p-2 shadow-[0_15px_40px_rgba(0,0,0,0.7)] z-50 divide-y divide-neutral-900 space-y-1">
+                    <div className="px-3 py-1.5 text-[9px] font-black text-neutral-500 tracking-widest uppercase">
+                      Select AI Brain Model
+                    </div>
+                    <div className="pt-1.5 space-y-0.5">
+                      {MODELS_LIST.map((model) => {
+                        const isSelected = selectedModelId === model.id;
+                        return (
+                          <button
+                            key={model.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedModelId(model.id);
+                              setModelDropdownOpen(false);
+                            }}
+                            className={`w-full text-left flex items-center justify-between p-2.5 rounded-lg transition duration-200 ${
+                              isSelected 
+                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                                : "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span>{model.icon}</span>
+                              <span className="text-xs font-bold">{model.name}</span>
+                            </div>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-neutral-400 font-semibold">{model.badge}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
             {/* Elite Agent Selector Dropdown */}
             <div className="relative">
               <button

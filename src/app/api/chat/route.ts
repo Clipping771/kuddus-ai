@@ -278,7 +278,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { message, chatId, agentId, toneId, aiName = "Specialist AI", tonePrompt } = await req.json();
+    const { message, chatId, agentId, toneId, aiName = "Specialist AI", tonePrompt, modelId } = await req.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
@@ -560,11 +560,12 @@ ${baseSystemPrompt}`;
       });
     }
 
-    // 6. Call OpenRouter API with Streaming (Gemma 4 31B as primary, with free backup and fast visual fallback)
-    let selectedModel = hasImage ? "google/gemini-2.5-flash" : "google/gemma-4-31b-it";
+    // 6. Call OpenRouter API with Streaming
+    const primaryModel = modelId || "google/gemma-4-31b-it";
+    let selectedModel = hasImage ? "google/gemini-2.5-flash" : primaryModel;
     const fallbackModels = hasImage 
       ? ["google/gemini-2.5-flash"] 
-      : ["google/gemma-4-31b-it", "google/gemma-4-26b-a4b-it:free", "google/gemini-2.5-flash"];
+      : [primaryModel, "google/gemma-4-26b-a4b-it:free", "google/gemini-2.5-flash"];
 
     let response: any;
     for (let i = 0; i < fallbackModels.length; i++) {
