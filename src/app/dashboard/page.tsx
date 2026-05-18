@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useUser, UserButton } from "@clerk/nextjs";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 // NovaAvatar removed — using dynamic AIAvatar now
 import TypingIndicator from "@/components/TypingIndicator";
 import { 
@@ -1216,7 +1217,7 @@ export default function Dashboard() {
                         <div className="bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border border-white/5 rounded-2xl rounded-tl-none px-4 sm:px-6 py-4 sm:py-5 text-neutral-200 leading-relaxed text-sm shadow-md backdrop-blur-md prose prose-invert prose-sm max-w-full w-full overflow-hidden relative">
                           {msg.content ? (
                             <div className="w-full max-w-full overflow-hidden break-words [&_*]:max-w-full [&_pre]:overflow-x-auto [&_code]:break-all [&_p]:break-words [&_li]:break-words">
-                              <ReactMarkdown>{msg.content}</ReactMarkdown>
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                             </div>
                           ) : (
                             <div className="flex gap-1 items-center py-2">
