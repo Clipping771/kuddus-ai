@@ -278,7 +278,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { message, chatId, agentId, toneId, aiName = "Specialist AI", tonePrompt, modelId } = await req.json();
+    const { message, chatId, agentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust } = await req.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
@@ -560,56 +560,13 @@ ${baseSystemPrompt}`;
       });
     }
 
-    // 6. Call OpenRouter API with Streaming
+    // 6. Call OpenRouter API with Streaming OR Brain Trust Pipeline
     const primaryModel = modelId || "google/gemma-4-31b-it";
-    let selectedModel = hasImage ? "google/gemini-2.5-flash" : primaryModel;
-    const fallbackModels = hasImage 
-      ? ["google/gemini-2.5-flash"] 
-      : [primaryModel, "google/gemma-4-26b-a4b-it:free", "google/gemini-2.5-flash"];
-
-    let response: any;
-    for (let i = 0; i < fallbackModels.length; i++) {
-      selectedModel = fallbackModels[i];
-      try {
-        console.log(`Successfully initiating OpenRouter stream with model: ${selectedModel}`);
-        response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://kachamorich.vercel.app",
-            "X-Title": "Kacha Morich AI",
-          },
-          body: JSON.stringify({
-            model: selectedModel,
-            messages: formattedMessages,
-            stream: true,
-            max_tokens: 3000,
-          }),
-        });
-
-        if (response.ok) {
-          break; // Stream successfully opened!
-        }
-
-        const errText = await response.text();
-        console.warn(`OpenRouter model ${selectedModel} failed with response: ${response.status} - ${errText}`);
-        if (i === fallbackModels.length - 1) {
-          throw new Error(`OpenRouter API error: ${response.status} - ${errText}`);
-        }
-      } catch (err: any) {
-        console.warn(`Error connecting to model ${selectedModel}:`, err.message || err);
-        if (i === fallbackModels.length - 1) {
-          throw err; // All models failed, rethrow final error
-        }
-        console.log(`Attempting fallback to next OpenRouter model...`);
-      }
-    }
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`OpenRouter API error: ${response.status} - ${errText}`);
-    }
+    
+    // Brain Trust models hardcoded
+    const draftModel = "arcee-ai/trinity-large-thinking:free";
+    const critiqueModel = "google/gemma-4-31b-it";
+    const synthModel = primaryModel; // The user's selected model synthesizes the final response
 
     const encoder = new TextEncoder();
     let assistantResponse = "";
@@ -619,59 +576,140 @@ ${baseSystemPrompt}`;
         // Enqueue activeChatId as metadata line so the frontend knows what chatId was resolved
         controller.enqueue(encoder.encode(`__CHAT_ID__:${activeChatId}\n`));
 
+        // Helper for Brain Trust non-streaming calls
+        const fetchSyncOpenRouter = async (model: string, msgs: any[]) => {
+          const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": "https://kachamorich.vercel.app",
+            },
+            body: JSON.stringify({ model, messages: msgs, stream: false }),
+          });
+          if (!res.ok) throw new Error("Brain trust step failed");
+          const data = await res.json();
+          return data.choices[0]?.message?.content || "";
+        };
+
         try {
-          const reader = response.body?.getReader();
-          const decoder = new TextDecoder();
-          if (!reader) {
-            throw new Error("No reader stream available on OpenRouter response");
-          }
+          if (isBrainTrust && !hasImage) { 
+            // MULTI-AGENT BRAIN TRUST PIPELINE
+            controller.enqueue(encoder.encode("\n\n> 🧠 **BRAIN TRUST ACTIVATED**\n> Assembling the Board of Directors for Deep Research...\n\n"));
+            
+            // Step 1: Draft
+            controller.enqueue(encoder.encode("> 📝 **Agent 1 (DeepSeek Trinity)** is drafting the initial strategy...\n"));
+            const draftText = await fetchSyncOpenRouter(draftModel, formattedMessages);
+            controller.enqueue(encoder.encode("> ✅ Initial Draft Completed.\n\n"));
 
-          let buffer = "";
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+            // Step 2: Critique
+            controller.enqueue(encoder.encode("> 🕵️ **Agent 2 (Google Gemma)** is brutally reviewing the strategy for flaws and edge cases...\n"));
+            const critiqueMessages = [...formattedMessages, { role: "assistant", content: draftText }, { role: "user", content: "CRITIQUE THE ABOVE DRAFT. Find weaknesses, edge cases, missing data, and structural flaws. Be brutal and highly analytical." }];
+            const critiqueText = await fetchSyncOpenRouter(critiqueModel, critiqueMessages);
+            controller.enqueue(encoder.encode("> ✅ Peer Review Completed.\n\n"));
 
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() || "";
+            // Step 3: Synthesis Stream
+            controller.enqueue(encoder.encode(`> ✨ **Agent 3 (${synthModel.split("/")[1]})** is synthesizing the perfect master strategy...\n\n---\n\n`));
+            
+            const synthMessages = [...formattedMessages, { role: "user", content: `You are the final Executive Synthesizer. Based on my original request, here is the initial draft:\n\n<draft>\n${draftText}\n</draft>\n\nHere is the critical peer-review of that draft:\n\n<critique>\n${critiqueText}\n</critique>\n\nCombine the best parts of the draft, resolve all the flaws pointed out in the critique, and generate the ultimate, flawless master strategy for me. Do NOT mention the internal draft or critique directly; just provide the final polished answer as if it came directly from you.` }];
+            
+            const synthRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://kachamorich.vercel.app",
+              },
+              body: JSON.stringify({ model: synthModel, messages: synthMessages, stream: true, max_tokens: 3500 }),
+            });
+            if (!synthRes.ok) throw new Error("Synthesis failed");
 
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed) continue;
-              if (trimmed === "data: [DONE]") continue;
+            const reader = synthRes.body?.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            while (reader) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() || "";
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
+                  try {
+                    const parsed = JSON.parse(trimmed.slice(6));
+                    const text = parsed.choices[0]?.delta?.content || "";
+                    if (text) {
+                      assistantResponse += text;
+                      controller.enqueue(encoder.encode(text));
+                    }
+                  } catch (e) {}
+                }
+              }
+            }
+          } else {
+            // NORMAL SINGLE-MODEL PIPELINE
+            let selectedModel = hasImage ? "google/gemini-2.5-flash" : primaryModel;
+            const fallbackModels = hasImage 
+              ? ["google/gemini-2.5-flash"] 
+              : [primaryModel, "google/gemma-4-26b-a4b-it:free", "google/gemini-2.5-flash"];
 
-              if (trimmed.startsWith("data: ")) {
-                try {
-                  const parsed = JSON.parse(trimmed.slice(6));
-                  const text = parsed.choices[0]?.delta?.content || "";
-                  if (text) {
-                    assistantResponse += text;
-                    controller.enqueue(encoder.encode(text));
-                  }
-                } catch (e) {
-                  // Ignore parsing errors for heartbeats or incomplete chunks
+            let response: any;
+            for (let i = 0; i < fallbackModels.length; i++) {
+              selectedModel = fallbackModels[i];
+              try {
+                response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://kachamorich.vercel.app",
+                  },
+                  body: JSON.stringify({ model: selectedModel, messages: formattedMessages, stream: true, max_tokens: 3000 }),
+                });
+                if (response.ok) break;
+                if (i === fallbackModels.length - 1) throw new Error("All fallback models failed");
+              } catch (err) {
+                if (i === fallbackModels.length - 1) throw err;
+              }
+            }
+
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            while (reader) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() || "";
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
+                  try {
+                    const parsed = JSON.parse(trimmed.slice(6));
+                    const text = parsed.choices[0]?.delta?.content || "";
+                    if (text) {
+                      assistantResponse += text;
+                      controller.enqueue(encoder.encode(text));
+                    }
+                  } catch (e) {}
                 }
               }
             }
           }
 
-          // Save completed assistant response to Supabase
+          // 7. Save completed assistant response to Supabase
           if (assistantResponse) {
+            const finalSavedText = (isBrainTrust && !hasImage) ? `> 🧠 **BRAIN TRUST LOGS**\n> 📝 Trinity drafted -> 🕵️ Gemma critiqued -> ✨ ${synthModel.split("/")[1]} synthesized.\n\n---\n\n${assistantResponse}` : assistantResponse;
             const { error: assistantSaveError } = await supabase
               .from("messages")
-              .insert({
-                chat_id: activeChatId,
-                role: "assistant",
-                content: assistantResponse,
-              });
-
-            if (assistantSaveError) {
-              console.error("Failed to save Kacha Morich response:", assistantSaveError);
-            }
+              .insert({ chat_id: activeChatId, role: "assistant", content: finalSavedText });
+            if (assistantSaveError) console.error("Save error:", assistantSaveError);
           }
         } catch (streamErr) {
-          console.error("Error while processing OpenRouter stream:", streamErr);
-          controller.enqueue(encoder.encode("\n[Error: Stream interrupted]"));
+          console.error("Stream Error:", streamErr);
+          controller.enqueue(encoder.encode("\n[Error: Stream interrupted. Please try again.]"));
         } finally {
           controller.close();
         }

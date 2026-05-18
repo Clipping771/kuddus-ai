@@ -321,6 +321,9 @@ export default function Dashboard() {
   const [selectedModelId, setSelectedModelId] = useState<string>("google/gemma-4-31b-it");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
 
+  // Multi-Agent Brain Trust State
+  const [isBrainTrust, setIsBrainTrust] = useState(false);
+
   // AI Personalization State (user chooses name & color on first visit)
   const aiName = "Kacha Morich AI";
   const aiColor = "#10b981";
@@ -709,6 +712,7 @@ export default function Dashboard() {
           modelId: selectedModelId,
           aiName: aiName,
           tonePrompt: TONES_LIST.find(t => t.id === selectedToneId)?.prompt,
+          isBrainTrust: isBrainTrust,
         }),
       });
 
@@ -1446,6 +1450,22 @@ export default function Dashboard() {
                   className="p-2 rounded-xl border border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20 transition duration-300"
                 >
                   <Camera size={15} />
+                </button>
+
+                {/* Brain Trust Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setIsBrainTrust(!isBrainTrust)}
+                  disabled={isLoading || isFileParsing}
+                  title="Brain Trust Mode: Multi-Agent Deep Research"
+                  className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 ml-2 rounded-full border text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${
+                    isBrainTrust 
+                      ? "bg-amber-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)]" 
+                      : "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600"
+                  }`}
+                >
+                  <span>🧠 Brain Trust</span>
+                  <div className={`w-2 h-2 rounded-full ${isBrainTrust ? "bg-amber-400 animate-pulse" : "bg-neutral-700"}`}></div>
                 </button>
 
                 {/* Mic Button */}
