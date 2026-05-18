@@ -17,6 +17,61 @@ function cleanArrows(text: string | null | undefined): string {
     .replace(/\$?\\leftarrow\$?/gi, "←")
     .replace(/\$?\\Leftarrow\$?/gi, "⇐");
 }
+
+import mermaid from "mermaid";
+
+if (typeof window !== "undefined") {
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: "dark",
+    securityLevel: "loose",
+    fontFamily: "Inter, sans-serif"
+  });
+}
+
+const MermaidDiagram = ({ chart }: { chart: string }) => {
+  const [svg, setSvg] = useState<string>("");
+  const [error, setError] = useState<boolean>(false);
+  const elementId = useRef(`mermaid-${Math.floor(Math.random() * 1000000)}`);
+
+  useEffect(() => {
+    async function renderChart() {
+      if (!chart) return;
+      try {
+        setError(false);
+        const { svg: renderedSvg } = await mermaid.render(elementId.current, chart);
+        setSvg(renderedSvg);
+      } catch (err) {
+        console.error("Mermaid parsing error:", err);
+        setError(true);
+      }
+    }
+    renderChart();
+  }, [chart]);
+
+  if (error) {
+    return (
+      <pre className="bg-red-950/20 border border-red-500/20 rounded-xl p-4 text-xs text-red-400 overflow-x-auto whitespace-pre-wrap">
+        <code>{chart}</code>
+      </pre>
+    );
+  }
+
+  if (!svg) {
+    return (
+      <div className="flex items-center justify-center p-8 bg-neutral-900/30 rounded-xl border border-white/5 my-4">
+        <span className="text-xs text-neutral-500 animate-pulse">Rendering UML Diagram...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className="p-4 bg-neutral-950/50 rounded-xl border border-white/5 my-4 flex justify-center overflow-x-auto shadow-inner [&_svg]:max-w-full [&_svg]:h-auto"
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
+};
 import { 
   Plus, 
   Trash2, 
@@ -1411,7 +1466,28 @@ export default function Dashboard() {
                         <div className="bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border border-white/5 rounded-2xl rounded-tl-none px-4 sm:px-6 py-4 sm:py-5 text-neutral-200 leading-relaxed text-sm shadow-md backdrop-blur-md prose prose-invert prose-sm max-w-full w-full overflow-hidden relative">
                           {msg.content ? (
                             <div className="w-full max-w-full overflow-hidden break-words [&_*]:max-w-full [&_pre]:overflow-x-auto [&_code]:break-all [&_p]:break-words [&_li]:break-words">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>{cleanArrows(msg.content)}</ReactMarkdown>
+                              <ReactMarkdown 
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  code({ node, className, children, ...props }) {
+                                    const match = /language-(\w+)/.exec(className || "");
+                                    const isMermaid = match && match[1] === "mermaid";
+                                    const codeString = String(children).replace(/\n$/, "");
+                                    
+                                    if (isMermaid) {
+                                      return <MermaidDiagram chart={codeString} />;
+                                    }
+                                    
+                                    return (
+                                      <code className={className} {...props}>
+                                        {children}
+                                      </code>
+                                    );
+                                  }
+                                }}
+                              >
+                                {cleanArrows(msg.content)}
+                              </ReactMarkdown>
                             </div>
                           ) : (
                             <div className="flex gap-1 items-center py-2">
