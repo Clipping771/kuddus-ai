@@ -60,25 +60,66 @@ html, body {
   word-break: break-word !important;
   box-sizing: border-box !important;
 }
+.prose p {
+  margin-top: 0 !important;
+  margin-bottom: 1.15rem !important;
+  line-height: 1.8 !important;
+  font-size: 0.95rem !important;
+  letter-spacing: 0.01em !important;
+}
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  margin-top: 1.85rem !important;
+  margin-bottom: 0.75rem !important;
+  font-weight: 800 !important;
+  line-height: 1.4 !important;
+}
+.prose h1 { font-size: 1.6rem !important; }
+.prose h2 { font-size: 1.35rem !important; }
+.prose h3 { font-size: 1.15rem !important; }
+.prose h4 { font-size: 1rem !important; }
+
+.prose ul {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin-bottom: 1.15rem !important;
+}
+.prose ol {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin-bottom: 1.15rem !important;
+}
+.prose li {
+  margin-bottom: 0.55rem !important;
+  line-height: 1.75 !important;
+  font-size: 0.95rem !important;
+}
 .prose pre {
   overflow-x: auto !important;
   white-space: pre-wrap !important;
   word-break: break-all !important;
+  margin: 1.25rem 0 !important;
 }
 .prose code {
   word-break: break-all !important;
   white-space: pre-wrap !important;
 }
 .prose table {
+  display: block !important;
   width: 100% !important;
+  overflow-x: auto !important;
   border-collapse: collapse !important;
   margin: 1.5rem 0 !important;
   font-size: 0.875rem !important;
   text-align: left !important;
   backdrop-filter: blur(4px) !important;
   border-radius: 8px !important;
-  overflow: hidden !important;
+  -webkit-overflow-scrolling: touch;
+}
+.prose thead, .prose tbody, .prose tr {
+  width: 100% !important;
+  min-width: 600px !important;
   display: table !important;
+  table-layout: fixed !important;
 }
 
 /* Obsidian Black Theme Scoped Prose Styling */
@@ -93,6 +134,7 @@ html, body {
   padding: 12px 16px !important;
   border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
   border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+  white-space: nowrap !important;
 }
 .prose-invert td {
   padding: 12px 16px !important;
@@ -133,6 +175,7 @@ html, body {
   padding: 12px 16px !important;
   border-bottom: 2px solid rgba(15, 23, 42, 0.1) !important;
   border-right: 1px solid rgba(15, 23, 42, 0.05) !important;
+  white-space: nowrap !important;
 }
 .prose:not(.prose-invert) td {
   padding: 12px 16px !important;
