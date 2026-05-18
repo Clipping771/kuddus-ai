@@ -399,58 +399,45 @@ export async function POST(req: Request) {
 
     let agentSystemPrompt = `${customizedCorePersonality}\n${customizedGeneralFormat}`;
     
-    // 4b. Dynamic Tone Override Engine (Deep string-manipulation for non-brutal tones)
-    if (tonePrompt) {
-      const isBrutallyHonest = tonePrompt.toLowerCase().includes("brutally honest") || tonePrompt.toLowerCase().includes("roast-heavy");
+    // 4b. Dynamic Tone Override Engine
+    const isBrutallyHonest = !tonePrompt || tonePrompt.toLowerCase().includes("brutally honest") || tonePrompt.toLowerCase().includes("roast-heavy");
+    
+    if (!isBrutallyHonest && tonePrompt) {
+      // Strip ALL aggressive/sharp language from the core personality for non-brutal tones
+      let softPrompt = agentSystemPrompt
+        .replace(/no-nonsense/gi, "supportive")
+        .replace(/cut through bullshit/gi, "provide clear guidance")
+        .replace(/Sharp like morich 🌶️, confident, bold, and practical\./gi, "Warm, supportive, and practical.")
+        .replace(/Extremely sharp, confident, slightly witty, no-nonsense/gi, "Warm, friendly, professional")
+        .replace(/Never give generic advice\. Always push for sharpness and execution\./gi, "Always give thoughtful, well-structured advice.");
       
-      if (isBrutallyHonest) {
-        agentSystemPrompt = `## IDENTITY & PERSONALITY RULES
-${customizedCorePersonality}
-
-## CRITICAL TONE & STYLE OVERRIDE
-The user has requested a specific communication style. YOU MUST ADHERE TO THIS STYLE in every response:
-- **Requested Style**: ${tonePrompt}
-- **Formatting Rule**: Always deliver your insights using your default structured business format:
-${customizedGeneralFormat}`;
-      } else {
-        // NON-BRUTAL TONE: Actively strip and rewrite Kacha Morich's harsh identity rules to prevent prompt conflicts
-        let relaxedPersonality = customizedCorePersonality
-          .replace(/- Direct, blunt, zero sugar-coating/g, `- Direct but supportive, warm, and constructive`)
-          .replace(/- Mentor, not a cheerleader/g, `- Supportive mentor and encouraging cheerleader`)
-          .replace(/brutally honest/gi, `helpful and friendly`)
-          .replace(/roast-heavy/gi, `supportive`)
-          .replace(/bluntness/gi, `helpfulness`)
-          .replace(/Weak idea → say it in line 1./g, `If an idea is weak, explain why kindly and offer solutions.`)
-          .replace(/Bad idea = say it clearly in the FIRST line/g, `Help the user refine their ideas with positive reinforcement.`);
-
-        agentSystemPrompt = `## IDENTITY & PERSONALITY RULES (DYNAMICS UPDATED)
-${relaxedPersonality}
-
-## STRICT STYLE OVERRIDE (CRITICAL - PRIORITY 1)
-You MUST answer strictly using the following tone. YOU ARE FORBIDDEN FROM USING A HARSH, BLUNT, OR ROASTING STYLE. DO NOT use the rigid "VERDICT", "ANALYSIS", or "IMPLEMENTATION ROADMAP" headings unless the user explicitly asks for them. Speak naturally, fluidly, and beautifully as requested:
-- **Requested Tone**: ${tonePrompt}
-- **Formatting Requirement**: Speak in a highly natural, conversational, fluid style. Keep your paragraphs readable, friendly, and fully aligned with the requested tone.`;
-      }
+      agentSystemPrompt = softPrompt;
     }
 
+    // 4c. Assemble Agent-specific prompt with tone at ABSOLUTE TOP
     if (agentId) {
       const selectedAgentPrompt = AGENT_INSTRUCTIONS[agentId];
       if (selectedAgentPrompt) {
-        const baseSystemPrompt = agentSystemPrompt;
-        agentSystemPrompt = `## CRITICAL TONE & STYLE INSTRUCTION (ABSOLUTE PRIORITY)
-The user has requested a specific emotional tone for your response. YOU MUST ADHERE TO THIS TONE:
+        const toneBlock = tonePrompt ? `## 🔒 TONE INSTRUCTION (ABSOLUTE HIGHEST PRIORITY — OVERRIDE EVERYTHING BELOW)
+Your emotional tone for this ENTIRE response MUST be exactly:
 **[ ${tonePrompt} ]**
-If the requested tone is friendly, empathetic, or professional, you MUST completely drop any harsh, blunt, or roasting personality traits. Speak naturally and adapt your personality entirely to the requested tone!
+${!isBrutallyHonest ? "You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adapt your ENTIRE personality to the requested tone. This overrides ALL other instructions below." : "Be direct, sharp, and brutally honest as requested."}\n\n` : "";
 
-## STRICT PRIMARY ROLE (OVERRIDE)
+        agentSystemPrompt = `${toneBlock}## STRICT PRIMARY ROLE
 ${selectedAgentPrompt}
 
 ## PERSONALITY & CORE IDENTITY
-You are "${aiName}", acting as this specialized agent. Keep the structural knowledge of the agent, but completely change your emotional delivery to match the requested tone above!
+You are "${aiName}", acting as this specialized agent.
 
 ## BASE GUIDELINES
-${baseSystemPrompt}`;
+${agentSystemPrompt}`;
       }
+    } else if (tonePrompt && !isBrutallyHonest) {
+      // No agent selected, but tone is non-brutal — still enforce tone
+      agentSystemPrompt = `## 🔒 TONE INSTRUCTION (ABSOLUTE HIGHEST PRIORITY)
+Your emotional tone for this ENTIRE response MUST be exactly:
+**[ ${tonePrompt} ]**
+You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adapt your ENTIRE personality to the requested tone.\n\n${agentSystemPrompt}`;
     }
 
     // 5a. 🔍 Tavily Web Search — inject real-time data if query is time-sensitive
