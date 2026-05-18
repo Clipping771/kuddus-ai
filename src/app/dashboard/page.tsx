@@ -2245,14 +2245,20 @@ export default function Dashboard() {
 
     {/* Camera Modal Overlay */}
     {isCameraOpen && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
-        <div className="relative w-full max-w-lg bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ${
+        themeMode === "black" ? "bg-black/90 backdrop-blur-md" : "bg-neutral-900/60 backdrop-blur-sm"
+      }`}>
+        <div className={`relative w-full max-w-lg border rounded-3xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ${
+          themeMode === "black" ? "bg-[#0A0A0A] border-white/10" : "bg-white border-neutral-200"
+        }`}>
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-white/5">
-            <span className="text-white font-bold text-sm tracking-wide">Capture Photo</span>
+          <div className={`flex items-center justify-between p-4 border-b ${
+            themeMode === "black" ? "border-white/5" : "border-neutral-150"
+          }`}>
+            <span className={`font-bold text-sm tracking-wide ${themeMode === "black" ? "text-white" : "text-neutral-850"}`}>Capture Photo</span>
             <button 
               onClick={stopCamera}
-              className="text-neutral-400 hover:text-white transition"
+              className={`transition ${themeMode === "black" ? "text-neutral-400 hover:text-white" : "text-neutral-500 hover:text-neutral-800"}`}
             >
               <XCircle size={20} />
             </button>
@@ -2272,7 +2278,9 @@ export default function Dashboard() {
           <canvas ref={canvasRef} className="hidden" />
           
           {/* Footer Controls */}
-          <div className="p-4 flex items-center justify-center border-t border-white/5 bg-[#050505]">
+          <div className={`p-4 flex items-center justify-center border-t ${
+            themeMode === "black" ? "border-white/5 bg-[#050505]" : "border-neutral-150 bg-[#FAFAFA]"
+          }`}>
             <button
               onClick={capturePhoto}
               className="group relative flex items-center justify-center w-16 h-16 rounded-full bg-white/10 border-4 border-white/20 hover:border-white transition duration-300"
@@ -2286,29 +2294,43 @@ export default function Dashboard() {
 
     {/* Settings / Manage Account Modal */}
     {isSettingsModalOpen && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in">
-        <div className="relative w-full max-w-md bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col p-6 space-y-6">
+      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in ${
+        themeMode === "black" ? "bg-black/90 backdrop-blur-md" : "bg-neutral-900/60 backdrop-blur-sm"
+      }`}>
+        <div className={`relative w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col p-6 space-y-6 transition-all duration-300 border ${
+          themeMode === "black" ? "bg-[#0A0A0A] border-white/10" : "bg-white border-neutral-200"
+        }`}>
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+          <div className={`flex items-center justify-between border-b pb-4 ${
+            themeMode === "black" ? "border-white/5" : "border-neutral-150"
+          }`}>
             <div className="flex items-center gap-2">
               <Settings className="text-[#10b981]" size={20} />
-              <h2 className="text-white font-bold text-lg tracking-wide">Manage Account</h2>
+              <h2 className={`font-bold text-lg tracking-wide ${themeMode === "black" ? "text-white" : "text-neutral-850"}`}>Manage Account</h2>
             </div>
             <button 
               onClick={() => setIsSettingsModalOpen(false)}
-              className="p-1 rounded-full text-neutral-400 hover:text-white hover:bg-neutral-900 transition"
+              className={`p-1 rounded-full transition ${
+                themeMode === "black" ? "text-neutral-400 hover:text-white hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
+              }`}
             >
               <X size={20} />
             </button>
           </div>
 
           {/* User Account Info */}
-          <div className="space-y-2 bg-[#050505] p-4 rounded-2xl border border-neutral-900">
-            <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider block">Logged in as</span>
+          <div className={`space-y-2 p-4 rounded-2xl border ${
+            themeMode === "black" ? "bg-[#050505] border-neutral-900" : "bg-[#F8FAFC] border-neutral-200"
+          }`}>
+            <span className={`text-[10px] font-bold uppercase tracking-wider block ${
+              themeMode === "black" ? "text-neutral-500" : "text-neutral-450"
+            }`}>Logged in as</span>
             <div className="flex items-center gap-3">
               <UserButton />
               <div className="flex flex-col text-left">
-                <span className="text-sm font-bold text-neutral-200 truncate">
+                <span className={`text-sm font-bold truncate ${
+                  themeMode === "black" ? "text-neutral-200" : "text-neutral-800"
+                }`}>
                   {user?.primaryEmailAddress?.emailAddress || "Advisory Member"}
                 </span>
                 <span className="text-[10px] text-[#10b981] font-bold tracking-wider">PREMIUM ADVISORY MEMBER</span>
@@ -2320,12 +2342,14 @@ export default function Dashboard() {
           <div className="space-y-4">
             {/* 1. Delete Attached File */}
             <div className="flex flex-col space-y-2">
-              <span className="text-xs font-bold text-neutral-400">Current File Attachment</span>
+              <span className={`text-xs font-bold ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>Current File Attachment</span>
               {attachedFile ? (
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-red-500/5 border border-red-500/10 text-xs">
+                <div className={`flex items-center justify-between p-3 rounded-2xl text-xs border ${
+                  themeMode === "black" ? "bg-red-500/5 border-red-500/10" : "bg-red-500/10 border-red-200"
+                }`}>
                   <div className="flex items-center gap-2 truncate">
-                    <FileText size={15} className="text-red-400 flex-shrink-0" />
-                    <span className="text-neutral-200 truncate font-semibold">{attachedFile.name}</span>
+                    <FileText size={15} className="text-red-500 flex-shrink-0" />
+                    <span className={`truncate font-semibold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-800"}`}>{attachedFile.name}</span>
                   </div>
                   <button
                     onClick={() => {
@@ -2334,13 +2358,15 @@ export default function Dashboard() {
                         alert("File attachment removed successfully.");
                       }
                     }}
-                    className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl font-bold transition duration-300"
+                    className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-bold transition duration-300"
                   >
                     Delete File
                   </button>
                 </div>
               ) : (
-                <div className="p-3 text-center rounded-2xl bg-neutral-900/30 border border-neutral-900 text-xs text-neutral-500">
+                <div className={`p-3 text-center rounded-2xl text-xs border ${
+                  themeMode === "black" ? "bg-neutral-900/30 border-neutral-900 text-neutral-500" : "bg-neutral-50 border-neutral-200 text-neutral-450"
+                }`}>
                   No file attached currently. You can attach a document using the clip icon in the chatbar.
                 </div>
               )}
@@ -2348,9 +2374,11 @@ export default function Dashboard() {
 
             {/* 2. Delete All Conversations */}
             <div className="flex flex-col space-y-2 pt-2">
-              <span className="text-xs font-bold text-neutral-400">Danger Zone</span>
-              <div className="p-4 rounded-2xl bg-red-500/5 border border-red-500/10 space-y-3">
-                <p className="text-xs text-neutral-400 leading-relaxed">
+              <span className={`text-xs font-bold ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>Danger Zone</span>
+              <div className={`p-4 rounded-2xl border space-y-3 ${
+                themeMode === "black" ? "bg-red-500/5 border-red-500/10" : "bg-red-500/5 border-red-200"
+              }`}>
+                <p className={`text-xs leading-relaxed ${themeMode === "black" ? "text-neutral-400" : "text-neutral-605"}`}>
                   Permanently delete all your chat logs, consultation history, and any files embedded inside them. This cannot be undone.
                 </p>
                 {confirmDeleteAll ? (
@@ -2366,7 +2394,11 @@ export default function Dashboard() {
                     <button
                       type="button"
                       onClick={() => setConfirmDeleteAll(false)}
-                      className="px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 border border-white/5 rounded-xl font-bold text-xs text-center transition duration-300"
+                      className={`px-4 py-2.5 rounded-xl font-bold text-xs text-center transition duration-300 border ${
+                        themeMode === "black" 
+                          ? "bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 border-white/5" 
+                          : "bg-white hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 border-neutral-200 shadow-sm"
+                      }`}
                     >
                       Cancel
                     </button>
@@ -2378,8 +2410,10 @@ export default function Dashboard() {
                     disabled={chats.length === 0}
                     className={`w-full py-2.5 rounded-xl font-bold text-xs text-center transition duration-300 flex items-center justify-center gap-2 ${
                       chats.length === 0 
-                        ? "bg-neutral-950 text-neutral-700 border border-neutral-900 cursor-not-allowed"
-                        : "bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/20 hover:border-transparent"
+                        ? themeMode === "black"
+                          ? "bg-neutral-950 text-neutral-700 border border-neutral-900 cursor-not-allowed"
+                          : "bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed"
+                        : "bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 hover:border-transparent"
                     }`}
                   >
                     <Trash2 size={14} />
