@@ -567,7 +567,7 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
             // Readable model name helpers
             const draftModelName = draftModel.includes("trinity") ? "DeepSeek Trinity" : draftModel.split("/")[1];
             const critiqueModelName = critiqueModel.includes("gemma") ? "Google Gemma 4 31B" : critiqueModel.split("/")[1];
-            const synthModelName = synthModel.includes("gemma") ? "Google Gemma 4 31B" : synthModel.includes("trinity") ? "DeepSeek Trinity" : synthModel.includes("deepseek-v4-flash") ? "DeepSeek Flash" : synthModel.split("/")[1];
+            const synthModelName = synthModel.includes("gemma") ? "Google Gemma 4 31B" : synthModel.includes("trinity") ? "DeepSeek Trinity" : synthModel.includes("deepseek-v4-flash") ? "DeepSeek Flash" : synthModel.includes("owl-alpha") ? "OpenRouter Owl Alpha" : synthModel.split("/")[1];
 
             // Step 1: Draft by CFO & Project Manager
             controller.enqueue(encoder.encode(`> 📝 **[CFO & Project Manager]** *(powered by ${draftModelName})* is drafting the financial runway and operational roadmap...\n`));
