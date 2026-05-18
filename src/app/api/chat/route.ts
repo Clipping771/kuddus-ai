@@ -549,23 +549,43 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
         try {
           if (isBrainTrust && !hasImage) { 
             // MULTI-AGENT BRAIN TRUST PIPELINE
-            controller.enqueue(encoder.encode("\n\n> 🧠 **BRAIN TRUST ACTIVATED**\n> Assembling the Board of Directors for Deep Research...\n\n"));
+            controller.enqueue(encoder.encode("\n\n> 🧠 **KACHA MORICH BRAIN TRUST ACTIVATED**\n> Assembling the 15-Agent Executive Board for Deep Analysis...\n\n"));
             
-            // Step 1: Draft
-            controller.enqueue(encoder.encode("> 📝 **Agent 1 (DeepSeek Trinity)** is drafting the initial strategy...\n"));
-            const draftText = await fetchSyncOpenRouter(draftModel, formattedMessages);
-            controller.enqueue(encoder.encode("> ✅ Initial Draft Completed.\n\n"));
+            // Step 1: Draft by CFO & Project Manager Specialist Agents
+            controller.enqueue(encoder.encode("> 📝 **[Agent 1 & 5: CFO & Project Manager]** are drafting the financial runway and operational roadmap...\n"));
+            const draftMessages = [...formattedMessages, { role: "user", content: "Act as the CFO and Project Manager. Draft the initial business model, financial metrics, and week-by-week implementation roadmap. Focus strictly on numbers, execution timelines, and costs." }];
+            const draftText = await fetchSyncOpenRouter(draftModel, draftMessages);
+            controller.enqueue(encoder.encode("> ✅ Financial Runway & Roadmap Draft Completed.\n\n"));
 
-            // Step 2: Critique
-            controller.enqueue(encoder.encode("> 🕵️ **Agent 2 (Google Gemma)** is brutally reviewing the strategy for flaws and edge cases...\n"));
-            const critiqueMessages = [...formattedMessages, { role: "assistant", content: draftText }, { role: "user", content: "CRITIQUE THE ABOVE DRAFT. Perform an exceptionally deep, multi-layered complex analysis. Find hidden logical fallacies, edge cases, missing market data, and structural flaws. Analyze it STRICTLY from the perspective of your specialized agent role. Be brutal, highly technical, and deeply analytical. Do not accept superficial or generic ideas." }];
+            // Step 2: Critique by CTO & Marketing Specialists
+            controller.enqueue(encoder.encode("> 🕵️ **[Agent 6 & 8: CTO & Marketing Director]** are ruthlessly testing the tech-stack, product-market fit, and risk profile...\n"));
+            const critiqueMessages = [
+              ...formattedMessages, 
+              { role: "assistant", content: `Here is the initial CFO & PM roadmap:\n\n${draftText}` }, 
+              { role: "user", content: "Act as the CTO and Chief Marketing Officer. Critically review the draft above. Identify technical bottlenecks, marketing gaps, competitive threats, and structural loopholes. Be brutally honest, highly technical, and deeply analytical." }
+            ];
             const critiqueText = await fetchSyncOpenRouter(critiqueModel, critiqueMessages);
-            controller.enqueue(encoder.encode("> ✅ Peer Review Completed.\n\n"));
+            controller.enqueue(encoder.encode("> ✅ Tech-Stack & Market-Fit Peer Review Completed.\n\n"));
 
-            // Step 3: Synthesis Stream
-            controller.enqueue(encoder.encode(`> ✨ **Agent 3 (${synthModel.split("/")[1]})** is synthesizing the perfect master strategy...\n\n---\n\n`));
+            // Step 3: Synthesis Stream by the CEO (Main Brain)
+            controller.enqueue(encoder.encode(`> ✨ **[Agent 12: CEO (Synthesizer)]** is integrating all specialist insights into the final Master Strategy...\n\n---\n\n`));
             
-            const synthMessages = [...formattedMessages, { role: "user", content: `You are the final Executive Synthesizer, but you MUST remain strictly within your specialized agent persona. Based on my original request, here is the initial draft:\n\n<draft>\n${draftText}\n</draft>\n\nHere is the critical peer-review of that draft:\n\n<critique>\n${critiqueText}\n</critique>\n\nCombine the best parts of the draft and resolve all the flaws pointed out in the critique. Generate an exceptionally deep, highly complex, and masterfully structured strategy. Your analysis must be profound, leveraging advanced frameworks, unconventional insights, and maximum strategic depth. Avoid generic fluff entirely. You MUST follow your specialized agent formatting rules. ${tonePrompt ? `CRITICAL: Your emotional tone MUST be exactly: [ ${tonePrompt} ]. Completely drop your default personality and speak entirely in this requested tone.` : ""} Do NOT mention the internal draft or critique directly; just provide the final, hyper-detailed polished answer as if it came directly from you.` }];
+            const synthMessages = [
+              ...formattedMessages, 
+              { role: "user", content: `You are the CEO (Chief Executive Officer) of this venture. Based on my original request, your specialized departments have submitted their reports.
+
+Here is the CFO & Project Manager's operational draft:
+<draft>
+${draftText}
+</draft>
+
+Here is the CTO & CMO's critical peer-review of that draft:
+<critique>
+${critiqueText}
+</critique>
+
+As the CEO, combine the best parts of the operational draft, resolve all the tech/marketing flaws pointed out in the critique, and synthesize the ultimate, flawless master strategy. You MUST follow your specialized formatting rules. ${tonePrompt ? `CRITICAL: Your emotional tone MUST be exactly: [ ${tonePrompt} ]. Completely drop your default personality and speak entirely in this requested tone.` : ""} Do NOT mention the internal draft or critique directly; just provide the final polished, hyper-detailed answer as if it came directly from the CEO's office.` }
+            ];
             
             const synthRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
               method: "POST",
