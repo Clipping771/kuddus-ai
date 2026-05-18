@@ -551,24 +551,29 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
             // MULTI-AGENT BRAIN TRUST PIPELINE
             controller.enqueue(encoder.encode("\n\n> 🧠 **KACHA MORICH BRAIN TRUST ACTIVATED**\n> Assembling the 15-Agent Executive Board for Deep Analysis...\n\n"));
             
+            // Readable model name helpers
+            const draftModelName = draftModel.includes("trinity") ? "DeepSeek Trinity" : draftModel.split("/")[1];
+            const critiqueModelName = critiqueModel.includes("gemma") ? "Google Gemma 4 31B" : critiqueModel.split("/")[1];
+            const synthModelName = synthModel.includes("gemma") ? "Google Gemma 4 31B" : synthModel.includes("trinity") ? "DeepSeek Trinity" : synthModel.includes("deepseek-v4-flash") ? "DeepSeek Flash" : synthModel.split("/")[1];
+
             // Step 1: Draft by CFO & Project Manager Specialist Agents
-            controller.enqueue(encoder.encode("> 📝 **[Agent 1 & 5: CFO & Project Manager]** are drafting the financial runway and operational roadmap...\n"));
+            controller.enqueue(encoder.encode(`> 📝 **[CFO & Project Manager]** *(powered by ${draftModelName})* is drafting the financial runway and operational roadmap...\n`));
             const draftMessages = [...formattedMessages, { role: "user", content: "Act as the CFO and Project Manager. Draft the initial business model, financial metrics, and week-by-week implementation roadmap. Focus strictly on numbers, execution timelines, and costs." }];
             const draftText = await fetchSyncOpenRouter(draftModel, draftMessages);
-            controller.enqueue(encoder.encode("> ✅ Financial Runway & Roadmap Draft Completed.\n\n"));
+            controller.enqueue(encoder.encode(`> ✅ **${draftModelName}** → Financial Runway & Roadmap Draft Completed.\n\n`));
 
             // Step 2: Critique by CTO & Marketing Specialists
-            controller.enqueue(encoder.encode("> 🕵️ **[Agent 6 & 8: CTO & Marketing Director]** are ruthlessly testing the tech-stack, product-market fit, and risk profile...\n"));
+            controller.enqueue(encoder.encode(`> 🕵️ **[CTO & Marketing Director]** *(powered by ${critiqueModelName})* is ruthlessly testing the tech-stack, product-market fit, and risk profile...\n`));
             const critiqueMessages = [
               ...formattedMessages, 
               { role: "assistant", content: `Here is the initial CFO & PM roadmap:\n\n${draftText}` }, 
               { role: "user", content: "Act as the CTO and Chief Marketing Officer. Critically review the draft above. Identify technical bottlenecks, marketing gaps, competitive threats, and structural loopholes. Be brutally honest, highly technical, and deeply analytical." }
             ];
             const critiqueText = await fetchSyncOpenRouter(critiqueModel, critiqueMessages);
-            controller.enqueue(encoder.encode("> ✅ Tech-Stack & Market-Fit Peer Review Completed.\n\n"));
+            controller.enqueue(encoder.encode(`> ✅ **${critiqueModelName}** → Tech-Stack & Market-Fit Peer Review Completed.\n\n`));
 
             // Step 3: Synthesis Stream by the CEO (Main Brain)
-            controller.enqueue(encoder.encode(`> ✨ **[Agent 12: CEO (Synthesizer)]** is integrating all specialist insights into the final Master Strategy...\n\n---\n\n`));
+            controller.enqueue(encoder.encode(`> ✨ **[CEO Synthesizer]** *(powered by ${synthModelName})* is integrating all specialist insights into the final Master Strategy...\n\n---\n\n`));
             
             const synthMessages = [
               ...formattedMessages, 
