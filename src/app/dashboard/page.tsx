@@ -692,6 +692,54 @@ export default function Dashboard() {
     localStorage.setItem("kacha_selected_tone", toneId);
   };
 
+  // Dynamic prompt suggestions states
+  const [customSuggestions, setCustomSuggestions] = useState<Record<string, string[]>>({});
+  const [isGeneratingPrompts, setIsGeneratingPrompts] = useState(false);
+  const [customPromptText, setCustomPromptText] = useState("");
+
+  const handleGeneratePrompts = async () => {
+    const activeAgent = AGENTS_LIST.find((a) => a.id === selectedAgentId);
+    if (!activeAgent) return;
+    
+    setIsGeneratingPrompts(true);
+    try {
+      const response = await fetch("/api/prompts/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: activeAgent.id,
+          agentName: activeAgent.name,
+          agentDesc: activeAgent.desc
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.suggestions) {
+          setCustomSuggestions(prev => ({
+            ...prev,
+            [selectedAgentId]: data.suggestions
+          }));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to generate custom prompts:", err);
+    } finally {
+      setIsGeneratingPrompts(false);
+    }
+  };
+
+  const handleAddCustomPrompt = () => {
+    if (!customPromptText.trim()) return;
+    const currentList = customSuggestions[selectedAgentId] || 
+      (AGENTS_LIST.find((a) => a.id === selectedAgentId)?.suggestions || []);
+    
+    setCustomSuggestions(prev => ({
+      ...prev,
+      [selectedAgentId]: [customPromptText.trim(), ...currentList]
+    }));
+    setCustomPromptText("");
+  };
+
   const handleAgentChange = (agentId: string) => {
     setSelectedAgentId(agentId);
     localStorage.setItem("kacha_selected_agent", agentId);
@@ -1830,26 +1878,88 @@ export default function Dashboard() {
  
               {/* Prompt Suggestions Grid */}
               <div className="mt-10 w-full text-left">
-                <span className={`text-xs font-semibold uppercase tracking-widest block mb-4 border-b pb-2 ${
-                  themeMode === "black" ? "text-neutral-200 border-neutral-900" : "text-neutral-850 border-neutral-250"
+                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b pb-3 ${
+                  themeMode === "black" ? "border-neutral-900" : "border-neutral-200"
                 }`}>
-                  Select a Case / Consultation Prompt
-                </span>
+                  <span className={`text-xs font-black uppercase tracking-widest ${
+                    themeMode === "black" ? "text-neutral-200" : "text-neutral-850"
+                  }`}>
+                    Select a Case / Consultation Prompt
+                  </span>
+                  
+                  <button
+                    type="button"
+                    onClick={handleGeneratePrompts}
+                    disabled={isGeneratingPrompts}
+                    className={`flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-lg border transition-all duration-300 uppercase tracking-wider ${
+                      themeMode === "black"
+                        ? "bg-[#FF8C00]/10 border-[#FF8C00]/30 text-[#FF8C00] hover:bg-[#FF8C00]/20 disabled:opacity-50 shadow-[0_0_10px_rgba(255,140,0,0.05)]"
+                        : "bg-amber-500/10 border-amber-500/30 text-amber-850 hover:bg-amber-500/20 disabled:opacity-50"
+                    }`}
+                  >
+                    {isGeneratingPrompts ? (
+                      <>
+                        <Loader2 size={11} className="animate-spin" />
+                        <span>Generating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={11} className="animate-pulse" />
+                        <span>AI Generate New Cases</span>
+                      </>
+                    )}
+                  </button>
+                </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {(AGENTS_LIST.find((a) => a.id === selectedAgentId)?.suggestions || []).map((suggestText, sIdx) => (
+                  {(customSuggestions[selectedAgentId] || (AGENTS_LIST.find((a) => a.id === selectedAgentId)?.suggestions || [])).map((suggestText, sIdx) => (
                     <button 
                       key={sIdx}
                       onClick={() => handleQuickSuggest(suggestText)}
-                      className={`p-4 text-left rounded-xl border transition duration-300 text-xs leading-relaxed shadow-sm ${
+                      className={`p-4 text-left rounded-xl border transition duration-300 text-xs leading-relaxed shadow-sm hover:scale-[1.01] active:scale-[0.99] ${
                         themeMode === "black"
-                          ? "border-neutral-900/60 hover:border-neutral-200/30 bg-neutral-900/20 hover:bg-neutral-900/50 text-neutral-300 hover:shadow-[0_0_15px_rgba(255,140,0,0.03)]"
+                          ? "border-neutral-900 bg-neutral-900/20 hover:border-neutral-700/60 hover:bg-neutral-900/50 text-neutral-300 hover:shadow-[0_0_15px_rgba(255,140,0,0.03)]"
                           : "border-neutral-200 hover:border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:shadow-md"
                       }`}
                     >
                       ✨ &ldquo;{suggestText}&rdquo;
                     </button>
                   ))}
+                </div>
+
+                {/* Add Custom Suggestion Prompt Widget */}
+                <div className={`mt-5 p-3 rounded-xl border flex items-center gap-2 ${
+                  themeMode === "black"
+                    ? "bg-neutral-950/40 border-neutral-900"
+                    : "bg-[#F8FAFC] border-neutral-200"
+                }`}>
+                  <input
+                    type="text"
+                    placeholder="Type and add a custom case prompt to this list dynamically..."
+                    value={customPromptText}
+                    onChange={(e) => setCustomPromptText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddCustomPrompt();
+                      }
+                    }}
+                    className={`flex-1 text-xs bg-transparent border-0 outline-none focus:ring-0 px-2 ${
+                      themeMode === "black" ? "text-neutral-200 placeholder-neutral-700" : "text-neutral-800 placeholder-neutral-400"
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomPrompt}
+                    disabled={!customPromptText.trim()}
+                    className={`text-[10px] font-extrabold px-3 py-2 rounded-lg border transition-all duration-300 uppercase tracking-wider ${
+                      themeMode === "black"
+                        ? "bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:text-neutral-100 disabled:opacity-40"
+                        : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50 hover:text-neutral-800 disabled:opacity-40"
+                    }`}
+                  >
+                    ➕ Add Case
+                  </button>
                 </div>
               </div>
             </div>
