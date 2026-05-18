@@ -82,11 +82,11 @@ html, body {
 }
 
 /* Obsidian Black Theme Scoped Prose Styling */
-.theme-black .prose table {
+.prose-invert table {
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   background: rgba(15, 15, 15, 0.5) !important;
 }
-.theme-black .prose th {
+.prose-invert th {
   background-color: rgba(255, 140, 0, 0.06) !important;
   color: #FFFFFF !important;
   font-weight: 700 !important;
@@ -94,39 +94,39 @@ html, body {
   border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
   border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
-.theme-black .prose td {
+.prose-invert td {
   padding: 12px 16px !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
   border-right: 1px solid rgba(255, 255, 255, 0.03) !important;
   color: #D1D5DB !important;
 }
-.theme-black .prose tr:nth-child(even) {
+.prose-invert tr:nth-child(even) {
   background-color: rgba(255, 255, 255, 0.02) !important;
 }
-.theme-black .prose tr:hover {
+.prose-invert tr:hover {
   background-color: rgba(255, 140, 0, 0.03) !important;
 }
-.theme-black .prose strong {
+.prose-invert strong {
   color: #FFFFFF !important;
   font-weight: 600;
 }
-.theme-black .prose blockquote {
+.prose-invert blockquote {
   border-left: 4px solid #FF8C00;
   padding-left: 1rem;
   margin-bottom: 1rem;
   color: #D1D5DB;
   font-style: italic;
 }
-.theme-black .prose p, .theme-black .prose li {
+.prose-invert p, .prose-invert li {
   color: #E2E8F0 !important;
 }
 
 /* System Light Theme Scoped Prose Styling */
-.theme-light .prose table {
+.prose:not(.prose-invert) table {
   border: 1px solid rgba(15, 23, 42, 0.08) !important;
   background: rgba(255, 255, 255, 0.8) !important;
 }
-.theme-light .prose th {
+.prose:not(.prose-invert) th {
   background-color: rgba(255, 140, 0, 0.04) !important;
   color: #0F172A !important;
   font-weight: 700 !important;
@@ -134,30 +134,30 @@ html, body {
   border-bottom: 2px solid rgba(15, 23, 42, 0.1) !important;
   border-right: 1px solid rgba(15, 23, 42, 0.05) !important;
 }
-.theme-light .prose td {
+.prose:not(.prose-invert) td {
   padding: 12px 16px !important;
   border-bottom: 1px solid rgba(15, 23, 42, 0.05) !important;
   border-right: 1px solid rgba(15, 23, 42, 0.03) !important;
   color: #334155 !important;
 }
-.theme-light .prose tr:nth-child(even) {
+.prose:not(.prose-invert) tr:nth-child(even) {
   background-color: rgba(15, 23, 42, 0.02) !important;
 }
-.theme-light .prose tr:hover {
+.prose:not(.prose-invert) tr:hover {
   background-color: rgba(255, 140, 0, 0.02) !important;
 }
-.theme-light .prose strong {
+.prose:not(.prose-invert) strong {
   color: #0F172A !important;
   font-weight: 700;
 }
-.theme-light .prose blockquote {
+.prose:not(.prose-invert) blockquote {
   border-left: 4px solid #FF8C00;
   padding-left: 1rem;
   margin-bottom: 1rem;
   color: #475569;
   font-style: italic;
 }
-.theme-light .prose p, .theme-light .prose li {
+.prose:not(.prose-invert) p, .prose:not(.prose-invert) li {
   color: #1E293B !important;
 }
 
