@@ -554,7 +554,7 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
             const hasBangla = /[\u0980-\u09FF]/.test(message);
             const langInstruction = hasBangla
               ? "CRITICAL: You MUST respond entirely in Bengali (Bangla) script. Do NOT use English in your response."
-              : "Respond in the same language as the user's original message.";
+              : "CRITICAL: Detect the language of the user's original message and respond ENTIRELY in that exact same language. Do NOT switch to English or any other language.";
 
             controller.enqueue(encoder.encode("\n\n> 🧠 **KACHA MORICH BRAIN TRUST ACTIVATED**\n> Assembling the 15-Agent Executive Board for Deep Analysis...\n\n"));
             
