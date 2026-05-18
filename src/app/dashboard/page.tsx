@@ -199,6 +199,117 @@ import Link from "next/link";
 import { parseAnyFile } from "@/lib/fileParser";
 
 // --- CLAUDE-STYLE DOCUMENT ARTIFACTS ---
+const parseMarkdownForPDF = (markdown: string): string => {
+  let lines = markdown.split("\n");
+  let inTable = false;
+  let tableHeaderParsed = false;
+  let tableRows: string[][] = [];
+  let tableHeaders: string[] = [];
+  
+  let resultHtml: string[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i].trim();
+    
+    // Detect Table Row
+    if (line.startsWith("|") && line.endsWith("|")) {
+      inTable = true;
+      let cells = line.split("|").map(c => c.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+      
+      // Check if this is a separator line (e.g. |:---|:---|)
+      const isSeparator = cells.every(c => c.startsWith(":") || c.endsWith(":") || /^-+$/.test(c) || c === "");
+      if (isSeparator) {
+        continue; // skip separator row
+      }
+      
+      if (!tableHeaderParsed) {
+        tableHeaders = cells;
+        tableHeaderParsed = true;
+      } else {
+        tableRows.push(cells);
+      }
+      continue;
+    } else {
+      // If we were in a table and the table ended
+      if (inTable) {
+        let tableHtml = `<table style="width:100%; border-collapse:collapse; margin:20px 0; font-size:13px; border:1px solid rgba(0,0,0,0.08); border-radius:8px; overflow:hidden; font-family:'Segoe UI',sans-serif; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">`;
+        // Headers
+        tableHtml += `<thead style="background:#E11D48; color:white;"><tr>`;
+        tableHeaders.forEach(h => {
+          tableHtml += `<th style="padding:10px 14px; border-bottom:2px solid #E11D48; text-align:left; font-weight:bold; font-size:12px; letter-spacing:0.5px; text-transform:uppercase; white-space:nowrap;">${h}</th>`;
+        });
+        tableHtml += `</tr></thead><tbody>`;
+        // Rows
+        tableRows.forEach((row, rIdx) => {
+          const bg = rIdx % 2 === 0 ? '#ffffff' : '#f8fafc';
+          tableHtml += `<tr style="background:${bg}; border-bottom:1px solid #f1f5f9;">`;
+          row.forEach(cell => {
+            tableHtml += `<td style="padding:10px 14px; text-align:left; color:#334155;">${cell}</td>`;
+          });
+          tableHtml += `</tr>`;
+        });
+        tableHtml += `</tbody></table>`;
+        resultHtml.push(tableHtml);
+        
+        // Reset table state
+        inTable = false;
+        tableHeaderParsed = false;
+        tableHeaders = [];
+        tableRows = [];
+      }
+      resultHtml.push(lines[i]);
+    }
+  }
+  
+  // If the file ends while still in a table
+  if (inTable) {
+    let tableHtml = `<table style="width:100%; border-collapse:collapse; margin:20px 0; font-size:13px; border:1px solid rgba(0,0,0,0.08); border-radius:8px; overflow:hidden; font-family:'Segoe UI',sans-serif; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">`;
+    tableHtml += `<thead style="background:#E11D48; color:white;"><tr>`;
+    tableHeaders.forEach(h => {
+      tableHtml += `<th style="padding:10px 14px; border-bottom:2px solid #E11D48; text-align:left; font-weight:bold; font-size:12px; letter-spacing:0.5px; text-transform:uppercase; white-space:nowrap;">${h}</th>`;
+    });
+    tableHtml += `</tr></thead><tbody>`;
+    tableRows.forEach((row, rIdx) => {
+      const bg = rIdx % 2 === 0 ? '#ffffff' : '#f8fafc';
+      tableHtml += `<tr style="background:${bg}; border-bottom:1px solid #f1f5f9;">`;
+      row.forEach(cell => {
+        tableHtml += `<td style="padding:10px 14px; text-align:left; color:#334155;">${cell}</td>`;
+      });
+      tableHtml += `</tr>`;
+    });
+    tableHtml += `</tbody></table>`;
+    resultHtml.push(tableHtml);
+  }
+  
+  // Rejoin and parse markdown elements
+  let html = resultHtml.join("\n");
+  
+  // Mermaid code blocks
+  html = html.replace(/```mermaid([\s\S]*?)```/g, (_, code) => {
+    return `<div class="mermaid" style="display:flex; justify-content:center; margin: 30px 0; background:#fcfcfc; padding:20px; border-radius:12px; border: 1px solid #eee;">${code.trim()}</div>`;
+  });
+  html = html.replace(/```flowchart([\s\S]*?)```/g, (_, code) => {
+    return `<div class="mermaid" style="display:flex; justify-content:center; margin: 30px 0; background:#fcfcfc; padding:20px; border-radius:12px; border: 1px solid #eee;">${code.trim()}</div>`;
+  });
+  
+  // Standard code blocks
+  html = html.replace(/```([\s\S]*?)```/g, (_, code) => {
+    return `<pre style="background:#f4f4f4; padding:15px; border-radius:8px; overflow-x:auto; font-family:monospace; border:1px solid #e3e3e3;"><code>${code.trim()}</code></pre>`;
+  });
+  
+  // Formatting headers, inline styles
+  html = html
+    .replace(/^### (.*$)/gim, '<h3 style="color:#0f172a;font-family:\'Segoe UI\',sans-serif;margin-top:25px;font-weight:bold;font-size:18px;">$1</h3>')
+    .replace(/^## (.*$)/gim, '<h2 style="color:#E11D48;font-family:\'Segoe UI\',sans-serif;margin-top:30px;border-bottom:2px solid #E11D48;padding-bottom:5px;font-weight:bold;font-size:22px;">$1</h2>')
+    .replace(/^# (.*$)/gim, '<h1 style="color:#E11D48;font-family:\'Segoe UI\',sans-serif;margin-top:35px;border-bottom:3px solid #E11D48;padding-bottom:10px;font-weight:extrabold;font-size:28px;">$1</h1>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code style="background:#f4f4f4;padding:2px 4px;border-radius:4px;font-family:monospace;">$1</code>')
+    .replace(/\n/g, '<br/>');
+
+  return html;
+};
+
 const PDFArtifactCard = ({ content }: { content: string }) => {
   const handleDownload = () => {
     const printWindow = window.open("", "_blank");
@@ -207,26 +318,45 @@ const PDFArtifactCard = ({ content }: { content: string }) => {
       return;
     }
     
-    let html = content
-      .replace(/^### (.*$)/gim, '<h3 style="color:#E11D48;font-family:sans-serif;margin-top:20px;">$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2 style="color:#E11D48;font-family:sans-serif;margin-top:25px;">$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1 style="color:#E11D48;font-family:sans-serif;margin-top:30px;border-bottom:1px solid #ddd;padding-bottom:10px;">$1</h1>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`([^`]+)`/g, '<code style="background:#f4f4f4;padding:2px 4px;border-radius:4px;">$1</code>')
-      .replace(/\n/g, '<br/>');
+    const html = parseMarkdownForPDF(content);
 
     printWindow.document.write(`
       <html>
         <head>
           <title>Kacha Morich AI - Business Intelligence Report</title>
           <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.6; background-color:#fff; }
             h1, h2, h3 { font-family: 'Segoe UI', sans-serif; color: #111; }
+            table { page-break-inside: avoid; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+            thead { display: table-header-group; }
             @media print {
               body { padding: 0; }
+              .no-print { display: none; }
             }
           </style>
+          <!-- Mermaid rendering support -->
+          <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+          <script>
+            window.onload = function() {
+              try {
+                mermaid.initialize({
+                  startOnLoad: true,
+                  theme: 'neutral',
+                  flowchart: {
+                    useMaxWidth: true,
+                    htmlLabels: true
+                  }
+                });
+              } catch(e) { console.error(e); }
+              
+              // Delay execution to allow Mermaid script to construct flowchart SVGs
+              setTimeout(function() {
+                window.print();
+                setTimeout(function() { window.close(); }, 500);
+              }, 1500);
+            };
+          </script>
         </head>
         <body>
           <div style="text-align:center;margin-bottom:30px;border-bottom:2px solid #E11D48;padding-bottom:10px;">
@@ -234,12 +364,6 @@ const PDFArtifactCard = ({ content }: { content: string }) => {
             <p style="margin:5px 0 0 0;font-size:12px;color:#666;text-transform:uppercase;letter-spacing:1px;">Generated Business Artifact</p>
           </div>
           <div>${html}</div>
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            };
-          </script>
         </body>
       </html>
     `);
