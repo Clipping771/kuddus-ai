@@ -834,6 +834,11 @@ export default function Dashboard() {
   const [newAgentInstructions, setNewAgentInstructions] = useState("");
   const [newAgentIcon, setNewAgentIcon] = useState("🚀");
 
+  // Advanced Auto-Generation States
+  const [agentConceptPrompt, setAgentConceptPrompt] = useState("");
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+  const [isGeneratingField, setIsGeneratingField] = useState<string | null>(null);
+
   // Computed all agents combined list (static + custom)
   const allAgents = [
     ...AGENTS_LIST.map(a => ({
@@ -975,6 +980,63 @@ export default function Dashboard() {
   const handleAgentChange = (agentId: string) => {
     setSelectedAgentId(agentId);
     localStorage.setItem("kacha_selected_agent", agentId);
+  };
+
+  const handleGenerateAll = async () => {
+    if (!agentConceptPrompt.trim()) return;
+    setIsGeneratingAll(true);
+    try {
+      const res = await fetch("/api/agents/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idea: agentConceptPrompt }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.name) setNewAgentName(data.name);
+        if (data.banglaName) setNewAgentBanglaName(data.banglaName);
+        if (data.banglaDesc) setNewAgentBanglaDesc(data.banglaDesc);
+        if (data.icon) setNewAgentIcon(data.icon);
+        if (data.instructions) setNewAgentInstructions(data.instructions);
+      } else {
+        alert("Failed to auto-generate agent details. Please try again.");
+      }
+    } catch (err) {
+      console.error("Auto-generate error:", err);
+      alert("An unexpected error occurred.");
+    } finally {
+      setIsGeneratingAll(false);
+    }
+  };
+
+  const handleGenerateField = async (field: "name" | "banglaName" | "banglaDesc" | "instructions" | "icon") => {
+    if (!agentConceptPrompt.trim()) {
+      alert("Please enter a Quick AI Assist Concept first to generate fields!");
+      return;
+    }
+    setIsGeneratingField(field);
+    try {
+      const res = await fetch("/api/agents/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idea: agentConceptPrompt }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (field === "name" && data.name) setNewAgentName(data.name);
+        if (field === "banglaName" && data.banglaName) setNewAgentBanglaName(data.banglaName);
+        if (field === "banglaDesc" && data.banglaDesc) setNewAgentBanglaDesc(data.banglaDesc);
+        if (field === "icon" && data.icon) setNewAgentIcon(data.icon);
+        if (field === "instructions" && data.instructions) setNewAgentInstructions(data.instructions);
+      } else {
+        alert(`Failed to auto-generate ${field}. Please try again.`);
+      }
+    } catch (err) {
+      console.error(`Field generation error for ${field}:`, err);
+      alert("An unexpected error occurred.");
+    } finally {
+      setIsGeneratingField(null);
+    }
   };
 
   const handleCreateCustomAgent = (e: React.FormEvent) => {
@@ -2215,6 +2277,96 @@ export default function Dashboard() {
             <UserButton />
           </div>
         </header>
+
+        {/* Mobile Sub-Header AI Engine Control Bar */}
+        <div className={`md:hidden px-4 py-2 border-b flex items-center justify-between gap-2 overflow-x-auto scrollbar-none transition-colors duration-300 z-30 ${
+          themeMode === "black" ? "border-white/5 bg-[#050505]/95" : "border-neutral-200 bg-white/95 shadow-sm"
+        }`}>
+          {/* AI Brain Model Selector (Mobile) */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border transition duration-300 font-bold text-[10px] ${
+                themeMode === "black"
+                  ? "border-white/10 bg-[#0A0A0A]/50 text-neutral-300 hover:text-white"
+                  : "border-neutral-200 bg-white text-neutral-700 hover:text-neutral-900"
+              }`}
+            >
+              <span>{MODELS_LIST.find((m) => m.id === selectedModelId)?.icon}</span>
+              <span>{MODELS_LIST.find((m) => m.id === selectedModelId)?.name || "Select AI Brain"}</span>
+              <ChevronDown size={10} />
+            </button>
+            {modelDropdownOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setModelDropdownOpen(false)} />
+                <div className={`absolute left-0 mt-2 w-52 rounded-xl border p-1 shadow-2xl z-50 divide-y space-y-1 ${
+                  themeMode === "black"
+                    ? "border-neutral-800 bg-[#090909]/95 backdrop-blur-md divide-neutral-900 text-neutral-300"
+                    : "border-neutral-200 bg-white divide-neutral-100 text-neutral-800 shadow-xl"
+                }`}>
+                  <div className="space-y-0.5">
+                    {MODELS_LIST.map((model) => (
+                      <button
+                        key={model.id}
+                        type="button"
+                        onClick={() => {
+                          handleModelChange(model.id);
+                          setModelDropdownOpen(false);
+                        }}
+                        className={`w-full text-left flex items-center justify-between p-2 rounded-lg transition duration-200 ${
+                          selectedModelId === model.id 
+                            ? themeMode === "black" ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-50 text-emerald-700"
+                            : themeMode === "black" ? "hover:bg-neutral-900 text-neutral-300" : "hover:bg-neutral-50 text-neutral-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs">{model.icon}</span>
+                          <span className="text-[10px] font-bold">{model.name}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Brain Trust Switch (Mobile) */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => handleBrainTrustToggle(!isBrainTrust)}
+              disabled={isLoading || isFileParsing}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border text-[9px] font-black uppercase tracking-wider transition-all duration-300 ${
+                isBrainTrust 
+                  ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]" 
+                  : themeMode === "black"
+                    ? "bg-neutral-900/40 border-neutral-800 text-neutral-500"
+                    : "bg-white border-neutral-200 text-neutral-500 shadow-sm"
+              }`}
+            >
+              <span>🧠 Board: {isBrainTrust ? "ON" : "OFF"}</span>
+              <div className={`w-1.5 h-1.5 rounded-full ${isBrainTrust ? "bg-red-500 animate-pulse" : "bg-neutral-700"}`} />
+            </button>
+            {isBrainTrust && (
+              <select
+                value={boardSize}
+                onChange={(e) => setBoardSize(Number(e.target.value))}
+                className={`px-1.5 py-0.5 text-[8px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${
+                  themeMode === "black" 
+                    ? "bg-neutral-950 border-neutral-800 text-neutral-400"
+                    : "bg-white border-neutral-200 text-neutral-600 shadow-sm"
+                }`}
+              >
+                <option value={3}>3 Ag</option>
+                <option value={5}>5 Ag</option>
+                <option value={9}>9 Ag</option>
+                <option value={16}>16 Ag</option>
+              </select>
+            )}
+          </div>
+        </div>
  
         {/* Scrollable Conversation area */}
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8 space-y-6">
@@ -3137,7 +3289,7 @@ export default function Dashboard() {
         <div className="absolute inset-0 bg-black/75 backdrop-blur-md" onClick={() => setCustomAgentModalOpen(false)} />
         
         {/* Modal Container */}
-        <div className={`relative max-w-md w-full rounded-3xl p-6 border shadow-2xl transition duration-300 transform scale-100 ${
+        <div className={`relative max-w-md w-full max-h-[92vh] overflow-y-auto rounded-3xl p-5 sm:p-6 border shadow-2xl transition duration-300 transform scale-100 scrollbar-thin ${
           themeMode === "black"
             ? "bg-[#0A0A0C]/95 border-white/10 text-neutral-100 shadow-[0_0_50px_rgba(16,185,129,0.05)]"
             : "bg-white/95 border-neutral-200 text-neutral-900 shadow-2xl"
@@ -3168,9 +3320,59 @@ export default function Dashboard() {
           
           {/* Form */}
           <form onSubmit={handleCreateCustomAgent} className="space-y-4 text-xs sm:text-sm font-medium">
+            {/* Quick AI Assist Panel */}
+            <div className={`p-3 rounded-2xl border transition duration-200 ${
+              themeMode === "black" 
+                ? "bg-emerald-950/5 border-emerald-500/10" 
+                : "bg-emerald-500/5 border-emerald-500/15"
+            }`}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Sparkles size={11} className="text-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500">Quick AI Assist (Optional)</span>
+              </div>
+              <p className={`text-[9px] mb-2 leading-relaxed ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
+                Type a basic concept (e.g. "Startup Pitch Deck Roast Coach") to auto-generate all fields below at once, or use it to generate fields individually!
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Describe your agent concept..."
+                  value={agentConceptPrompt}
+                  onChange={(e) => setAgentConceptPrompt(e.target.value)}
+                  className={`flex-1 p-2 rounded-lg border outline-none text-xs ${
+                    themeMode === "black"
+                      ? "bg-black/40 border-white/5 text-white placeholder-neutral-600 focus:border-emerald-500"
+                      : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400 focus:border-emerald-500"
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={handleGenerateAll}
+                  disabled={isGeneratingAll || !agentConceptPrompt.trim()}
+                  className="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-neutral-950 text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 whitespace-nowrap"
+                >
+                  {isGeneratingAll ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                  <span>Auto-Gen All</span>
+                </button>
+              </div>
+            </div>
+
             {/* Agent Name */}
             <div>
-              <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Name</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Name</label>
+                {agentConceptPrompt.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateField("name")}
+                    disabled={isGeneratingField === "name"}
+                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
+                  >
+                    {isGeneratingField === "name" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                    <span>AI Gen</span>
+                  </button>
+                )}
+              </div>
               <input
                 type="text"
                 required
@@ -3187,7 +3389,20 @@ export default function Dashboard() {
 
             {/* Display Name */}
             <div>
-              <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Display Name</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Display Name</label>
+                {agentConceptPrompt.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateField("banglaName")}
+                    disabled={isGeneratingField === "banglaName"}
+                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
+                  >
+                    {isGeneratingField === "banglaName" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                    <span>AI Gen</span>
+                  </button>
+                )}
+              </div>
               <input
                 type="text"
                 required
@@ -3204,7 +3419,20 @@ export default function Dashboard() {
 
             {/* Short Description */}
             <div>
-              <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Short Description</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Short Description</label>
+                {agentConceptPrompt.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateField("banglaDesc")}
+                    disabled={isGeneratingField === "banglaDesc"}
+                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
+                  >
+                    {isGeneratingField === "banglaDesc" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                    <span>AI Gen</span>
+                  </button>
+                )}
+              </div>
               <input
                 type="text"
                 required
@@ -3221,7 +3449,20 @@ export default function Dashboard() {
 
             {/* Icon Selector */}
             <div>
-              <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Icon</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Icon</label>
+                {agentConceptPrompt.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateField("icon")}
+                    disabled={isGeneratingField === "icon"}
+                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
+                  >
+                    {isGeneratingField === "icon" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                    <span>AI Gen</span>
+                  </button>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2 mb-2">
                 {["🚀", "💰", "📈", "📣", "🎨", "💻", "🧠", "🛡️", "🤝", "🔥", "🌶️", "⚡", "🎯", "📊", "🔬"].map((emoji) => (
                   <button
@@ -3244,7 +3485,20 @@ export default function Dashboard() {
 
             {/* System Instructions */}
             <div>
-              <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>System Instructions</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>System Instructions</label>
+                {agentConceptPrompt.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateField("instructions")}
+                    disabled={isGeneratingField === "instructions"}
+                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
+                  >
+                    {isGeneratingField === "instructions" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                    <span>AI Gen</span>
+                  </button>
+                )}
+              </div>
               <p className={`text-[10px] mb-2 leading-relaxed ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
                 Define how this agent should behave, its expertise, frameworks, and response style.
               </p>
