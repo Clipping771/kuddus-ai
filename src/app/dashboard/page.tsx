@@ -525,6 +525,16 @@ const ExcelArtifactCard = ({ content }: { content: string }) => {
   );
 };
 
+interface CustomAgent {
+  id: string;
+  name: string;
+  banglaName: string;
+  banglaDesc: string;
+  icon: string;
+  instructions: string;
+  isCustom?: boolean;
+}
+
 interface Chat {
   id: string;
   title: string;
@@ -814,6 +824,37 @@ export default function Dashboard() {
   // Theme Mode State: "black" (dark) or "light" (clean light)
   const [themeMode, setThemeMode] = useState<"black" | "light">("black");
 
+  // Custom Agent Builder States
+  const [customAgents, setCustomAgents] = useState<CustomAgent[]>([]);
+  const [customAgentModalOpen, setCustomAgentModalOpen] = useState(false);
+  
+  const [newAgentName, setNewAgentName] = useState("");
+  const [newAgentBanglaName, setNewAgentBanglaName] = useState("");
+  const [newAgentBanglaDesc, setNewAgentBanglaDesc] = useState("");
+  const [newAgentInstructions, setNewAgentInstructions] = useState("");
+  const [newAgentIcon, setNewAgentIcon] = useState("🚀");
+
+  // Computed all agents combined list (static + custom)
+  const allAgents = [
+    ...AGENTS_LIST,
+    ...customAgents.map(ca => ({
+      id: ca.id,
+      name: ca.name,
+      banglaName: ca.banglaName,
+      desc: ca.banglaDesc,
+      banglaDesc: ca.banglaDesc,
+      icon: null as any, 
+      placeholder: "How can this specialized custom agent help you today?",
+      suggestions: [
+        "Give me a detailed strategic master plan based on your custom expert instructions.",
+        "Critically evaluate my business concept using your core specialized logic."
+      ],
+      isCustom: true,
+      customIcon: ca.icon,
+      instructions: ca.instructions
+    }))
+  ];
+
   // Robust Hydrated Persistence Engine
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -822,6 +863,15 @@ export default function Dashboard() {
       const savedModel = localStorage.getItem("kacha_selected_model");
       const savedBrainTrust = localStorage.getItem("kacha_is_braintrust");
       const savedTheme = localStorage.getItem("kacha_selected_theme") as "black" | "light";
+      const savedCustomAgents = localStorage.getItem("kacha_custom_agents");
+
+      if (savedCustomAgents) {
+        try {
+          setCustomAgents(JSON.parse(savedCustomAgents));
+        } catch (e) {
+          console.error("Failed to parse custom agents:", e);
+        }
+      }
 
       if (savedTone) setSelectedToneId(savedTone);
       if (savedAgent) setSelectedAgentId(savedAgent);
@@ -874,7 +924,7 @@ export default function Dashboard() {
   const [customPromptText, setCustomPromptText] = useState("");
 
   const handleGeneratePrompts = async () => {
-    const activeAgent = AGENTS_LIST.find((a) => a.id === selectedAgentId);
+    const activeAgent = allAgents.find((a) => a.id === selectedAgentId) || allAgents[0];
     if (!activeAgent) return;
     
     setIsGeneratingPrompts(true);
@@ -908,7 +958,7 @@ export default function Dashboard() {
   const handleAddCustomPrompt = () => {
     if (!customPromptText.trim()) return;
     const currentList = customSuggestions[selectedAgentId] || 
-      (AGENTS_LIST.find((a) => a.id === selectedAgentId)?.suggestions || []);
+      ((allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.suggestions || []);
     
     setCustomSuggestions(prev => ({
       ...prev,
@@ -920,6 +970,55 @@ export default function Dashboard() {
   const handleAgentChange = (agentId: string) => {
     setSelectedAgentId(agentId);
     localStorage.setItem("kacha_selected_agent", agentId);
+  };
+
+  const handleCreateCustomAgent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAgentName.trim() || !newAgentBanglaName.trim() || !newAgentInstructions.trim()) return;
+
+    const newAgent: CustomAgent = {
+      id: `custom-agent-${Date.now()}`,
+      name: newAgentName.trim(),
+      banglaName: newAgentBanglaName.trim(),
+      banglaDesc: newAgentBanglaDesc.trim() || "Custom Specialist AI Advisor",
+      icon: newAgentIcon,
+      instructions: newAgentInstructions.trim(),
+      isCustom: true
+    };
+
+    const updatedList = [...customAgents, newAgent];
+    setCustomAgents(updatedList);
+    localStorage.setItem("kacha_custom_agents", JSON.stringify(updatedList));
+
+    // Auto-select the newly created custom agent!
+    setSelectedAgentId(newAgent.id);
+    localStorage.setItem("kacha_selected_agent", newAgent.id);
+
+    // Reset form
+    setNewAgentName("");
+    setNewAgentBanglaName("");
+    setNewAgentBanglaDesc("");
+    setNewAgentInstructions("");
+    setNewAgentIcon("🚀");
+    
+    // Close modal
+    setCustomAgentModalOpen(false);
+
+    // Start a new chat for the fresh custom agent!
+    if (messages.length > 0) {
+      handleNewChat();
+    }
+  };
+
+  const handleDeleteCustomAgent = (id: string) => {
+    const updated = customAgents.filter((ca) => ca.id !== id);
+    setCustomAgents(updated);
+    localStorage.setItem("kacha_custom_agents", JSON.stringify(updated));
+    // Fallback if the deleted agent was selected
+    if (selectedAgentId === id) {
+      setSelectedAgentId("daily-innovation-idea-agent");
+      localStorage.setItem("kacha_selected_agent", "daily-innovation-idea-agent");
+    }
   };
 
   const handleModelChange = (modelId: string) => {
@@ -1481,6 +1580,7 @@ export default function Dashboard() {
 
     try {
       abortControllerRef.current = new AbortController();
+      const customAgent = customAgents.find((ca) => ca.id === selectedAgentId);
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1495,6 +1595,7 @@ export default function Dashboard() {
           tonePrompt: TONES_LIST.find(t => t.id === selectedToneId)?.prompt,
           isBrainTrust: isBrainTrust,
           boardSize: boardSize,
+          customInstructions: customAgent ? customAgent.instructions : undefined
         }),
       });
 
@@ -1957,15 +2058,18 @@ export default function Dashboard() {
                 }`}
               >
                 {(() => {
-                  const activeAgent = AGENTS_LIST.find((a) => a.id === selectedAgentId);
+                  const activeAgent = allAgents.find((a) => a.id === selectedAgentId) || allAgents[0];
                   if (activeAgent) {
+                    if (activeAgent.isCustom) {
+                      return <span className="text-xs mr-0.5">{activeAgent.customIcon}</span>;
+                    }
                     const AgentIcon = activeAgent.icon;
                     return <AgentIcon size={14} className={`${themeMode === "black" ? "text-neutral-200" : "text-neutral-700"} flex-shrink-0 animate-pulse`} />;
                   }
                   return null;
                 })()}
                 <span className="truncate max-w-[120px] sm:max-w-[180px]">
-                  {AGENTS_LIST.find((a) => a.id === selectedAgentId)?.name || "Select Agent"}
+                  {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.name || "Select Agent"}
                 </span>
                 <ChevronDown size={13} className={`text-neutral-500 transition duration-300 ${agentDropdownOpen ? "rotate-180 text-neutral-200" : ""}`} />
               </button>
@@ -1979,45 +2083,89 @@ export default function Dashboard() {
                       ? "border-neutral-800 bg-[#090909]/95 backdrop-blur-md divide-neutral-900"
                       : "border-neutral-200 bg-white divide-neutral-100 shadow-xl"
                   }`}>
-                    <div className={`px-3 py-1.5 text-[9px] font-black tracking-widest uppercase ${
+                    <div className={`px-3 py-1.5 text-[9px] font-black tracking-widest uppercase flex items-center justify-between ${
                       themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
                     }`}>
-                      Select Specialist AI Agent
+                      <span>Select Specialist AI Agent</span>
                     </div>
+                    
                     <div className="pt-1.5 space-y-0.5 font-sans">
-                      {AGENTS_LIST.map((agent) => {
-                        const AgentIcon = agent.icon;
+                      {/* "+ Create Custom Agent" Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomAgentModalOpen(true);
+                          setAgentDropdownOpen(false);
+                        }}
+                        className={`w-[calc(100%-8px)] mx-1 flex items-center justify-center gap-2 p-2 rounded-lg border-dashed border transition duration-200 text-xs font-black uppercase tracking-wider mb-2 ${
+                          themeMode === "black"
+                            ? "border-emerald-500/25 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/40"
+                            : "border-emerald-200 bg-emerald-500/5 text-emerald-600 hover:bg-emerald-500/10"
+                        }`}
+                      >
+                        <Plus size={13} />
+                        <span>✨ Create Custom Agent</span>
+                      </button>
+
+                      {allAgents.map((agent) => {
                         const isSelected = selectedAgentId === agent.id;
                         return (
-                          <button
-                            key={agent.id}
-                            type="button"
-                            onClick={() => {
-                              handleAgentChange(agent.id);
-                              setAgentDropdownOpen(false);
-                              // Start a new chat if there are already messages in the current one
-                              if (messages.length > 0) {
-                                handleNewChat();
-                              }
-                            }}
-                            className={`w-full text-left flex items-start gap-3 p-2.5 rounded-lg transition duration-200 ${
-                              isSelected 
-                                ? themeMode === "black"
-                                  ? "bg-neutral-200/10 text-white border border-neutral-200/20"
-                                  : "bg-neutral-100 text-neutral-900 border border-neutral-200"
-                                : themeMode === "black"
-                                  ? "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
-                                  : "border border-transparent hover:bg-[#F1F5F9] text-neutral-700 hover:text-neutral-900"
-                            }`}
-                          >
-                            <AgentIcon size={16} className={`mt-0.5 flex-shrink-0 ${isSelected ? (themeMode === "black" ? "text-neutral-200" : "text-neutral-700") : "text-neutral-500"}`} />
-                            <div className="flex flex-col text-xs leading-normal">
-                              <span className={`font-bold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-900"}`}>{agent.banglaName}</span>
-                              <span className="text-[10px] text-neutral-500 leading-normal mt-0.5">
-                                {agent.banglaDesc}
-                              </span>
-                            </div>
-                          </button>
+                          <div key={agent.id} className="relative group/agent flex items-center w-full">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleAgentChange(agent.id);
+                                setAgentDropdownOpen(false);
+                                // Start a new chat if there are already messages in the current one
+                                if (messages.length > 0) {
+                                  handleNewChat();
+                                }
+                              }}
+                              className={`w-full text-left flex items-start gap-3 p-2.5 rounded-lg transition duration-200 pr-10 ${
+                                isSelected 
+                                  ? themeMode === "black"
+                                    ? "bg-neutral-200/10 text-white border border-neutral-200/20"
+                                    : "bg-neutral-100 text-neutral-900 border border-neutral-200"
+                                  : themeMode === "black"
+                                    ? "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
+                                    : "border border-transparent hover:bg-[#F1F5F9] text-neutral-700 hover:text-neutral-900"
+                              }`}
+                            >
+                              {agent.isCustom ? (
+                                <span className="text-base mt-0.5 flex-shrink-0 w-4 h-4 flex items-center justify-center">{agent.customIcon}</span>
+                              ) : (
+                                (() => {
+                                  const AgentIcon = agent.icon;
+                                  return <AgentIcon size={16} className={`mt-0.5 flex-shrink-0 ${isSelected ? (themeMode === "black" ? "text-neutral-200" : "text-neutral-700") : "text-neutral-500"}`} />;
+                                })()
+                              )}
+                              <div className="flex flex-col text-xs leading-normal">
+                                <span className={`font-bold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-900"} flex items-center gap-1.5`}>
+                                  {agent.banglaName}
+                                  {agent.isCustom && (
+                                    <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Custom</span>
+                                  )}
+                                </span>
+                                <span className="text-[10px] text-neutral-500 leading-normal mt-0.5">
+                                  {agent.banglaDesc}
+                                </span>
+                              </div>
+                            </button>
+
+                            {agent.isCustom && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteCustomAgent(agent.id);
+                                }}
+                                className="absolute right-2 p-1.5 rounded-md hover:bg-red-500/15 text-neutral-500 hover:text-red-400 opacity-0 group-hover/agent:opacity-100 transition duration-150 z-10"
+                                title="Delete custom agent"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -2086,13 +2234,13 @@ export default function Dashboard() {
               }`}>
                 {aiName}:{" "}
                 <span className={`font-semibold transition-colors duration-300 ${themeMode === "black" ? "text-emerald-400" : "text-emerald-600"}`}>
-                  {AGENTS_LIST.find((a) => a.id === selectedAgentId)?.banglaName || "Specialist"}
+                  {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.banglaName || "Specialist"}
                 </span>
               </h2>
               <p className={`mt-4 leading-relaxed max-w-xl text-xs sm:text-sm font-medium transition-colors duration-300 ${
                 themeMode === "black" ? "text-neutral-400" : "text-neutral-500"
               }`}>
-                {AGENTS_LIST.find((a) => a.id === selectedAgentId)?.banglaDesc || "কুদ্দুস আলীর ২০+ বছরের বাস্তব বিজনেস অভিজ্ঞতার আলোকে যেকোনো আইডিয়া যাচাই করুন।"}
+                {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.banglaDesc || "কুদ্দুস আলীর ২০+ বছরের বাস্তব বিজনেস অভিজ্ঞতার আলোকে যেকোনো আইডিয়া যাচাই করুন।"}
               </p>
  
               {/* Warning box */}
@@ -2145,7 +2293,7 @@ export default function Dashboard() {
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {(customSuggestions[selectedAgentId] || (AGENTS_LIST.find((a) => a.id === selectedAgentId)?.suggestions || [])).map((suggestText, sIdx) => {
+                  {(customSuggestions[selectedAgentId] || ((allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.suggestions || [])).map((suggestText, sIdx) => {
                     const isObj = typeof suggestText === "object" && suggestText !== null;
                     const cardTitle = isObj ? (suggestText as any).title : "Consultation Scenario";
                     const cardPrompt = isObj ? (suggestText as any).prompt : String(suggestText);
@@ -2599,7 +2747,7 @@ export default function Dashboard() {
                   }
                 }
               }}
-              placeholder={AGENTS_LIST.find((a) => a.id === selectedAgentId)?.placeholder || "Describe your startup idea and which country/market you are targeting..."}
+              placeholder={(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.placeholder || "Describe your startup idea and which country/market you are targeting..."}
               className={`w-full bg-transparent border-0 ring-0 focus:ring-0 focus:outline-none text-sm px-5 py-4 resize-none h-[64px] min-h-[50px] max-h-[200px] ${
                 themeMode === "black"
                   ? "placeholder-neutral-600 text-neutral-200"
@@ -2974,6 +3122,137 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    )}
+    {/* 5. Custom Agent Builder Glassmorphic Modal */}
+    {customAgentModalOpen && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <div className="absolute inset-0 bg-black/75 backdrop-blur-md" onClick={() => setCustomAgentModalOpen(false)} />
+        
+        {/* Modal Container */}
+        <div className={`relative max-w-md w-full rounded-3xl p-6 border shadow-2xl transition duration-300 transform scale-100 ${
+          themeMode === "black"
+            ? "bg-[#0A0A0C]/95 border-white/10 text-neutral-100 shadow-[0_0_50px_rgba(16,185,129,0.05)]"
+            : "bg-white/95 border-neutral-200 text-neutral-900 shadow-2xl"
+        }`}>
+          {/* Modal Header */}
+          <div className="flex items-center justify-between pb-3 border-b border-neutral-800/10 dark:border-white/5 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-emerald-400 text-lg">✨</span>
+              <h3 className="font-extrabold text-sm sm:text-base tracking-tight">Create Custom AI Agent</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCustomAgentModalOpen(false)}
+              className="p-1 rounded-lg hover:bg-neutral-800/10 dark:hover:bg-white/5 text-neutral-500 hover:text-neutral-200 transition duration-150"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          
+          {/* Form */}
+          <form onSubmit={handleCreateCustomAgent} className="space-y-4 text-xs sm:text-sm font-medium">
+            {/* Agent Name */}
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-1.5 font-bold">Agent English Name</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Growth Hacker"
+                value={newAgentName}
+                onChange={(e) => setNewAgentName(e.target.value)}
+                className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${
+                  themeMode === "black"
+                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white"
+                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900"
+                }`}
+              />
+            </div>
+
+            {/* Bangla Name */}
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-1.5 font-bold">Agent Bangla Name (বাংলা নাম)</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. গ্রোথ হ্যাকার"
+                value={newAgentBanglaName}
+                onChange={(e) => setNewAgentBanglaName(e.target.value)}
+                className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${
+                  themeMode === "black"
+                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white"
+                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900"
+                }`}
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-1.5 font-bold">Bangla Description (বিবরণ)</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. কাস্টমার অ্যাকুইজিশন ও ফানেল অপ্টিমাইজেশন স্পেশালিস্ট"
+                value={newAgentBanglaDesc}
+                onChange={(e) => setNewAgentBanglaDesc(e.target.value)}
+                className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${
+                  themeMode === "black"
+                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white"
+                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900"
+                }`}
+              />
+            </div>
+
+            {/* Icon Selector (Emoji Quick Selectors) */}
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-1.5 font-bold">Select Agent Icon Emoji</label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {["🚀", "💰", "📈", "📣", "🎨", "💻", "🧠", "🛡️", "🤝", "🔥", "🌶️"].map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setNewAgentIcon(emoji)}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition duration-150 ${
+                      newAgentIcon === emoji
+                        ? "border-emerald-500 bg-emerald-500/10 scale-110"
+                        : themeMode === "black"
+                          ? "border-white/5 bg-neutral-900 hover:bg-neutral-800"
+                          : "border-neutral-200 bg-white hover:bg-neutral-50"
+                    }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom System instructions */}
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-1.5 font-bold">Custom System Instructions (এজেন্টের মূল কাজ ও আচরণ)</label>
+              <textarea
+                required
+                rows={4}
+                placeholder="Act as a Growth Hacking specialist. You focus on data-driven marketing, customer acquisition cost reduction, AARRR framework optimization, and viral loops..."
+                value={newAgentInstructions}
+                onChange={(e) => setNewAgentInstructions(e.target.value)}
+                className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 resize-none font-mono ${
+                  themeMode === "black"
+                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white"
+                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900"
+                }`}
+              />
+            </div>
+
+            {/* Save Button */}
+            <button
+              type="submit"
+              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-emerald-500/15 hover:shadow-emerald-500/35 hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2 mt-4"
+            >
+              <span>💾 Save Custom Agent</span>
+            </button>
+          </form>
         </div>
       </div>
     )}

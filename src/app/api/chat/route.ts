@@ -247,7 +247,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { message, chatId, agentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust, boardSize = 16 } = await req.json();
+    const { message, chatId, agentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust, boardSize = 16, customInstructions } = await req.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
@@ -422,7 +422,11 @@ export async function POST(req: Request) {
 
     // 4c. Assemble Agent-specific prompt with tone at ABSOLUTE TOP
     if (agentId) {
-      const selectedAgentPrompt = AGENT_INSTRUCTIONS[agentId];
+      let selectedAgentPrompt = AGENT_INSTRUCTIONS[agentId];
+      if (!selectedAgentPrompt && customInstructions) {
+        selectedAgentPrompt = customInstructions;
+      }
+
       if (selectedAgentPrompt) {
         const toneBlock = tonePrompt ? `## 🔒 TONE INSTRUCTION (ABSOLUTE HIGHEST PRIORITY — OVERRIDE EVERYTHING BELOW)
 Your emotional tone for this ENTIRE response MUST be exactly:
