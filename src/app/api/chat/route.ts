@@ -527,7 +527,7 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
     const primaryModel = modelId || "google/gemma-4-31b-it";
     
     // Brain Trust models hardcoded
-    const draftModel = "deepseek/deepseek-r1";
+    const draftModel = "nousresearch/hermes-3-llama-3.1-405b";
     const critiqueModel = "google/gemma-4-31b-it";
     const synthModel = primaryModel; // The user's selected model synthesizes the final response
 
@@ -667,7 +667,7 @@ As the CEO, combine the best parts of the operational draft, resolve all the tec
             let selectedModel = hasImage ? "google/gemini-2.5-flash" : primaryModel;
             const fallbackModels = hasImage 
               ? ["google/gemini-2.5-flash"] 
-              : [primaryModel, "google/gemma-4-31b-it", "deepseek/deepseek-chat", "google/gemini-2.5-flash"];
+              : [primaryModel, "google/gemma-4-31b-it", "deepseek/deepseek-v4-flash", "google/gemini-2.5-flash"];
 
             let response: any;
             for (let i = 0; i < fallbackModels.length; i++) {
