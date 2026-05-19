@@ -79,15 +79,15 @@ export default function Home() {
         </div>
 
         {/* Hero Title - Masterpiece Typography */}
-        <h1 className="text-5xl sm:text-7xl md:text-8xl font-extrabold tracking-tight max-w-5xl leading-[1.05] text-white">
-          <span className="bg-clip-text text-transparent bg-gradient-to-b from-white via-neutral-100 to-neutral-400 drop-shadow-sm">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight max-w-5xl leading-[1.1] text-white">
+          <span className="bg-clip-text text-transparent bg-gradient-to-b from-white via-neutral-150 to-neutral-400 drop-shadow-sm">
             Meet Kacha Morich AI.
           </span>
-          <span className="block mt-6 text-2xl sm:text-4xl md:text-5xl font-light text-[#9A9A9F] tracking-tight leading-snug">
+          <span className="block mt-5 text-xl sm:text-3xl md:text-4xl font-light text-[#9A9A9F] tracking-tight leading-snug">
             The advisory engine built for{" "}
-            <span className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-300 relative inline-block drop-shadow-[0_2px_15px_rgba(16,185,129,0.15)]">
+            <span className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-emerald-300 to-teal-300 relative inline-block drop-shadow-[0_2px_15px_rgba(16,185,129,0.15)]">
               raw, unfiltered truth
-              <span className="absolute bottom-1.5 left-0 w-full h-[2px] bg-gradient-to-r from-emerald-400 to-amber-300 opacity-60 rounded-full" />
+              <span className="absolute bottom-1 left-0 w-full h-[2px] bg-gradient-to-r from-emerald-500 to-teal-400 opacity-60 rounded-full" />
             </span>
           </span>
         </h1>
