@@ -1610,7 +1610,7 @@ export default function Dashboard() {
     >
       {/* 1. Sidebar - Collapsible on Mobile */}
       <aside 
-        className={`fixed inset-y-0 left-0 z-40 w-72 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 transition-colors duration-300 ${
+        className={`fixed inset-y-0 left-0 z-40 w-72 flex-shrink-0 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 transition-colors duration-300 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } ${
           themeMode === "black" 
@@ -1783,7 +1783,7 @@ export default function Dashboard() {
           </div>
         )}
         {/* Dynamic header */}
-        <header className={`h-16 px-4 sm:px-6 border-b backdrop-blur-xl flex items-center justify-between z-10 transition-colors duration-300 ${
+        <header className={`h-16 px-4 sm:px-6 border-b backdrop-blur-xl flex items-center justify-between z-30 transition-colors duration-300 ${
           themeMode === "black" 
             ? "border-white/5 bg-[#050505]/80" 
             : "border-neutral-200 bg-[#FFFFFF]/80 shadow-sm"
