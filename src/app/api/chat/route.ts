@@ -566,11 +566,18 @@ Apply the following highly advanced analysis steps:
     }
 
     // 6. Call OpenRouter API with Streaming OR Brain Trust Pipeline
-    const primaryModel = modelId || "google/gemma-4-31b-it";
+    let resolvedModelId = modelId || "google/gemma-2-9b-it:free";
+    if (resolvedModelId === "google/gemma-4-31b-it") {
+      resolvedModelId = "google/gemma-2-9b-it:free";
+    } else if (resolvedModelId === "deepseek/deepseek-v4-flash") {
+      resolvedModelId = "deepseek/deepseek-chat:free";
+    }
 
+    const primaryModel = resolvedModelId;
+    
     // Brain Trust models hardcoded
     const draftModel = "nousresearch/hermes-3-llama-3.1-405b";
-    const critiqueModel = "google/gemma-4-31b-it";
+    const critiqueModel = "google/gemma-2-9b-it:free";
     const synthModel = primaryModel; // The user's selected model synthesizes the final response
 
     const encoder = new TextEncoder();
