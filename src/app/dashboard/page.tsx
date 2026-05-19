@@ -753,6 +753,9 @@ const MODELS_LIST = [
   { id: "nousresearch/hermes-3-llama-3.1-405b", name: "Hermes 3 405B Instruct", icon: "🧠", badge: "Max Reasoning" },
   { id: "openai/gpt-oss-120b:free", name: "GPT OSS 120B", icon: "🤖", badge: "Free" },
   { id: "nvidia/nemotron-3-super-120b-a12b:free", name: "Nvidia Nemotron 120B", icon: "🐲", badge: "Free" },
+  { id: "baidu/cobuddy:free", name: "Baidu Cobuddy", icon: "🐼", badge: "Free" },
+  { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B", icon: "🦙", badge: "Free" },
+  { id: "arcee-ai/trinity-large-thinking:free", name: "Trinity Large", icon: "🧩", badge: "Free" },
   { id: "openrouter/owl-alpha", name: "Owl Alpha", icon: "🦉", badge: "Free Reasoning" },
 ];
 
