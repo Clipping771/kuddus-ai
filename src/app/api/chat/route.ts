@@ -474,27 +474,39 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
     const parseMessageContent = (role: string, rawContent: string) => {
       if (role !== "user" || !rawContent) return rawContent;
       
-      const base64Regex = /\[IMAGE_BASE64:(data:image\/[^\]]+)\]/;
-      const match = rawContent.match(base64Regex);
+      const base64RegexGlobal = /\[IMAGE_BASE64:(data:image\/[^\]]+)\]/g;
+      const base64RegexSingle = /\[IMAGE_BASE64:(data:image\/[^\]]+)\]/;
+      
+      const matches = rawContent.match(base64RegexGlobal);
 
-      if (match && hasImage) {
-        const imageUrl = match[1];
-        const textPrompt = rawContent.replace(base64Regex, "").trim();
-        return [
+      if (matches && matches.length > 0 && hasImage) {
+        const imageUrls = matches.map(matchStr => {
+          const singleMatch = matchStr.match(base64RegexSingle);
+          return singleMatch ? singleMatch[1] : null;
+        }).filter(Boolean) as string[];
+
+        const textPrompt = rawContent.replace(base64RegexGlobal, "").trim();
+        
+        const contentArray: any[] = [
           {
             type: "text",
-            text: textPrompt || "Analyze this image.",
-          },
-          {
+            text: textPrompt || "Analyze the attached image(s).",
+          }
+        ];
+
+        imageUrls.forEach(url => {
+          contentArray.push({
             type: "image_url",
             image_url: {
-              url: imageUrl,
+              url: url,
             },
-          },
-        ];
+          });
+        });
+
+        return contentArray;
       }
 
-      return rawContent.replace(base64Regex, "").trim();
+      return rawContent.replace(base64RegexGlobal, "").trim();
     };
 
     if (history && history.length > 0) {

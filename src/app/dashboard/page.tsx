@@ -2921,25 +2921,54 @@ export default function Dashboard() {
             {/* Attached file preview or parsing indicator */}
             {/* Attached files preview */}
             {attachedFiles.length > 0 && (
-              <div className="mx-5 my-2 flex flex-wrap gap-2">
-                {attachedFiles.map((att, attIdx) => (
-                  <div key={attIdx} className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-2 max-w-[200px] shadow-sm animate-fade-in ${
-                    themeMode === "black"
-                      ? "bg-gradient-to-r from-neutral-200/10 to-transparent border-neutral-200/15 text-white"
-                      : "bg-[#FAFAFA] border-neutral-200 text-neutral-850"
-                  }`}>
-                    <FileText size={13} className="text-emerald-400 flex-shrink-0" />
-                    <span className="truncate font-semibold flex-1">{att.name}</span>
-                    <button 
-                      type="button" 
-                      onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx))}
-                      className="p-0.5 text-neutral-400 hover:text-red-400 transition"
-                      title="Remove file"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ))}
+              <div className="mx-5 my-2 flex flex-wrap gap-2.5">
+                {attachedFiles.map((att, attIdx) => {
+                  const imageMatch = att.content.match(/\[IMAGE_BASE64:(data:image\/[^\]]+)\]/);
+                  const isImage = !!imageMatch;
+                  const imgSrc = imageMatch ? imageMatch[1] : "";
+
+                  if (isImage) {
+                    return (
+                      <div key={attIdx} className="relative group/thumb w-14 h-14 rounded-xl border overflow-hidden shadow-md animate-fade-in flex-shrink-0" style={{ borderColor: themeMode === "black" ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)" }}>
+                        <img 
+                          src={imgSrc} 
+                          alt={att.name} 
+                          className="w-full h-full object-cover" 
+                        />
+                        {/* Hover Overlay with Delete button */}
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-all duration-200">
+                          <button
+                            type="button"
+                            onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx))}
+                            className="p-1 rounded-full bg-red-600/95 text-white hover:bg-red-700 hover:scale-110 transition duration-150"
+                            title="Remove image"
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={attIdx} className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-2 max-w-[200px] shadow-sm animate-fade-in ${
+                      themeMode === "black"
+                        ? "bg-gradient-to-r from-neutral-200/10 to-transparent border-neutral-200/15 text-white"
+                        : "bg-[#FAFAFA] border-neutral-200 text-neutral-850"
+                    }`}>
+                      <FileText size={13} className="text-emerald-400 flex-shrink-0" />
+                      <span className="truncate font-semibold flex-1">{att.name}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx))}
+                        className="p-0.5 text-neutral-400 hover:text-red-400 transition"
+                        title="Remove file"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
             {isFileParsing && (
