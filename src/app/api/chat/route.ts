@@ -503,7 +503,14 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
         
         // Safe role reminder injected directly into user's latest query to respect Alternating Roles Chat Template rule
         if (idx === truncatedHistory.length - 1 && agentId && msg.role === "user") {
-          msgContent = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}". Do NOT fall back to your general persona. Keep your responses direct and professional.]\n\n${msgContent}`;
+          if (Array.isArray(msgContent)) {
+            const textObj = msgContent.find((item: any) => item.type === "text");
+            if (textObj) {
+              textObj.text = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}". Do NOT fall back to your general persona. Keep your responses direct and professional.]\n\n${textObj.text}`;
+            }
+          } else {
+            msgContent = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}". Do NOT fall back to your general persona. Keep your responses direct and professional.]\n\n${msgContent}`;
+          }
         }
 
         formattedMessages.push({
@@ -515,7 +522,14 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
       // Fallback if history query returns empty but we know we just saved the user message
       let msgContent = parseMessageContent("user", message);
       if (agentId) {
-        msgContent = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}". Do NOT fall back to your general persona.]\n\n${msgContent}`;
+        if (Array.isArray(msgContent)) {
+          const textObj = msgContent.find((item: any) => item.type === "text");
+          if (textObj) {
+            textObj.text = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}". Do NOT fall back to your general persona.]\n\n${textObj.text}`;
+          }
+        } else {
+          msgContent = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}". Do NOT fall back to your general persona.]\n\n${msgContent}`;
+        }
       }
       formattedMessages.push({
         role: "user",
