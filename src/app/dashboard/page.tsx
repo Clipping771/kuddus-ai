@@ -836,7 +836,12 @@ export default function Dashboard() {
 
   // Computed all agents combined list (static + custom)
   const allAgents = [
-    ...AGENTS_LIST,
+    ...AGENTS_LIST.map(a => ({
+      ...a,
+      isCustom: false,
+      customIcon: undefined as string | undefined,
+      instructions: undefined as string | undefined
+    })),
     ...customAgents.map(ca => ({
       id: ca.id,
       name: ca.name,
