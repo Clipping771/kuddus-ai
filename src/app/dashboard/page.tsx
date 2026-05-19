@@ -759,16 +759,13 @@ const TONES_LIST = [
 ];
 
 const MODELS_LIST = [
-  { id: "google/gemma-4-31b-it", name: "Google Gemma 31B", icon: "💎", badge: "Primary" },
-  { id: "arcee-ai/trinity-large-thinking:free", name: "Trinity Large (Thinking)", icon: "🔮", badge: "Reasoning King" },
-  { id: "deepseek/deepseek-v4-flash", name: "DeepSeek V4 Flash", icon: "⚡", badge: "Super Fast" },
-  { id: "nousresearch/hermes-3-llama-3.1-405b", name: "Hermes 3 405B Instruct", icon: "🧠", badge: "Max Reasoning" },
-  { id: "openai/gpt-oss-120b:free", name: "GPT OSS 120B", icon: "🤖", badge: "OSS Giant" },
-  { id: "nvidia/nemotron-3-super-120b-a12b:free", name: "Nvidia Nemotron 120B", icon: "🐲", badge: "Enterprise" },
-  { id: "baidu/cobuddy:free", name: "Baidu Cobuddy", icon: "🐼", badge: "Smart Agent" },
-  { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B", icon: "🦙", badge: "Meta Logic" },
-  { id: "liquid/lfm-2.5-1.2b-thinking:free", name: "Liquid LFM Thinking", icon: "💧", badge: "Fluid Logic" },
-  { id: "openrouter/owl-alpha", name: "Owl Alpha", icon: "🦉", badge: "Alpha Tier" },
+  { id: "google/gemma-2-9b-it:free", name: "Gemma 2 9B", icon: "💎", badge: "Primary" },
+  { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B", icon: "🔮", badge: "Reasoning King" },
+  { id: "deepseek/deepseek-chat:free", name: "DeepSeek V3", icon: "⚡", badge: "Super Fast" },
+  { id: "qwen/qwen-2.5-coder-32b-instruct:free", name: "Qwen 2.5 Coder", icon: "🧠", badge: "Max Coding" },
+  { id: "meta-llama/llama-3.1-405b-instruct:free", name: "Llama 3.1 405B", icon: "🤖", badge: "OSS Giant" },
+  { id: "google/gemini-2.5-flash:free", name: "Gemini 2.5 Flash", icon: "⚡", badge: "Multimodal" },
+  { id: "meta-llama/llama-3.2-11b-vision-instruct:free", name: "Llama 3.2 Vision", icon: "👁️", badge: "Fluid Vision" },
 ];
 
 function parseChatTitle(rawTitle: string) {

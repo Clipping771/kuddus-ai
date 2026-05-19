@@ -756,7 +756,13 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                   "google/gemini-flash-1.5:free",
                   "meta-llama/llama-3.2-11b-vision-instruct:free"
                 ] 
-              : [primaryModel, "google/gemma-4-31b-it", "deepseek/deepseek-v4-flash", "google/gemini-2.5-flash"];
+              : [
+                  primaryModel,
+                  "google/gemma-2-9b-it:free",
+                  "deepseek/deepseek-chat:free",
+                  "meta-llama/llama-3.3-70b-instruct:free",
+                  "qwen/qwen-2.5-coder-32b-instruct:free"
+                ];
 
             let response: any;
             for (let i = 0; i < fallbackModels.length; i++) {
