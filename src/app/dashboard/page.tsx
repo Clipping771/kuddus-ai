@@ -2965,6 +2965,7 @@ export default function Dashboard() {
                   onChange={handleFileUpload} 
                   accept=".txt,.md,.csv,.json,.pdf,.docx,.xlsx,.xls,.png,.jpg,.jpeg,.webp"
                   className="hidden" 
+                  multiple
                 />
                 
                 {/* Paperclip Button */}
