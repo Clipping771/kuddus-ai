@@ -2072,18 +2072,18 @@ export default function Dashboard() {
                     onClick={handleGeneratePrompts}
                     disabled={isGeneratingPrompts}
                     title="Generate New AI Consultation Cases"
-                    className={`p-1.5 rounded-full border transition-all duration-300 hover:scale-105 active:scale-95 ${
+                    className={`p-1.5 rounded-full border transition-all duration-300 hover:scale-110 active:scale-95 ${
                       isGeneratingPrompts
                         ? "opacity-50 cursor-not-allowed"
                         : themeMode === "black"
-                          ? "bg-neutral-950/60 border-neutral-850 text-neutral-400 hover:text-amber-400 hover:border-amber-500/30 hover:shadow-[0_0_10px_rgba(245,158,11,0.1)]"
-                          : "bg-white border-neutral-200 text-neutral-500 hover:text-amber-600 hover:border-amber-500/25 shadow-sm"
+                          ? "bg-amber-500/10 border-amber-500/40 text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.15)] animate-pulse hover:animate-none hover:shadow-[0_0_18px_rgba(245,158,11,0.45)] hover:border-amber-400"
+                          : "bg-amber-500/10 border-amber-500/35 text-amber-600 shadow-[0_0_10px_rgba(245,158,11,0.1)] animate-pulse hover:animate-none hover:shadow-[0_0_15px_rgba(245,158,11,0.3)] hover:border-amber-500"
                     }`}
                   >
                     {isGeneratingPrompts ? (
                       <Loader2 size={11} className="animate-spin text-amber-500" />
                     ) : (
-                      <Sparkles size={11} className="text-amber-500 animate-pulse" />
+                      <Sparkles size={11} className="text-amber-500" />
                     )}
                   </button>
                 </div>
