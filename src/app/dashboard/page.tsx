@@ -879,9 +879,10 @@ export default function Dashboard() {
     
     setIsGeneratingPrompts(true);
     try {
-      const response = await fetch("/api/prompts/generate", {
+      const response = await fetch(`/api/prompts/generate?t=${Date.now()}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store",
         body: JSON.stringify({
           agentId: activeAgent.id,
           agentName: activeAgent.name,

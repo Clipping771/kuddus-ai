@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
+export const dynamic = "force-dynamic";
+
 // Fisher-Yates shuffle helper to ensure randomized high-quality suggestions on every single fall back
 function shuffleArray<T>(array: T[]): T[] {
   const arr = [...array];
