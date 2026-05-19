@@ -60,7 +60,7 @@ const MermaidDiagram = ({ chart }: { chart: string }) => {
     const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
     const URL = window.URL || window.webkitURL || window;
     const blobURL = URL.createObjectURL(svgBlob);
-    
+
     const image = new Image();
     image.onload = () => {
       const canvas = document.createElement("canvas");
@@ -73,7 +73,7 @@ const MermaidDiagram = ({ chart }: { chart: string }) => {
         context.fillRect(0, 0, canvas.width, canvas.height);
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
         const png = canvas.toDataURL("image/png");
-        
+
         const a = document.createElement("a");
         a.href = png;
         a.download = `kacha_morich_uml_${Date.now()}.png`;
@@ -145,9 +145,9 @@ const MermaidDiagram = ({ chart }: { chart: string }) => {
           </button>
         </div>
       </div>
-      
+
       {/* SVG Diagram Output Render Container */}
-      <div 
+      <div
         ref={containerRef}
         className="p-6 flex justify-center overflow-x-auto bg-[#030303] shadow-inner [&_svg]:max-w-full [&_svg]:h-auto [&_svg_rect]:fill-neutral-900 [&_svg_rect]:stroke-amber-500/30 [&_svg_rect]:stroke-1 [&_svg_text]:fill-neutral-100 [&_svg_.actor]:fill-neutral-900 [&_svg_.actor]:stroke-amber-500/40 [&_svg_.messageLine0]:stroke-amber-500/60 [&_svg_.messageLine1]:stroke-amber-500/60 [&_svg_#arrowhead]:fill-amber-500"
         dangerouslySetInnerHTML={{ __html: svg }}
@@ -155,14 +155,14 @@ const MermaidDiagram = ({ chart }: { chart: string }) => {
     </div>
   );
 };
-import { 
-  Plus, 
-  Trash2, 
-  Send, 
-  Menu, 
-  X, 
-  ArrowLeft, 
-  MessageSquare, 
+import {
+  Plus,
+  Trash2,
+  Send,
+  Menu,
+  X,
+  ArrowLeft,
+  MessageSquare,
   CornerDownLeft,
   Sparkles,
   ShieldCheck,
@@ -200,19 +200,19 @@ import Link from "next/link";
 import { parseAnyFile } from "@/lib/fileParser";
 const parseThoughtAndContent = (text: string): { thought: string; content: string } => {
   if (!text) return { thought: "", content: "" };
-  
+
   // 1. Try <thought> tags
   let thoughtStart = text.indexOf("<thought>");
   let thoughtEnd = text.indexOf("</thought>");
   let tagOffset = 9;
-  
+
   // 2. Fallback to <think> tags (DeepSeek native)
   if (thoughtStart === -1) {
     thoughtStart = text.indexOf("<think>");
     thoughtEnd = text.indexOf("</think>");
     tagOffset = 7;
   }
-  
+
   if (thoughtStart !== -1) {
     if (thoughtEnd !== -1) {
       // Completed thought block
@@ -226,7 +226,7 @@ const parseThoughtAndContent = (text: string): { thought: string; content: strin
       return { thought, content };
     }
   }
-  
+
   return { thought: "", content: text };
 };
 
@@ -237,23 +237,23 @@ const parseMarkdownForPDF = (markdown: string): string => {
   let tableHeaderParsed = false;
   let tableRows: string[][] = [];
   let tableHeaders: string[] = [];
-  
+
   let resultHtml: string[] = [];
-  
+
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].trim();
-    
+
     // Detect Table Row
     if (line.startsWith("|") && line.endsWith("|")) {
       inTable = true;
       let cells = line.split("|").map(c => c.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
-      
+
       // Check if this is a separator line (e.g. |:---|:---|)
       const isSeparator = cells.every(c => c.startsWith(":") || c.endsWith(":") || /^-+$/.test(c) || c === "");
       if (isSeparator) {
         continue; // skip separator row
       }
-      
+
       if (!tableHeaderParsed) {
         tableHeaders = cells;
         tableHeaderParsed = true;
@@ -282,7 +282,7 @@ const parseMarkdownForPDF = (markdown: string): string => {
         });
         tableHtml += `</tbody></table>`;
         resultHtml.push(tableHtml);
-        
+
         // Reset table state
         inTable = false;
         tableHeaderParsed = false;
@@ -292,7 +292,7 @@ const parseMarkdownForPDF = (markdown: string): string => {
       resultHtml.push(lines[i]);
     }
   }
-  
+
   // If the file ends while still in a table
   if (inTable) {
     let tableHtml = `<table style="width:100%; border-collapse:collapse; margin:20px 0; font-size:13px; border:1px solid rgba(0,0,0,0.08); border-radius:8px; overflow:hidden; font-family:'Segoe UI',sans-serif; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">`;
@@ -312,10 +312,10 @@ const parseMarkdownForPDF = (markdown: string): string => {
     tableHtml += `</tbody></table>`;
     resultHtml.push(tableHtml);
   }
-  
+
   // Rejoin and parse markdown elements
   let html = resultHtml.join("\n");
-  
+
   // Mermaid code blocks
   html = html.replace(/```mermaid([\s\S]*?)```/g, (_, code) => {
     return `<div class="mermaid" style="display:flex; justify-content:center; margin: 30px 0; background:#fcfcfc; padding:20px; border-radius:12px; border: 1px solid #eee;">${code.trim()}</div>`;
@@ -323,12 +323,12 @@ const parseMarkdownForPDF = (markdown: string): string => {
   html = html.replace(/```flowchart([\s\S]*?)```/g, (_, code) => {
     return `<div class="mermaid" style="display:flex; justify-content:center; margin: 30px 0; background:#fcfcfc; padding:20px; border-radius:12px; border: 1px solid #eee;">${code.trim()}</div>`;
   });
-  
+
   // Standard code blocks
   html = html.replace(/```([\s\S]*?)```/g, (_, code) => {
     return `<pre style="background:#f4f4f4; padding:15px; border-radius:8px; overflow-x:auto; font-family:monospace; border:1px solid #e3e3e3;"><code>${code.trim()}</code></pre>`;
   });
-  
+
   // Formatting headers, inline styles
   html = html
     .replace(/^### (.*$)/gim, '<h3 style="color:#0f172a;font-family:\'Segoe UI\',sans-serif;margin-top:25px;font-weight:bold;font-size:18px;">$1</h3>')
@@ -349,7 +349,7 @@ const PDFArtifactCard = ({ content }: { content: string }) => {
       alert("Please allow popups to export as PDF");
       return;
     }
-    
+
     const html = parseMarkdownForPDF(content);
 
     printWindow.document.write(`
@@ -438,7 +438,7 @@ const WordArtifactCard = ({ content }: { content: string }) => {
         </body>
       </html>
     `;
-    
+
     const blob = new Blob(['\ufeff' + wordContent], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -479,7 +479,7 @@ const ExcelArtifactCard = ({ content }: { content: string }) => {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (line.startsWith('|')) {
-        if (line.includes('---')) continue; 
+        if (line.includes('---')) continue;
         const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
         const csvRow = cells.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',');
         csvContent += csvRow + '\r\n';
@@ -759,13 +759,16 @@ const TONES_LIST = [
 ];
 
 const MODELS_LIST = [
-  { id: "google/gemma-2-9b-it:free", name: "Gemma 2 9B", icon: "💎", badge: "Primary" },
-  { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B", icon: "🔮", badge: "Reasoning King" },
-  { id: "deepseek/deepseek-chat:free", name: "DeepSeek V3", icon: "⚡", badge: "Super Fast" },
-  { id: "qwen/qwen-2.5-coder-32b-instruct:free", name: "Qwen 2.5 Coder", icon: "🧠", badge: "Max Coding" },
-  { id: "meta-llama/llama-3.1-405b-instruct:free", name: "Llama 3.1 405B", icon: "🤖", badge: "OSS Giant" },
-  { id: "google/gemini-2.5-flash:free", name: "Gemini 2.5 Flash", icon: "⚡", badge: "Multimodal" },
-  { id: "meta-llama/llama-3.2-11b-vision-instruct:free", name: "Llama 3.2 Vision", icon: "👁️", badge: "Fluid Vision" },
+  { id: "google/gemma-4-31b-it", name: "Google Gemma 31B", icon: "💎", badge: "Primary" },
+  { id: "arcee-ai/trinity-large-thinking:free", name: "Trinity Large (Thinking)", icon: "🔮", badge: "Reasoning King" },
+  { id: "deepseek/deepseek-v4-flash", name: "DeepSeek V4 Flash", icon: "⚡", badge: "Super Fast" },
+  { id: "nousresearch/hermes-3-llama-3.1-405b", name: "Hermes 3 405B Instruct", icon: "🧠", badge: "Max Reasoning" },
+  { id: "openai/gpt-oss-120b:free", name: "GPT OSS 120B", icon: "🤖", badge: "OSS Giant" },
+  { id: "nvidia/nemotron-3-super-120b-a12b:free", name: "Nvidia Nemotron 120B", icon: "🐲", badge: "Enterprise" },
+  { id: "baidu/cobuddy:free", name: "Baidu Cobuddy", icon: "🐼", badge: "Smart Agent" },
+  { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B", icon: "🦙", badge: "Meta Logic" },
+  { id: "liquid/lfm-2.5-1.2b-thinking:free", name: "Liquid LFM Thinking", icon: "💧", badge: "Fluid Logic" },
+  { id: "openrouter/owl-alpha", name: "Owl Alpha", icon: "🦉", badge: "Alpha Tier" },
 ];
 
 function parseChatTitle(rawTitle: string) {
@@ -807,7 +810,7 @@ export default function Dashboard() {
   const [isSyncing, setIsSyncing] = useState(true);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("daily-innovation-idea-agent");
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
-  
+
   const [selectedToneId, setSelectedToneId] = useState<string>("brutally-honest");
   const [toneDropdownOpen, setToneDropdownOpen] = useState(false);
 
@@ -824,7 +827,7 @@ export default function Dashboard() {
   // Custom Agent Builder States
   const [customAgents, setCustomAgents] = useState<CustomAgent[]>([]);
   const [customAgentModalOpen, setCustomAgentModalOpen] = useState(false);
-  
+
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentBanglaName, setNewAgentBanglaName] = useState("");
   const [newAgentBanglaDesc, setNewAgentBanglaDesc] = useState("");
@@ -850,7 +853,7 @@ export default function Dashboard() {
       banglaName: ca.banglaName,
       desc: ca.banglaDesc,
       banglaDesc: ca.banglaDesc,
-      icon: null as any, 
+      icon: null as any,
       placeholder: "How can this specialized custom agent help you today?",
       suggestions: [
         "Give me a detailed strategic master plan based on your custom expert instructions.",
@@ -884,7 +887,7 @@ export default function Dashboard() {
       if (savedAgent) setSelectedAgentId(savedAgent);
       if (savedModel) setSelectedModelId(savedModel);
       if (savedBrainTrust) setIsBrainTrust(savedBrainTrust === "true");
-      
+
       if (savedTheme) {
         setThemeMode(savedTheme);
       } else {
@@ -933,7 +936,7 @@ export default function Dashboard() {
   const handleGeneratePrompts = async () => {
     const activeAgent = allAgents.find((a) => a.id === selectedAgentId) || allAgents[0];
     if (!activeAgent) return;
-    
+
     setIsGeneratingPrompts(true);
     try {
       const response = await fetch(`/api/prompts/generate?t=${Date.now()}`, {
@@ -964,9 +967,9 @@ export default function Dashboard() {
 
   const handleAddCustomPrompt = () => {
     if (!customPromptText.trim()) return;
-    const currentList = customSuggestions[selectedAgentId] || 
+    const currentList = customSuggestions[selectedAgentId] ||
       ((allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.suggestions || []);
-    
+
     setCustomSuggestions(prev => ({
       ...prev,
       [selectedAgentId]: [customPromptText.trim(), ...currentList]
@@ -1064,7 +1067,7 @@ export default function Dashboard() {
     setNewAgentBanglaDesc("");
     setNewAgentInstructions("");
     setNewAgentIcon("🚀");
-    
+
     // Close modal
     setCustomAgentModalOpen(false);
 
@@ -1145,9 +1148,9 @@ export default function Dashboard() {
       alert("Please allow popups to export as PDF");
       return;
     }
-    
+
     const cleanText = cleanArrows(content);
-    
+
     // Convert basic markdown formatting to clean HTML for the print preview
     let html = cleanText
       .replace(/^### (.*$)/gim, '<h3 style="color:#FF8C00;font-family:sans-serif;margin-top:20px;">$1</h3>')
@@ -1163,14 +1166,14 @@ export default function Dashboard() {
       const lines = html.split('<br/>');
       let inTable = false;
       let tableHtml = '<table style="width:100%;border-collapse:collapse;margin:20px 0;font-family:sans-serif;">';
-      
+
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         if (line.startsWith('|')) {
           inTable = true;
           const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
-          if (line.includes('---')) continue; 
-          
+          if (line.includes('---')) continue;
+
           tableHtml += '<tr style="border-bottom:1px solid #ddd;">';
           cells.forEach(cell => {
             tableHtml += `<td style="padding:10px;border:1px solid #ddd;">${cell}</td>`;
@@ -1245,7 +1248,7 @@ export default function Dashboard() {
         </body>
       </html>
     `;
-    
+
     const blob = new Blob(['\ufeff' + wordContent], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1265,7 +1268,7 @@ export default function Dashboard() {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (line.startsWith('|')) {
-        if (line.includes('---')) continue; 
+        if (line.includes('---')) continue;
         hasTable = true;
         const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
         const csvRow = cells.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',');
@@ -1307,13 +1310,13 @@ export default function Dashboard() {
         `${height}px`
       );
     };
-    
+
     window.addEventListener("resize", handleResize);
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", handleResize);
       window.visualViewport.addEventListener("scroll", handleResize);
     }
-    
+
     // Expose resize to window so we can trigger it dynamically on input focus/scroll
     (window as any).triggerKachaResize = handleResize;
 
@@ -1383,9 +1386,9 @@ export default function Dashboard() {
     } else {
       try {
         // Detect if user has typed anything in Bengali to preset recognition language
-        const isUserSpeakingBengali = /[\u0980-\u09FF]/.test(inputMessage) || 
+        const isUserSpeakingBengali = /[\u0980-\u09FF]/.test(inputMessage) ||
           messages.some(m => m.role === "user" && /[\u0980-\u09FF]/.test(m.content));
-        
+
         recognitionRef.current.lang = isUserSpeakingBengali ? "bn-BD" : "en-US";
         recognitionRef.current.start();
         setIsListening(true);
@@ -1425,8 +1428,8 @@ export default function Dashboard() {
   // D. Camera Setup
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment" } 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }
       });
       streamRef.current = stream;
       setIsCameraOpen(true);
@@ -1452,22 +1455,22 @@ export default function Dashboard() {
 
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
-    
+
     const video = videoRef.current;
     const canvas = canvasRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    
+
     const context = canvas.getContext("2d");
     if (!context) return;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
+
     canvas.toBlob(async (blob) => {
       if (!blob) return;
-      
+
       const file = new File([blob], `snapshot_${Date.now()}.jpg`, { type: "image/jpeg" });
       stopCamera();
-      
+
       setIsFileParsing(true);
       try {
         const parsedContent = await parseAnyFile(file);
@@ -1494,7 +1497,7 @@ export default function Dashboard() {
       try {
         // Trigger lazy-sync in API
         await fetch("/api/user");
-        
+
         // Fetch chats
         const res = await fetch("/api/chats");
         const data = await res.json();
@@ -1632,9 +1635,9 @@ export default function Dashboard() {
       .filter(Boolean)
       .join("\n");
 
-    const newUserMessage: Message = { 
-      role: "user", 
-      content: (base64Tags ? base64Tags + "\n" : "") + (userMessageContent || `Attached ${currentAttachments.length} file(s): ${currentAttachments.map(a => a.name).join(", ")}`) 
+    const newUserMessage: Message = {
+      role: "user",
+      content: (base64Tags ? base64Tags + "\n" : "") + (userMessageContent || `Attached ${currentAttachments.length} file(s): ${currentAttachments.map(a => a.name).join(", ")}`)
     };
     setMessages((prev) => [...prev, newUserMessage]);
 
@@ -1679,18 +1682,18 @@ export default function Dashboard() {
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        
+
         // Custom Header parsing to set activeChatId on new chats
         if (!hasHeaderIdParsed && chunk.includes("__CHAT_ID__:")) {
           const lines = chunk.split("\n");
           const idHeader = lines[0];
           const resolvedId = idHeader.replace("__CHAT_ID__:", "").trim();
-          
+
           if (resolvedId) {
             setActiveChatId(resolvedId);
             hasHeaderIdParsed = true;
           }
-          
+
           // Accumulate the rest of the text
           const restText = lines.slice(1).join("\n");
           accumulatedResponse += restText;
@@ -1766,1783 +1769,1678 @@ export default function Dashboard() {
 
   return (
     <>
-    <div 
-      className={`fixed inset-0 flex overflow-hidden font-sans w-full transition-colors duration-300 ${
-        themeMode === "black" ? "bg-black text-neutral-100 theme-black" : "bg-[#F8FAFC] text-neutral-900 theme-light"
-      }`}
-      style={{ height: "var(--viewport-height, 100%)" }}
-    >
-      {/* 1. Sidebar - Collapsible on Mobile */}
-      <aside 
-        className={`fixed inset-y-0 left-0 z-40 w-72 flex-shrink-0 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 transition-colors duration-300 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } ${
-          themeMode === "black" 
-            ? "bg-[#050505] border-r border-white/5" 
-            : "bg-[#FFFFFF] border-r border-neutral-200"
-        }`}
+      <div
+        className={`fixed inset-0 flex overflow-hidden font-sans w-full transition-colors duration-300 ${themeMode === "black" ? "bg-black text-neutral-100 theme-black" : "bg-[#F8FAFC] text-neutral-900 theme-light"
+          }`}
+        style={{ height: "var(--viewport-height, 100%)" }}
       >
-        <div className="flex flex-col h-full">
-          {/* Sidebar Top Nav Brand */}
-          <div className={`p-5 border-b flex flex-col gap-1 text-left ${
-            themeMode === "black" ? "border-white/5" : "border-neutral-200"
-          }`}>
-            <div className="flex items-center justify-between">
-              <Link href="/" className="flex items-center gap-2.5">
-                <AIAvatar size={34} className={themeMode === "black" ? "border border-white/10" : "border border-neutral-200"} />
-                <span className={`font-extrabold tracking-widest text-xs uppercase ${
-                  themeMode === "black" ? "text-white/90" : "text-neutral-800"
+        {/* 1. Sidebar - Collapsible on Mobile */}
+        <aside
+          className={`fixed inset-y-0 left-0 z-40 w-72 flex-shrink-0 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 transition-colors duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            } ${themeMode === "black"
+              ? "bg-[#050505] border-r border-white/5"
+              : "bg-[#FFFFFF] border-r border-neutral-200"
+            }`}
+        >
+          <div className="flex flex-col h-full">
+            {/* Sidebar Top Nav Brand */}
+            <div className={`p-5 border-b flex flex-col gap-1 text-left ${themeMode === "black" ? "border-white/5" : "border-neutral-200"
+              }`}>
+              <div className="flex items-center justify-between">
+                <Link href="/" className="flex items-center gap-2.5">
+                  <AIAvatar size={34} className={themeMode === "black" ? "border border-white/10" : "border border-neutral-200"} />
+                  <span className={`font-extrabold tracking-widest text-xs uppercase ${themeMode === "black" ? "text-white/90" : "text-neutral-800"
+                    }`}>
+                    {aiName}
+                  </span>
+                </Link>
+                <button
+                  className={`lg:hidden p-1 transition-colors ${themeMode === "black" ? "text-neutral-400 hover:text-neutral-100" : "text-neutral-600 hover:text-neutral-900"
+                    }`}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <span className={`text-[10px] font-medium leading-normal ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
                 }`}>
-                  {aiName}
-                </span>
-              </Link>
-              <button 
-                className={`lg:hidden p-1 transition-colors ${
-                  themeMode === "black" ? "text-neutral-400 hover:text-neutral-100" : "text-neutral-600 hover:text-neutral-900"
-                }`} 
-                onClick={() => setSidebarOpen(false)}
+                Your personal multi-specialist AI assistant.
+              </span>
+            </div>
+
+            {/* New Chat Button */}
+            <div className="px-4 py-3">
+              <button
+                onClick={handleNewChat}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border transition-all duration-300 shadow-sm text-xs font-bold ${themeMode === "black"
+                    ? "border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent hover:from-white/[0.08] text-neutral-200 hover:text-white"
+                    : "border-transparent bg-[#0A0A0C] hover:bg-neutral-800 text-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:scale-[1.01] active:scale-[0.99] transform"
+                  }`}
               >
-                <X size={20} />
+                <Plus size={16} /> New Analysis
               </button>
             </div>
-            <span className={`text-[10px] font-medium leading-normal ${
-              themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
-            }`}>
-              Your personal multi-specialist AI assistant.
-            </span>
-          </div>
 
-          {/* New Chat Button */}
-          <div className="px-4 py-3">
-            <button 
-              onClick={handleNewChat}
-              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border transition-all duration-300 shadow-sm text-xs font-bold ${
-                themeMode === "black"
-                  ? "border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent hover:from-white/[0.08] text-neutral-200 hover:text-white"
-                  : "border-transparent bg-[#0A0A0C] hover:bg-neutral-800 text-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:scale-[1.01] active:scale-[0.99] transform"
-              }`}
-            >
-              <Plus size={16} /> New Analysis
-            </button>
-          </div>
-
-          {/* Chats History List */}
-          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-            {isSyncing ? (
-              <div className={`p-4 text-center text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>Syncing consultations...</div>
-            ) : chats.length === 0 ? (
-              <div className={`p-4 text-center text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>No previous consultations</div>
-            ) : (
-              chats.map((chat) => (
-                <div 
-                  key={chat.id}
-                  onClick={() => {
-                    setActiveChatId(chat.id);
-                    setSidebarOpen(false);
-                  }}
-                  className={`group w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition duration-300 text-xs ${
-                    activeChatId === chat.id 
-                      ? themeMode === "black"
-                        ? "bg-white/[0.04] border border-white/[0.06] text-white font-medium shadow-[0_4px_12px_rgba(0,0,0,0.4)]" 
-                        : "bg-amber-500/10 border border-amber-500/20 text-amber-955 font-bold shadow-sm"
-                      : themeMode === "black"
-                        ? "border border-transparent text-neutral-400 hover:bg-white/[0.02] hover:text-neutral-200"
-                        : "border border-transparent text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    {activeChatId === chat.id ? (
-                      <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse flex-shrink-0" />
-                    ) : (
-                      <MessageSquare size={13} className="text-neutral-550 flex-shrink-0" />
-                    )}
-                    <span className="truncate pr-2 font-medium">{parseChatTitle(chat.title).title}</span>
-                  </div>
-                  <button 
-                    onClick={(e) => handleDeleteChat(e, chat.id)}
-                    className={`p-1 rounded opacity-0 group-hover:opacity-100 transition duration-300 ${
-                      themeMode === "black"
-                        ? "text-neutral-600 hover:text-red-400 hover:bg-red-950/20"
-                        : "text-neutral-400 hover:text-red-500 hover:bg-red-50"
-                    }`}
+            {/* Chats History List */}
+            <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
+              {isSyncing ? (
+                <div className={`p-4 text-center text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>Syncing consultations...</div>
+              ) : chats.length === 0 ? (
+                <div className={`p-4 text-center text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>No previous consultations</div>
+              ) : (
+                chats.map((chat) => (
+                  <div
+                    key={chat.id}
+                    onClick={() => {
+                      setActiveChatId(chat.id);
+                      setSidebarOpen(false);
+                    }}
+                    className={`group w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition duration-300 text-xs ${activeChatId === chat.id
+                        ? themeMode === "black"
+                          ? "bg-white/[0.04] border border-white/[0.06] text-white font-medium shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
+                          : "bg-amber-500/10 border border-amber-500/20 text-amber-955 font-bold shadow-sm"
+                        : themeMode === "black"
+                          ? "border border-transparent text-neutral-400 hover:bg-white/[0.02] hover:text-neutral-200"
+                          : "border border-transparent text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
+                      }`}
                   >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
+                    <div className="flex items-center gap-2 truncate">
+                      {activeChatId === chat.id ? (
+                        <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse flex-shrink-0" />
+                      ) : (
+                        <MessageSquare size={13} className="text-neutral-550 flex-shrink-0" />
+                      )}
+                      <span className="truncate pr-2 font-medium">{parseChatTitle(chat.title).title}</span>
+                    </div>
+                    <button
+                      onClick={(e) => handleDeleteChat(e, chat.id)}
+                      className={`p-1 rounded opacity-0 group-hover:opacity-100 transition duration-300 ${themeMode === "black"
+                          ? "text-neutral-600 hover:text-red-400 hover:bg-red-950/20"
+                          : "text-neutral-400 hover:text-red-500 hover:bg-red-50"
+                        }`}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
 
-          {/* Sidebar User Footer */}
-          <div className={`p-4 border-t transition-colors duration-300 flex items-center justify-between ${
-            themeMode === "black" ? "border-neutral-900 bg-[#050505]" : "border-neutral-200 bg-[#FAFAFA]"
-          }`}>
-            <div className="flex items-center gap-3">
-              <UserButton />
-              <div className="flex flex-col text-left">
-                <span className={`text-xs font-bold truncate max-w-[120px] ${
-                  themeMode === "black" ? "text-neutral-200" : "text-neutral-850 font-extrabold"
-                }`}>
-                  {user?.firstName || user?.username || "Consultant"}
-                </span>
-                <span className={`text-[10px] font-bold tracking-wider ${
-                  themeMode === "black" ? "text-neutral-400" : "text-neutral-500"
-                }`}>PREMIUM MEMBER</span>
+            {/* Sidebar User Footer */}
+            <div className={`p-4 border-t transition-colors duration-300 flex items-center justify-between ${themeMode === "black" ? "border-neutral-900 bg-[#050505]" : "border-neutral-200 bg-[#FAFAFA]"
+              }`}>
+              <div className="flex items-center gap-3">
+                <UserButton />
+                <div className="flex flex-col text-left">
+                  <span className={`text-xs font-bold truncate max-w-[120px] ${themeMode === "black" ? "text-neutral-200" : "text-neutral-850 font-extrabold"
+                    }`}>
+                    {user?.firstName || user?.username || "Consultant"}
+                  </span>
+                  <span className={`text-[10px] font-bold tracking-wider ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"
+                    }`}>PREMIUM MEMBER</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1">
+                {user?.primaryEmailAddress?.emailAddress &&
+                  ["koishiquedhrubo@gmail.com", "rahmanmdkoishiqur@gmail.com", "aloniliark@gmail.com"].includes(user.primaryEmailAddress.emailAddress) && (
+                    <Link
+                      href="/admin"
+                      className={`p-2 rounded-lg transition duration-200 ${themeMode === "black" ? "text-emerald-500 hover:text-emerald-300 hover:bg-neutral-900" : "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-50"
+                        }`}
+                      title="Admin Dashboard"
+                    >
+                      <ShieldCheck size={16} className="animate-pulse" />
+                    </Link>
+                  )}
+                <button
+                  onClick={() => setIsSettingsModalOpen(true)}
+                  className={`p-2 rounded-lg transition duration-200 ${themeMode === "black" ? "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
+                    }`}
+                  title="Manage Account"
+                >
+                  <Settings size={16} />
+                </button>
+                <Link
+                  href="/"
+                  className={`p-2 rounded-lg transition duration-200 ${themeMode === "black" ? "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
+                    }`}
+                  title="Exit to home"
+                >
+                  <ArrowLeft size={16} />
+                </Link>
               </div>
             </div>
-            
-            <div className="flex items-center gap-1">
-              {user?.primaryEmailAddress?.emailAddress && 
-               ["koishiquedhrubo@gmail.com", "rahmanmdkoishiqur@gmail.com", "aloniliark@gmail.com"].includes(user.primaryEmailAddress.emailAddress) && (
-                <Link
-                  href="/admin"
-                  className={`p-2 rounded-lg transition duration-200 ${
-                    themeMode === "black" ? "text-emerald-500 hover:text-emerald-300 hover:bg-neutral-900" : "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-50"
+          </div>
+        </aside>
+
+        {/* 2. Backdrop overlay for mobile sidebar */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/60 z-30 lg:hidden backdrop-blur-sm"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* 3. Main Chat Interface Container */}
+        <main className={`flex-1 min-h-0 flex flex-col relative overflow-hidden transition-colors duration-300 ${themeMode === "black" ? "bg-[#050505]" : "bg-[#F8FAFC]"
+          }`}>
+          {/* Dynamic Glowing Satin Spotlight overlays & high-fidelity micro-grid pattern */}
+          {themeMode === "black" && (
+            <div className="absolute inset-0 pointer-events-none select-none overflow-hidden z-0">
+              {/* Soft high-contrast atmospheric spotlights */}
+              <div className="absolute top-[-10%] left-[10%] w-[60%] h-[450px] bg-gradient-to-br from-emerald-500/12 to-teal-500/0 rounded-full blur-[130px] animate-pulse duration-[12s] opacity-75" />
+              <div className="absolute bottom-[5%] right-[10%] w-[55%] h-[400px] bg-gradient-to-tr from-amber-500/8 to-emerald-500/0 rounded-full blur-[130px] animate-pulse duration-[16s] opacity-65" />
+              {/* Micro grid pattern for Silicon Valley tactile depth */}
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none opacity-80" />
+            </div>
+          )}
+          {/* Dynamic header */}
+          <header className={`h-16 px-4 sm:px-6 border-b backdrop-blur-xl flex items-center justify-between z-30 transition-colors duration-300 ${themeMode === "black"
+              ? "border-white/5 bg-[#050505]/80"
+              : "border-neutral-200 bg-[#FFFFFF]/80 shadow-sm"
+            }`}>
+            <div className="flex items-center gap-3">
+              <button
+                className={`lg:hidden p-1.5 rounded-lg transition duration-200 ${themeMode === "black" ? "text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100"
                   }`}
-                  title="Admin Dashboard"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu size={20} />
+              </button>
+              <div className="flex items-center gap-2.5">
+                {isListening ? (
+                  <div className="flex items-end h-5 px-2.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 select-none">
+                    <span className="text-[9px] font-black tracking-wider mr-2 uppercase">🎙️ LISTENING TO YOUR VOICE QUERY</span>
+                    <span className="soundwave-bar bg-red-500"></span>
+                    <span className="soundwave-bar bg-red-500"></span>
+                    <span className="soundwave-bar bg-red-500"></span>
+                    <span className="soundwave-bar bg-red-500"></span>
+                    <span className="soundwave-bar bg-red-500"></span>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setToneDropdownOpen(!toneDropdownOpen)}
+                      className={`flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-1 rounded-xl transition-all font-extrabold shadow-sm border ${themeMode === "black"
+                          ? "bg-emerald-950/40 text-emerald-400 border-emerald-500/20 hover:bg-emerald-900/50"
+                          : "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 hover:bg-emerald-500/20"
+                        }`}
+                    >
+                      <span className="text-[11px] sm:text-xs font-black tracking-wider uppercase">
+                        {(() => {
+                          const activeTone = TONES_LIST.find((t) => t.id === selectedToneId);
+                          return (
+                            <>
+                              <span className="hidden sm:inline">{activeTone ? `${activeTone.icon} ${activeTone.name}` : "🌶️ BRUTALLY HONEST"}</span>
+                              <span className="sm:hidden">{activeTone ? activeTone.icon : "🌶️"}</span>
+                            </>
+                          );
+                        })()}
+                      </span>
+                      <ChevronDown size={12} className={`transition-transform duration-200 ${toneDropdownOpen ? "rotate-180" : ""}`} />
+                    </button>
+
+                    {toneDropdownOpen && (
+                      <div className={`absolute top-full left-0 mt-2 w-56 backdrop-blur-xl border rounded-2xl p-1 shadow-2xl z-50 transition-colors duration-300 ${themeMode === "black"
+                          ? "bg-[#0A0A0A]/95 border-white/10"
+                          : "bg-[#FFFFFF]/95 border-neutral-200"
+                        }`}>
+                        <div className="max-h-64 overflow-y-auto font-sans">
+                          {TONES_LIST.map((tone) => (
+                            <button
+                              key={tone.id}
+                              type="button"
+                              onClick={() => {
+                                handleToneChange(tone.id);
+                                setToneDropdownOpen(false);
+                              }}
+                              className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-semibold rounded-xl transition duration-200 ${selectedToneId === tone.id
+                                  ? themeMode === "black"
+                                    ? "bg-emerald-500/10 text-emerald-400"
+                                    : "bg-emerald-500/10 text-emerald-700 font-black shadow-inner"
+                                  : themeMode === "black"
+                                    ? "text-neutral-400 hover:bg-white/5 hover:text-white"
+                                    : "text-neutral-600 hover:bg-neutral-150 hover:text-neutral-900"
+                                }`}
+                            >
+                              <span className="text-base">{tone.icon}</span>
+                              <span>{tone.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <span className={`mobile-hide sm:block text-sm font-semibold truncate max-w-[200px] ml-2 ${themeMode === "black" ? "text-neutral-200" : "text-neutral-800"
+                  }`}>
+                  {activeChat ? parseChatTitle(activeChat.title).title : ""}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* AI Brain Selector Dropdown */}
+              <div className="relative hidden md:block">
+                <button
+                  type="button"
+                  onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition duration-300 font-bold shadow-sm text-xs ${themeMode === "black"
+                      ? "border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 text-neutral-300 hover:text-white hover:border-neutral-200/30"
+                      : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
+                    }`}
                 >
-                  <ShieldCheck size={16} className="animate-pulse" />
-                </Link>
-              )}
-              <button 
+                  <span>{MODELS_LIST.find((m) => m.id === selectedModelId)?.icon}</span>
+                  <span className="truncate max-w-[100px]">
+                    {MODELS_LIST.find((m) => m.id === selectedModelId)?.name || "Select AI Brain"}
+                  </span>
+                  <ChevronDown size={13} className={`text-neutral-500 transition duration-300 ${modelDropdownOpen ? "rotate-180 text-neutral-200" : ""}`} />
+                </button>
+
+                {modelDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setModelDropdownOpen(false)} />
+                    <div className={`absolute right-0 mt-2.5 w-60 rounded-xl border p-2 shadow-2xl z-50 divide-y space-y-1 ${themeMode === "black"
+                        ? "border-neutral-800 bg-[#090909]/95 backdrop-blur-md divide-neutral-900 text-neutral-300"
+                        : "border-neutral-200 bg-white divide-neutral-100 text-neutral-800 shadow-xl"
+                      }`}>
+                      <div className={`px-3 py-1.5 text-[9px] font-black tracking-widest uppercase ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
+                        }`}>
+                        Select AI Brain Model
+                      </div>
+                      <div className="pt-1.5 space-y-0.5 font-sans">
+                        {MODELS_LIST.map((model) => {
+                          const isSelected = selectedModelId === model.id;
+                          return (
+                            <button
+                              key={model.id}
+                              type="button"
+                              onClick={() => {
+                                handleModelChange(model.id);
+                                setModelDropdownOpen(false);
+                              }}
+                              className={`w-full text-left flex items-center justify-between p-2.5 rounded-lg transition duration-200 ${isSelected
+                                  ? themeMode === "black"
+                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                    : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  : themeMode === "black"
+                                    ? "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
+                                    : "border border-transparent hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
+                                }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span>{model.icon}</span>
+                                <span className="text-xs font-bold">{model.name}</span>
+                              </div>
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${themeMode === "black" ? "bg-white/5 text-neutral-400" : "bg-neutral-100 text-neutral-500"
+                                }`}>{model.badge}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Elite Agent Selector Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setAgentDropdownOpen(!agentDropdownOpen)}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border transition duration-300 font-bold shadow-sm text-xs ${themeMode === "black"
+                      ? "border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 text-neutral-300 hover:text-white hover:border-neutral-200/30"
+                      : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
+                    }`}
+                >
+                  {(() => {
+                    const activeAgent = allAgents.find((a) => a.id === selectedAgentId) || allAgents[0];
+                    if (activeAgent) {
+                      if (activeAgent.isCustom) {
+                        return <span className="text-xs mr-0.5">{activeAgent.customIcon}</span>;
+                      }
+                      const AgentIcon = activeAgent.icon;
+                      return <AgentIcon size={14} className={`${themeMode === "black" ? "text-neutral-200" : "text-neutral-700"} flex-shrink-0 animate-pulse`} />;
+                    }
+                    return null;
+                  })()}
+                  <span className="truncate max-w-[120px] sm:max-w-[180px]">
+                    {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.name || "Select Agent"}
+                  </span>
+                  <ChevronDown size={13} className={`text-neutral-500 transition duration-300 ${agentDropdownOpen ? "rotate-180 text-neutral-200" : ""}`} />
+                </button>
+
+                {/* Dynamic Glassmorphic Dropdown List */}
+                {agentDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setAgentDropdownOpen(false)} />
+                    <div className={`absolute right-0 mt-2.5 w-80 max-h-[420px] overflow-y-auto rounded-xl border p-2 shadow-2xl z-50 divide-y space-y-1 scrollbar-thin ${themeMode === "black"
+                        ? "border-neutral-800 bg-[#090909]/95 backdrop-blur-md divide-neutral-900"
+                        : "border-neutral-200 bg-white divide-neutral-100 shadow-xl"
+                      }`}>
+                      <div className={`px-3 py-1.5 text-[9px] font-black tracking-widest uppercase flex items-center justify-between ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
+                        }`}>
+                        <span>Select Specialist AI Agent</span>
+                      </div>
+
+                      <div className="pt-1.5 space-y-0.5 font-sans">
+                        {/* "+ Create Custom Agent" Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomAgentModalOpen(true);
+                            setAgentDropdownOpen(false);
+                          }}
+                          className={`w-[calc(100%-8px)] mx-1 flex items-center justify-center gap-2 p-2 rounded-lg border-dashed border transition duration-200 text-xs font-black uppercase tracking-wider mb-2 ${themeMode === "black"
+                              ? "border-emerald-500/25 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/40"
+                              : "border-emerald-200 bg-emerald-500/5 text-emerald-600 hover:bg-emerald-500/10"
+                            }`}
+                        >
+                          <Plus size={13} />
+                          <span>✨ Create Custom Agent</span>
+                        </button>
+
+                        {allAgents.map((agent) => {
+                          const isSelected = selectedAgentId === agent.id;
+                          return (
+                            <div key={agent.id} className="relative group/agent flex items-center w-full">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleAgentChange(agent.id);
+                                  setAgentDropdownOpen(false);
+                                  // Start a new chat if there are already messages in the current one
+                                  if (messages.length > 0) {
+                                    handleNewChat();
+                                  }
+                                }}
+                                className={`w-full text-left flex items-start gap-3 p-2.5 rounded-lg transition duration-200 pr-10 ${isSelected
+                                    ? themeMode === "black"
+                                      ? "bg-neutral-200/10 text-white border border-neutral-200/20"
+                                      : "bg-neutral-100 text-neutral-900 border border-neutral-200"
+                                    : themeMode === "black"
+                                      ? "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
+                                      : "border border-transparent hover:bg-[#F1F5F9] text-neutral-700 hover:text-neutral-900"
+                                  }`}
+                              >
+                                {agent.isCustom ? (
+                                  <span className="text-base mt-0.5 flex-shrink-0 w-4 h-4 flex items-center justify-center">{agent.customIcon}</span>
+                                ) : (
+                                  (() => {
+                                    const AgentIcon = agent.icon;
+                                    return <AgentIcon size={16} className={`mt-0.5 flex-shrink-0 ${isSelected ? (themeMode === "black" ? "text-neutral-200" : "text-neutral-700") : "text-neutral-500"}`} />;
+                                  })()
+                                )}
+                                <div className="flex flex-col text-xs leading-normal">
+                                  <span className={`font-bold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-900"} flex items-center gap-1.5`}>
+                                    {agent.banglaName}
+                                    {agent.isCustom && (
+                                      <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Custom</span>
+                                    )}
+                                  </span>
+                                  <span className="text-[10px] text-neutral-500 leading-normal mt-0.5">
+                                    {agent.banglaDesc}
+                                  </span>
+                                </div>
+                              </button>
+
+                              {agent.isCustom && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteCustomAgent(agent.id);
+                                  }}
+                                  className="absolute right-2 p-1.5 rounded-md hover:bg-red-500/15 text-neutral-500 hover:text-red-400 opacity-0 group-hover/agent:opacity-100 transition duration-150 z-10"
+                                  title="Delete custom agent"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <Link
+                href="/"
+                className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition duration-300 text-xs ${themeMode === "black"
+                    ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:bg-neutral-850"
+                    : "border-neutral-200 bg-white text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 shadow-sm"
+                  }`}
+              >
+                Home
+              </Link>
+
+              {/* Theme Toggle Button */}
+              <button
+                onClick={toggleTheme}
+                className={`p-2 rounded-lg transition duration-200 ${themeMode === "black"
+                    ? "text-neutral-500 hover:text-amber-400 hover:bg-neutral-900"
+                    : "text-neutral-500 hover:text-amber-650 hover:bg-neutral-100"
+                  }`}
+                title={themeMode === "black" ? "Switch to System Light Theme" : "Switch to Obsidian Black Theme"}
+              >
+                {themeMode === "black" ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+
+              <button
                 onClick={() => setIsSettingsModalOpen(true)}
-                className={`p-2 rounded-lg transition duration-200 ${
-                  themeMode === "black" ? "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
-                }`}
+                className={`p-2 rounded-lg transition duration-200 ${themeMode === "black" ? "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
+                  }`}
                 title="Manage Account"
               >
                 <Settings size={16} />
               </button>
-              <Link 
-                href="/" 
-                className={`p-2 rounded-lg transition duration-200 ${
-                  themeMode === "black" ? "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
-                }`}
-                title="Exit to home"
-              >
-                <ArrowLeft size={16} />
-              </Link>
+              <UserButton />
             </div>
-          </div>
-        </div>
-      </aside>
+          </header>
 
-      {/* 2. Backdrop overlay for mobile sidebar */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 z-30 lg:hidden backdrop-blur-sm"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+          {/* Mobile Sub-Header AI Engine Control Bar */}
+          <div className={`md:hidden px-4 py-2 border-b flex flex-col gap-2 transition-colors duration-300 z-30 ${themeMode === "black" ? "border-white/5 bg-[#050505]/95" : "border-neutral-200 bg-white/95 shadow-sm"
+            }`}>
+            {/* Models Scroll Bar */}
+            <div className="flex flex-col gap-1">
+              <span className={`text-[8px] font-black uppercase tracking-wider ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
+                }`}>Select AI Brain Model:</span>
 
-      {/* 3. Main Chat Interface Container */}
-      <main className={`flex-1 min-h-0 flex flex-col relative overflow-hidden transition-colors duration-300 ${
-        themeMode === "black" ? "bg-[#050505]" : "bg-[#F8FAFC]"
-      }`}>
-        {/* Dynamic Glowing Satin Spotlight overlays & high-fidelity micro-grid pattern */}
-        {themeMode === "black" && (
-          <div className="absolute inset-0 pointer-events-none select-none overflow-hidden z-0">
-            {/* Soft high-contrast atmospheric spotlights */}
-            <div className="absolute top-[-10%] left-[10%] w-[60%] h-[450px] bg-gradient-to-br from-emerald-500/12 to-teal-500/0 rounded-full blur-[130px] animate-pulse duration-[12s] opacity-75" />
-            <div className="absolute bottom-[5%] right-[10%] w-[55%] h-[400px] bg-gradient-to-tr from-amber-500/8 to-emerald-500/0 rounded-full blur-[130px] animate-pulse duration-[16s] opacity-65" />
-            {/* Micro grid pattern for Silicon Valley tactile depth */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none opacity-80" />
-          </div>
-        )}
-        {/* Dynamic header */}
-        <header className={`h-16 px-4 sm:px-6 border-b backdrop-blur-xl flex items-center justify-between z-30 transition-colors duration-300 ${
-          themeMode === "black" 
-            ? "border-white/5 bg-[#050505]/80" 
-            : "border-neutral-200 bg-[#FFFFFF]/80 shadow-sm"
-        }`}>
-          <div className="flex items-center gap-3">
-            <button 
-              className={`lg:hidden p-1.5 rounded-lg transition duration-200 ${
-                themeMode === "black" ? "text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100"
-              }`}
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu size={20} />
-            </button>
-            <div className="flex items-center gap-2.5">
-              {isListening ? (
-                <div className="flex items-end h-5 px-2.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 select-none">
-                  <span className="text-[9px] font-black tracking-wider mr-2 uppercase">🎙️ LISTENING TO YOUR VOICE QUERY</span>
-                  <span className="soundwave-bar bg-red-500"></span>
-                  <span className="soundwave-bar bg-red-500"></span>
-                  <span className="soundwave-bar bg-red-500"></span>
-                  <span className="soundwave-bar bg-red-500"></span>
-                  <span className="soundwave-bar bg-red-500"></span>
-                </div>
-              ) : (
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setToneDropdownOpen(!toneDropdownOpen)}
-                    className={`flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-1 rounded-xl transition-all font-extrabold shadow-sm border ${
-                      themeMode === "black"
-                        ? "bg-emerald-950/40 text-emerald-400 border-emerald-500/20 hover:bg-emerald-900/50"
-                        : "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 hover:bg-emerald-500/20"
-                    }`}
-                  >
-                    <span className="text-[11px] sm:text-xs font-black tracking-wider uppercase">
-                      {(() => {
-                        const activeTone = TONES_LIST.find((t) => t.id === selectedToneId);
-                        return (
-                          <>
-                            <span className="hidden sm:inline">{activeTone ? `${activeTone.icon} ${activeTone.name}` : "🌶️ BRUTALLY HONEST"}</span>
-                            <span className="sm:hidden">{activeTone ? activeTone.icon : "🌶️"}</span>
-                          </>
-                        );
-                      })()}
-                    </span>
-                    <ChevronDown size={12} className={`transition-transform duration-200 ${toneDropdownOpen ? "rotate-180" : ""}`} />
-                  </button>
-                  
-                  {toneDropdownOpen && (
-                    <div className={`absolute top-full left-0 mt-2 w-56 backdrop-blur-xl border rounded-2xl p-1 shadow-2xl z-50 transition-colors duration-300 ${
-                      themeMode === "black" 
-                        ? "bg-[#0A0A0A]/95 border-white/10" 
-                        : "bg-[#FFFFFF]/95 border-neutral-200"
-                    }`}>
-                      <div className="max-h-64 overflow-y-auto font-sans">
-                        {TONES_LIST.map((tone) => (
-                          <button
-                            key={tone.id}
-                            type="button"
-                            onClick={() => {
-                              handleToneChange(tone.id);
-                              setToneDropdownOpen(false);
-                            }}
-                            className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-semibold rounded-xl transition duration-200 ${
-                              selectedToneId === tone.id 
-                                ? themeMode === "black"
-                                  ? "bg-emerald-500/10 text-emerald-400" 
-                                  : "bg-emerald-500/10 text-emerald-700 font-black shadow-inner"
-                                : themeMode === "black"
-                                  ? "text-neutral-400 hover:bg-white/5 hover:text-white"
-                                  : "text-neutral-600 hover:bg-neutral-150 hover:text-neutral-900"
-                            }`}
-                          >
-                            <span className="text-base">{tone.icon}</span>
-                            <span>{tone.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              <span className={`mobile-hide sm:block text-sm font-semibold truncate max-w-[200px] ml-2 ${
-                themeMode === "black" ? "text-neutral-200" : "text-neutral-800"
-              }`}>
-                {activeChat ? parseChatTitle(activeChat.title).title : ""}
-              </span>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            {/* AI Brain Selector Dropdown */}
-            <div className="relative hidden md:block">
-              <button
-                type="button"
-                onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition duration-300 font-bold shadow-sm text-xs ${
-                  themeMode === "black"
-                    ? "border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 text-neutral-300 hover:text-white hover:border-neutral-200/30"
-                    : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
-                }`}
-              >
-                <span>{MODELS_LIST.find((m) => m.id === selectedModelId)?.icon}</span>
-                <span className="truncate max-w-[100px]">
-                  {MODELS_LIST.find((m) => m.id === selectedModelId)?.name || "Select AI Brain"}
-                </span>
-                <ChevronDown size={13} className={`text-neutral-500 transition duration-300 ${modelDropdownOpen ? "rotate-180 text-neutral-200" : ""}`} />
-              </button>
-
-              {modelDropdownOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setModelDropdownOpen(false)} />
-                  <div className={`absolute right-0 mt-2.5 w-60 rounded-xl border p-2 shadow-2xl z-50 divide-y space-y-1 ${
-                    themeMode === "black"
-                      ? "border-neutral-800 bg-[#090909]/95 backdrop-blur-md divide-neutral-900 text-neutral-300"
-                      : "border-neutral-200 bg-white divide-neutral-100 text-neutral-800 shadow-xl"
-                  }`}>
-                    <div className={`px-3 py-1.5 text-[9px] font-black tracking-widest uppercase ${
-                      themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
-                    }`}>
-                      Select AI Brain Model
-                    </div>
-                    <div className="pt-1.5 space-y-0.5 font-sans">
-                      {MODELS_LIST.map((model) => {
-                        const isSelected = selectedModelId === model.id;
-                        return (
-                          <button
-                            key={model.id}
-                            type="button"
-                            onClick={() => {
-                              handleModelChange(model.id);
-                              setModelDropdownOpen(false);
-                            }}
-                            className={`w-full text-left flex items-center justify-between p-2.5 rounded-lg transition duration-200 ${
-                              isSelected 
-                                ? themeMode === "black"
-                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                  : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : themeMode === "black"
-                                  ? "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
-                                  : "border border-transparent hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span>{model.icon}</span>
-                              <span className="text-xs font-bold">{model.name}</span>
-                            </div>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${
-                              themeMode === "black" ? "bg-white/5 text-neutral-400" : "bg-neutral-100 text-neutral-500"
-                            }`}>{model.badge}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Elite Agent Selector Dropdown */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setAgentDropdownOpen(!agentDropdownOpen)}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border transition duration-300 font-bold shadow-sm text-xs ${
-                  themeMode === "black"
-                    ? "border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 text-neutral-300 hover:text-white hover:border-neutral-200/30"
-                    : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
-                }`}
-              >
-                {(() => {
-                  const activeAgent = allAgents.find((a) => a.id === selectedAgentId) || allAgents[0];
-                  if (activeAgent) {
-                    if (activeAgent.isCustom) {
-                      return <span className="text-xs mr-0.5">{activeAgent.customIcon}</span>;
-                    }
-                    const AgentIcon = activeAgent.icon;
-                    return <AgentIcon size={14} className={`${themeMode === "black" ? "text-neutral-200" : "text-neutral-700"} flex-shrink-0 animate-pulse`} />;
-                  }
-                  return null;
-                })()}
-                <span className="truncate max-w-[120px] sm:max-w-[180px]">
-                  {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.name || "Select Agent"}
-                </span>
-                <ChevronDown size={13} className={`text-neutral-500 transition duration-300 ${agentDropdownOpen ? "rotate-180 text-neutral-200" : ""}`} />
-              </button>
-
-              {/* Dynamic Glassmorphic Dropdown List */}
-              {agentDropdownOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setAgentDropdownOpen(false)} />
-                  <div className={`absolute right-0 mt-2.5 w-80 max-h-[420px] overflow-y-auto rounded-xl border p-2 shadow-2xl z-50 divide-y space-y-1 scrollbar-thin ${
-                    themeMode === "black"
-                      ? "border-neutral-800 bg-[#090909]/95 backdrop-blur-md divide-neutral-900"
-                      : "border-neutral-200 bg-white divide-neutral-100 shadow-xl"
-                  }`}>
-                    <div className={`px-3 py-1.5 text-[9px] font-black tracking-widest uppercase flex items-center justify-between ${
-                      themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
-                    }`}>
-                      <span>Select Specialist AI Agent</span>
-                    </div>
-                    
-                    <div className="pt-1.5 space-y-0.5 font-sans">
-                      {/* "+ Create Custom Agent" Button */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCustomAgentModalOpen(true);
-                          setAgentDropdownOpen(false);
-                        }}
-                        className={`w-[calc(100%-8px)] mx-1 flex items-center justify-center gap-2 p-2 rounded-lg border-dashed border transition duration-200 text-xs font-black uppercase tracking-wider mb-2 ${
-                          themeMode === "black"
-                            ? "border-emerald-500/25 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/40"
-                            : "border-emerald-200 bg-emerald-500/5 text-emerald-600 hover:bg-emerald-500/10"
-                        }`}
-                      >
-                        <Plus size={13} />
-                        <span>✨ Create Custom Agent</span>
-                      </button>
-
-                      {allAgents.map((agent) => {
-                        const isSelected = selectedAgentId === agent.id;
-                        return (
-                          <div key={agent.id} className="relative group/agent flex items-center w-full">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleAgentChange(agent.id);
-                                setAgentDropdownOpen(false);
-                                // Start a new chat if there are already messages in the current one
-                                if (messages.length > 0) {
-                                  handleNewChat();
-                                }
-                              }}
-                              className={`w-full text-left flex items-start gap-3 p-2.5 rounded-lg transition duration-200 pr-10 ${
-                                isSelected 
-                                  ? themeMode === "black"
-                                    ? "bg-neutral-200/10 text-white border border-neutral-200/20"
-                                    : "bg-neutral-100 text-neutral-900 border border-neutral-200"
-                                  : themeMode === "black"
-                                    ? "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
-                                    : "border border-transparent hover:bg-[#F1F5F9] text-neutral-700 hover:text-neutral-900"
-                              }`}
-                            >
-                              {agent.isCustom ? (
-                                <span className="text-base mt-0.5 flex-shrink-0 w-4 h-4 flex items-center justify-center">{agent.customIcon}</span>
-                              ) : (
-                                (() => {
-                                  const AgentIcon = agent.icon;
-                                  return <AgentIcon size={16} className={`mt-0.5 flex-shrink-0 ${isSelected ? (themeMode === "black" ? "text-neutral-200" : "text-neutral-700") : "text-neutral-500"}`} />;
-                                })()
-                              )}
-                              <div className="flex flex-col text-xs leading-normal">
-                                <span className={`font-bold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-900"} flex items-center gap-1.5`}>
-                                  {agent.banglaName}
-                                  {agent.isCustom && (
-                                    <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Custom</span>
-                                  )}
-                                </span>
-                                <span className="text-[10px] text-neutral-500 leading-normal mt-0.5">
-                                  {agent.banglaDesc}
-                                </span>
-                              </div>
-                            </button>
-
-                            {agent.isCustom && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteCustomAgent(agent.id);
-                                }}
-                                className="absolute right-2 p-1.5 rounded-md hover:bg-red-500/15 text-neutral-500 hover:text-red-400 opacity-0 group-hover/agent:opacity-100 transition duration-150 z-10"
-                                title="Delete custom agent"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <Link 
-              href="/"
-              className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition duration-300 text-xs ${
-                themeMode === "black"
-                  ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:bg-neutral-850"
-                  : "border-neutral-200 bg-white text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 shadow-sm"
-              }`}
-            >
-              Home
-            </Link>
-
-            {/* Theme Toggle Button */}
-            <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-lg transition duration-200 ${
-                themeMode === "black" 
-                  ? "text-neutral-500 hover:text-amber-400 hover:bg-neutral-900" 
-                  : "text-neutral-500 hover:text-amber-650 hover:bg-neutral-100"
-              }`}
-              title={themeMode === "black" ? "Switch to System Light Theme" : "Switch to Obsidian Black Theme"}
-            >
-              {themeMode === "black" ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
-
-            <button 
-              onClick={() => setIsSettingsModalOpen(true)}
-              className={`p-2 rounded-lg transition duration-200 ${
-                themeMode === "black" ? "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
-              }`}
-              title="Manage Account"
-            >
-              <Settings size={16} />
-            </button>
-            <UserButton />
-          </div>
-        </header>
-
-        {/* Mobile Sub-Header AI Engine Control Bar */}
-        <div className={`md:hidden px-4 py-2 border-b flex flex-col gap-2 transition-colors duration-300 z-30 ${
-          themeMode === "black" ? "border-white/5 bg-[#050505]/95" : "border-neutral-200 bg-white/95 shadow-sm"
-        }`}>
-          {/* Models Scroll Bar */}
-          <div className="flex flex-col gap-1">
-            <span className={`text-[8px] font-black uppercase tracking-wider ${
-              themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
-            }`}>Select AI Brain Model:</span>
-            
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
-              {MODELS_LIST.map((model) => {
-                const isSelected = selectedModelId === model.id;
-                return (
-                  <button
-                    key={model.id}
-                    type="button"
-                    onClick={() => handleModelChange(model.id)}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider whitespace-nowrap transition-all duration-300 flex-shrink-0 ${
-                      isSelected
-                        ? themeMode === "black"
-                          ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
-                          : "bg-emerald-50 border-emerald-500/30 text-emerald-700 shadow-sm"
-                        : themeMode === "black"
-                          ? "bg-neutral-900/40 border-neutral-800 text-neutral-400 hover:text-neutral-200"
-                          : "bg-white border-neutral-250 text-neutral-600 hover:text-neutral-900"
-                    }`}
-                  >
-                    <span>{model.icon}</span>
-                    <span>{model.name.replace(" (Thinking)", "")}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Settings Row (Brain Trust + Board Size) */}
-          <div className="flex items-center justify-between border-t border-dashed pt-1.5 mt-0.5" style={{ borderColor: themeMode === "black" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)" }}>
-            <span className={`text-[8px] font-black uppercase tracking-wider ${
-              themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
-            }`}>Cooperative Board:</span>
-            
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleBrainTrustToggle(!isBrainTrust)}
-                disabled={isLoading || isFileParsing}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border text-[9px] font-black uppercase tracking-wider transition-all duration-300 ${
-                  isBrainTrust 
-                    ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]" 
-                    : themeMode === "black"
-                      ? "bg-neutral-900/40 border-neutral-800 text-neutral-500"
-                      : "bg-white border-neutral-200 text-neutral-500 shadow-sm"
-                }`}
-              >
-                <span>🧠 Board: {isBrainTrust ? "ON" : "OFF"}</span>
-                <div className={`w-1.5 h-1.5 rounded-full ${isBrainTrust ? "bg-red-500 animate-pulse" : "bg-neutral-700"}`} />
-              </button>
-              {isBrainTrust && (
-                <select
-                  value={boardSize}
-                  onChange={(e) => setBoardSize(Number(e.target.value))}
-                  className={`px-1.5 py-0.5 text-[8px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${
-                    themeMode === "black" 
-                      ? "bg-neutral-950 border-neutral-800 text-neutral-400"
-                      : "bg-white border-neutral-200 text-neutral-600 shadow-sm"
-                  }`}
-                >
-                  <option value={3}>3 Ag</option>
-                  <option value={5}>5 Ag</option>
-                  <option value={9}>9 Ag</option>
-                  <option value={16}>16 Ag</option>
-                </select>
-              )}
-            </div>
-          </div>
-        </div>
- 
-        {/* Scrollable Conversation area */}
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8 space-y-6">
-          {messages.length === 0 ? (
-            /* Welcome / Onboarding Screen */
-            <div className="max-w-2xl mx-auto pt-8 pb-12 flex flex-col items-center justify-center text-center relative">
-              <div className="relative group mb-8">
-                {/* Dynamic concentric glowing halos */}
-                <div className="absolute -inset-4 rounded-full opacity-40 blur-2xl group-hover:opacity-60 transition duration-1000 animate-pulse" style={{ background: `radial-gradient(circle, ${aiColor}88, transparent)` }}></div>
-                <div className="absolute -inset-1 rounded-full opacity-70 blur-lg group-hover:opacity-95 transition duration-1000 animate-pulse" style={{ background: `radial-gradient(circle, ${aiColor}55, transparent)` }}></div>
-                <div className={`relative p-2.5 rounded-full border shadow-[0_8px_32px_rgba(0,0,0,0.3)] flex items-center justify-center transition-colors duration-300 ${
-                  themeMode === "black" ? "bg-white/[0.02] border-white/[0.08]" : "bg-black/[0.01] border-neutral-200/50 shadow-[0_8px_32px_rgba(0,0,0,0.02)]"
-                }`}>
-                  <AIAvatar size={80} className={`border ${themeMode === "black" ? "border-white/[0.08]" : "border-neutral-200"}`} />
-                </div>
-              </div>
- 
-              <h2 className={`text-2xl sm:text-3xl font-extrabold mt-4 tracking-tight transition-colors duration-300 ${
-                themeMode === "black" 
-                  ? "bg-clip-text text-transparent bg-gradient-to-b from-white via-neutral-100 to-neutral-400" 
-                  : "text-neutral-900"
-              }`}>
-                {aiName}:{" "}
-                <span className={`font-semibold transition-colors duration-300 ${themeMode === "black" ? "text-emerald-400" : "text-emerald-600"}`}>
-                  {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.banglaName || "Specialist"}
-                </span>
-              </h2>
-              <p className={`mt-4 leading-relaxed max-w-xl text-xs sm:text-sm font-medium transition-colors duration-300 ${
-                themeMode === "black" ? "text-neutral-400" : "text-neutral-500"
-              }`}>
-                {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.banglaDesc || "কুদ্দুস আলীর ২০+ বছরের বাস্তব বিজনেস অভিজ্ঞতার আলোকে যেকোনো আইডিয়া যাচাই করুন।"}
-              </p>
- 
-              {/* Warning box */}
-              <div className={`mt-6 w-full p-4 rounded-xl border text-xs flex items-center gap-2.5 justify-center shadow-sm transition duration-300 ${
-                themeMode === "black"
-                  ? "border-amber-500/25 bg-amber-500/5 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.04)]"
-                  : "border-amber-200 bg-amber-500/10 text-amber-955 shadow-[0_0_15px_rgba(245,158,11,0.05)] font-semibold"
-              }`}>
-                <Sparkles size={14} className={`flex-shrink-0 animate-pulse ${themeMode === "black" ? "text-neutral-200" : "text-amber-700"}`} />
-                <span>● <strong>Operational Advisor Warning:</strong> Please specify your <strong>target country and primary market</strong> first for accurate feedback.</span>
-              </div>
- 
-              {/* Prompt Suggestions Grid */}
-              <div className="mt-10 w-full text-left">
-                <div className={`flex items-center gap-2.5 mb-4 border-b pb-3 ${
-                  themeMode === "black" ? "border-neutral-900" : "border-neutral-200"
-                }`}>
-                  <span className={`text-xs font-black uppercase tracking-widest ${
-                    themeMode === "black" ? "text-neutral-200" : "text-neutral-850"
-                  }`}>
-                    Select a Case / Consultation Prompt
-                  </span>
-                  
-                  <div className="relative flex items-center justify-center">
-                    {/* Concentric glowing ping wave */}
-                    {!isGeneratingPrompts && (
-                      <span className="absolute inline-flex h-6 w-6 rounded-full bg-amber-500/40 animate-ping pointer-events-none"></span>
-                    )}
-                    
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+                {MODELS_LIST.map((model) => {
+                  const isSelected = selectedModelId === model.id;
+                  return (
                     <button
+                      key={model.id}
                       type="button"
-                      onClick={handleGeneratePrompts}
-                      disabled={isGeneratingPrompts}
-                      title="Generate New AI Consultation Cases"
-                      className={`relative z-10 p-2 rounded-full border transition-all duration-300 hover:scale-115 active:scale-90 ${
-                        isGeneratingPrompts
-                          ? "opacity-50 cursor-not-allowed"
+                      onClick={() => handleModelChange(model.id)}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider whitespace-nowrap transition-all duration-300 flex-shrink-0 ${isSelected
+                          ? themeMode === "black"
+                            ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                            : "bg-emerald-50 border-emerald-500/30 text-emerald-700 shadow-sm"
                           : themeMode === "black"
-                            ? "bg-amber-500/20 border-amber-500 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.35)] hover:shadow-[0_0_22px_rgba(245,158,11,0.6)] hover:border-amber-400"
-                            : "bg-amber-500/15 border-amber-500/50 text-amber-700 shadow-[0_0_12px_rgba(245,158,11,0.2)] hover:shadow-[0_0_18px_rgba(245,158,11,0.45)] hover:border-amber-600"
-                      }`}
-                    >
-                      {isGeneratingPrompts ? (
-                        <Loader2 size={13} className="animate-spin text-amber-500" />
-                      ) : (
-                        <Sparkles size={13} className="text-amber-500" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {(customSuggestions[selectedAgentId] || ((allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.suggestions || [])).map((suggestText, sIdx) => {
-                    const isObj = typeof suggestText === "object" && suggestText !== null;
-                    const cardTitle = isObj ? (suggestText as any).title : "Consultation Scenario";
-                    const cardPrompt = isObj ? (suggestText as any).prompt : String(suggestText);
-                    const cardTag = isObj ? (suggestText as any).tag : "Strategy";
-                    const cardLevel = isObj ? (suggestText as any).level : "Intermediate";
-
-                    const levelColors: Record<string, string> = {
-                      "Beginner": "bg-green-500/10 text-green-400 border-green-500/20",
-                      "Intermediate": "bg-blue-500/10 text-blue-400 border-blue-500/20",
-                      "Advanced": "bg-purple-500/10 text-purple-400 border-purple-500/20",
-                      "Expert": "bg-rose-500/10 text-rose-400 border-rose-500/20",
-                    };
-
-                    return (
-                      <button 
-                        key={sIdx}
-                        onClick={() => handleQuickSuggest(cardPrompt)}
-                        className={`relative p-5 text-left rounded-2xl border transition-all duration-300 text-xs leading-relaxed hover:scale-[1.01] hover:-translate-y-0.5 active:scale-[0.99] flex flex-col justify-between gap-4 group overflow-hidden ${
-                          themeMode === "black"
-                            ? "border-neutral-800 bg-[#0c0c0c]/80 hover:border-amber-500/40 text-neutral-300 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
-                            : "border-neutral-250 hover:border-amber-500/35 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:shadow-lg"
+                            ? "bg-neutral-900/40 border-neutral-800 text-neutral-400 hover:text-neutral-200"
+                            : "bg-white border-neutral-250 text-neutral-600 hover:text-neutral-900"
                         }`}
-                      >
-                        <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-amber-500/10 transition-all duration-500"></div>
-                        
-                        <div className="flex items-center justify-between w-full relative z-10">
-                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wide ${
-                            themeMode === "black" ? "bg-neutral-950 border-neutral-850 text-neutral-400" : "bg-neutral-50 border-neutral-200 text-neutral-550"
-                          }`}>
-                            🏷️ {cardTag}
-                          </span>
-                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wider ${levelColors[cardLevel] || "bg-blue-500/10 text-blue-400 border-blue-500/20"}`}>
-                            {cardLevel}
-                          </span>
-                        </div>
-
-                        <div className="relative z-10 space-y-1.5 flex-1">
-                          <h4 className={`text-[12px] font-black tracking-wide ${
-                            themeMode === "black" ? "text-neutral-100 group-hover:text-amber-400" : "text-neutral-950 group-hover:text-amber-850"
-                          } transition-colors duration-300`}>
-                            {cardTitle}
-                          </h4>
-                          <p className={`text-[11px] leading-relaxed line-clamp-3 ${
-                            themeMode === "black" ? "text-neutral-400 group-hover:text-neutral-300" : "text-neutral-500 group-hover:text-neutral-755"
-                          } transition-colors duration-350`}>
-                            &ldquo;{cardPrompt}&rdquo;
-                          </p>
-                        </div>
-                        
-                        <div className={`text-[9px] font-black tracking-widest uppercase flex items-center gap-1.5 transition-all duration-300 group-hover:text-amber-400 ${
-                          themeMode === "black" ? "text-neutral-600" : "text-neutral-400"
-                        }`}>
-                          <span>Activate Case</span>
-                          <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Add Custom Suggestion Prompt Widget */}
-                <div className={`mt-5 p-3 rounded-xl border flex items-center gap-2 ${
-                  themeMode === "black"
-                    ? "bg-neutral-950/40 border-neutral-900"
-                    : "bg-[#F8FAFC] border-neutral-200"
-                }`}>
-                  <input
-                    type="text"
-                    placeholder="Type and add a custom case prompt to this list dynamically..."
-                    value={customPromptText}
-                    onChange={(e) => setCustomPromptText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddCustomPrompt();
-                      }
-                    }}
-                    className={`flex-1 text-xs bg-transparent border-0 outline-none focus:ring-0 px-2 ${
-                      themeMode === "black" ? "text-neutral-200 placeholder-neutral-700" : "text-neutral-800 placeholder-neutral-400"
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddCustomPrompt}
-                    disabled={!customPromptText.trim()}
-                    className={`text-[10px] font-extrabold px-3 py-2 rounded-lg border transition-all duration-300 uppercase tracking-wider ${
-                      themeMode === "black"
-                        ? "bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:text-neutral-100 disabled:opacity-40"
-                        : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50 hover:text-neutral-800 disabled:opacity-40"
-                    }`}
-                  >
-                    ➕ Add Case
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* Historical & Streamed Messages */
-            <div className="max-w-3xl mx-auto w-full space-y-8 pb-12 overflow-x-hidden">
-              {messages.map((msg, index) => {
-                // If it is AI's response
-                if (msg.role === "assistant") {
-                  return (
-                    <div key={index} className="flex gap-2 sm:gap-4 items-start animate-fade-in">
-                      <AIAvatar size={36} className={`flex-shrink-0 border ${themeMode === "black" ? "border-white/10" : "border-neutral-200"}`} />
-                      <div className="flex flex-col gap-1.5 flex-1 min-w-0 overflow-hidden group/msg relative">
-                        <span className="text-xs font-black tracking-wider flex items-center gap-1.5" style={{ color: aiColor }}>
-                          {aiName.toUpperCase()}
-                        </span>
-                        <div className={`border rounded-2xl rounded-tl-none px-4 sm:px-6 py-4 sm:py-5 leading-relaxed text-sm shadow-md backdrop-blur-md prose prose-sm max-w-full w-full overflow-hidden relative transition-colors duration-300 ${
-                          themeMode === "black"
-                            ? "bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border-white/5 text-neutral-200 prose-invert"
-                            : "bg-gradient-to-br from-[#FFFFFF] to-[#F8FAFC] border-neutral-200/80 text-neutral-800 shadow-md prose-neutral"
-                        }`}>
-                          {msg.content ? (() => {
-                            const { thought, content: finalContent } = parseThoughtAndContent(msg.content);
-                            const isMessageLast = index === messages.length - 1;
-                            const showSpinner = isMessageLast && isLoading && !finalContent;
-                            
-                            // If streaming has finished but finalContent is empty, fallback to show thoughts so it is not blank
-                            const contentToRender = finalContent || ((!isLoading || !isMessageLast) ? thought : "");
-                            
-                            return (
-                              <div className="w-full max-w-full overflow-hidden break-words [&_*]:max-w-full [&_pre]:overflow-x-auto [&_code]:break-all [&_p]:break-words [&_li]:break-words">
-                                {showSpinner ? (
-                                  // Show a clean, premium spinner while generating, hiding raw internal thoughts
-                                  <div className="flex items-center gap-2.5 py-2.5">
-                                    <Loader2 size={16} className="animate-spin text-amber-500" />
-                                    <span className={`text-xs font-black tracking-wider uppercase animate-pulse ${
-                                      themeMode === "black" ? "text-neutral-400" : "text-neutral-500"
-                                    }`}>
-                                      Specialist is preparing response...
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <ReactMarkdown 
-                                    remarkPlugins={[remarkGfm]}
-                                    components={{
-                                      blockquote({ node, children, ...props }) {
-                                        return (
-                                          <blockquote 
-                                            className={`relative my-6 px-5 py-4 rounded-xl border-l-[3px] ${
-                                              themeMode === "black"
-                                                ? "bg-[#0a0a0a]/80 border-amber-500 text-amber-300 shadow-[0_0_25px_rgba(245,158,11,0.15)] ring-1 ring-white/5"
-                                                : "bg-amber-500/5 border-amber-500 text-amber-900 shadow-md ring-1 ring-black/5"
-                                            } font-mono text-[11px] sm:text-xs tracking-wide leading-relaxed overflow-hidden backdrop-blur-md [&>p]:m-0 [&>p]:mb-1.5 last:[&>p]:mb-0`}
-                                            {...props}
-                                          >
-                                            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-amber-500/10 to-transparent pointer-events-none rounded-r-xl"></div>
-                                            <div className="absolute -left-[3px] top-1/4 w-[3px] h-1/2 bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.8)] animate-pulse rounded-r"></div>
-                                            <div className="relative z-10">
-                                              {children}
-                                            </div>
-                                          </blockquote>
-                                        );
-                                      },
-                                      code({ node, className, children, ...props }) {
-                                        const match = /language-(\w+)/.exec(className || "");
-                                        const lang = match ? match[1] : "";
-                                        const codeString = String(children).replace(/\n$/, "");
-                                        
-                                        if (lang === "mermaid") {
-                                          return <MermaidDiagram chart={codeString} />;
-                                        }
-                                        if (lang === "pdf") {
-                                          return <PDFArtifactCard content={codeString} />;
-                                        }
-                                        if (lang === "word" || lang === "docx") {
-                                          return <WordArtifactCard content={codeString} />;
-                                        }
-                                        if (lang === "excel" || lang === "csv") {
-                                          return <ExcelArtifactCard content={codeString} />;
-                                        }
-                                        
-                                        return (
-                                          <code className={className} {...props}>
-                                            {children}
-                                          </code>
-                                        );
-                                      }
-                                    }}
-                                  >
-                                    {cleanArrows(contentToRender)}
-                                  </ReactMarkdown>
-                                )}
-                              </div>
-                            );
-                          })() : (
-                            <div className="flex gap-1 items-center py-2">
-                              <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:-0.3s] ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
-                              <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:-0.15s] ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
-                              <span className={`w-2 h-2 rounded-full animate-bounce ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
-                            </div>
-                          )}
-                        </div>
-                        {msg.content && (
-                          <div className="flex justify-start items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => copyToClipboard(msg.content, `msg-${index}`)}
-                              className={`opacity-75 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded-md border flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 shadow-inner ${
-                                themeMode === "black"
-                                  ? "bg-[#0F0F0F] border-white/5 text-neutral-400 hover:text-neutral-200"
-                                  : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 shadow-sm"
-                              }`}
-                              title="Copy response"
-                            >
-                              {copiedId === `msg-${index}` ? (
-                                <>
-                                  <Check size={11} className="text-emerald-400" />
-                                  <span className="text-emerald-400 font-extrabold">COPIED</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy size={11} />
-                                  <span>COPY RESPONSE</span>
-                                </>
-                              )}
-                            </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              }
-
-                // User's message
-                const base64GlobalRegex = /\[IMAGE_BASE64:(data:image\/[^\]]+)\]/g;
-                const imageUrls: string[] = [];
-                if (msg.content) {
-                  let match;
-                  base64GlobalRegex.lastIndex = 0;
-                  while ((match = base64GlobalRegex.exec(msg.content)) !== null) {
-                    imageUrls.push(match[1]);
-                  }
-                }
-                
-                // Beautifully clean raw message contents to hide internal developer/OCR debug tags from user screen
-                let cleanContent = "";
-                if (msg.content) {
-                  const withoutBase64 = msg.content.replace(base64GlobalRegex, "").trim();
-                  
-                  // Bulletproof case-insensitive match for the User Prompt tag
-                  const promptMatch = withoutBase64.match(/User Prompt:\s*([\s\S]*)$/i);
-                  if (promptMatch) {
-                    const extractedPrompt = promptMatch[1].trim();
-                    if (extractedPrompt === "Please analyze the extracted text above based on your specialized agent role." ||
-                        extractedPrompt === "Please analyze the extracted documents above based on your specialized agent role.") {
-                      const docMatches = withoutBase64.match(/\[ATTACHED DOCUMENT:\s*([^\]]+)\]/gi);
-                      const count = docMatches ? docMatches.length : 1;
-                      cleanContent = `📎 ${count} Document(s) analyzed`;
-                    } else {
-                      cleanContent = extractedPrompt;
-                    }
-                  } else {
-                    // Fallback to strip other internal brackets if they exist
-                    cleanContent = withoutBase64;
-                  }
-                }
-
-                 // Parse attached documents dynamically to support direct client-side downloads!
-                 const docMatches: { name: string; content: string }[] = [];
-                 if (msg.content) {
-                   const docRegex = /\[ATTACHED DOCUMENT:\s*([^\]]+)\]\s*\n\`\`\`([\s\S]*?)\`\`\`/gi;
-                   let docM;
-                   docRegex.lastIndex = 0;
-                   while ((docM = docRegex.exec(msg.content)) !== null) {
-                     docMatches.push({
-                       name: docM[1],
-                       content: docM[2].trim()
-                     });
-                   }
-                 }
-
-                 return (
-                   <div key={index} className="flex gap-4 items-start justify-end animate-fade-in font-sans">
-                     <div className="flex flex-col gap-1.5 items-end max-w-[80%] group/msg relative">
-                       <span className={`text-[9px] font-black tracking-widest uppercase flex items-center gap-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-450"}`}>
-                         YOUR BUSINESS INQUIRY
-                         {themeMode === "black" && <span className="w-1 h-1 bg-emerald-400 rounded-full animate-ping" />}
-                       </span>
-                       <div className={`border rounded-2xl rounded-tr-none px-5 py-4 text-sm flex flex-col items-end relative transition-all duration-300 shadow-lg ${
-                         themeMode === "black"
-                           ? "bg-emerald-950/15 border-emerald-500/15 text-emerald-50/95"
-                           : "bg-amber-500/10 border-amber-500/20 text-neutral-800 shadow-md"
-                       }`}>
-                         {imageUrls.length > 0 && (
-                           <div className="flex flex-wrap gap-2 mb-3 max-w-full justify-end">
-                             {imageUrls.map((url, imgIdx) => (
-                               <div key={imgIdx} className={`relative rounded-xl overflow-hidden border group shadow-md max-w-[180px] sm:max-w-[220px] ${
-                                 themeMode === "black" ? "border-white/10" : "border-neutral-200"
-                               }`}>
-                                 <img 
-                                   src={url} 
-                                   alt={`Uploaded visual context ${imgIdx + 1}`} 
-                                   className="max-h-40 max-w-full object-contain rounded-xl transition-transform duration-300 group-hover:scale-105"
-                                 />
-                                 {/* Glowing Hover Action Overlay with Download Icon */}
-                                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2 z-10">
-                                   <a 
-                                     href={url} 
-                                     download={`attached_image_${imgIdx + 1}.png`}
-                                     className="p-2 bg-emerald-500 hover:bg-emerald-400 text-black rounded-lg transition duration-250 shadow-lg transform scale-90 group-hover:scale-100 flex items-center justify-center"
-                                     title="Download Image"
-                                   >
-                                     <Download size={14} />
-                                   </a>
-                                 </div>
-                               </div>
-                             ))}
-                           </div>
-                         )}
-                         {cleanContent && (
-                           <span className="text-left w-full block whitespace-pre-wrap">{cleanContent}</span>
-                         )}
-                         
-                         {/* Render Attached Documents for Direct Download */}
-                         {docMatches.length > 0 && (
-                           <div className="mt-3 w-full border-t border-dashed border-neutral-700/30 pt-3 flex flex-col gap-2">
-                             <span className="text-[10px] font-extrabold text-neutral-400 tracking-widest uppercase block self-start">Embedded Documents</span>
-                             <div className="flex flex-wrap gap-2 self-start w-full">
-                               {docMatches.map((doc, docIdx) => {
-                                 const downloadUri = `data:text/plain;charset=utf-8,${encodeURIComponent(doc.content)}`;
-                                 return (
-                                   <div key={docIdx} className={`p-2.5 rounded-xl border flex items-center gap-2 text-xs w-full max-w-[260px] justify-between ${
-                                     themeMode === "black" ? "bg-neutral-950/40 border-white/5" : "bg-white border-neutral-250 shadow-sm"
-                                   }`}>
-                                     <div className="flex items-center gap-2 truncate">
-                                       <FileText size={14} className="text-emerald-400 flex-shrink-0 animate-pulse" />
-                                       <span className="truncate font-semibold text-neutral-300" title={doc.name}>{doc.name}</span>
-                                     </div>
-                                     <a
-                                       href={downloadUri}
-                                       download={doc.name.endsWith(".txt") ? doc.name : `${doc.name}.txt`}
-                                       className="p-1.5 bg-neutral-900 hover:bg-neutral-800 text-emerald-400 rounded-lg transition border border-white/5 flex items-center justify-center shadow-inner"
-                                       title={`Download parsed ${doc.name}`}
-                                     >
-                                       <Download size={11} />
-                                     </a>
-                                   </div>
-                                 );
-                               })}
-                             </div>
-                           </div>
-                         )}
-                       </div>
-                       {cleanContent && (
-                        <div className="flex justify-end w-full">
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(cleanContent, `msg-${index}`)}
-                            className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-neutral-500 hover:text-neutral-300 flex items-center gap-1 text-[10px] font-bold"
-                            title="Copy input"
-                          >
-                            {copiedId === `msg-${index}` ? (
-                              <>
-                                <Check size={12} className="text-emerald-500" />
-                                <span className="text-emerald-500">Copied</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy size={12} />
-                                <span>Copy</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Typing indicator */}
-              {isLoading && messages[messages.length - 1]?.content !== "" && (
-                <TypingIndicator aiName={aiName} aiColor={aiColor} />
-              )}
-
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </div>
-
-        {/* Input Text Form Area */}
-        <div className={`p-3 pb-6 sm:p-4 md:p-6 border-t transition-colors duration-300 ${
-          themeMode === "black" 
-            ? "border-white/5 bg-gradient-to-t from-[#020202] to-black" 
-            : "border-neutral-200 bg-gradient-to-t from-[#F8FAFC] to-[#F1F5F9]"
-        }`}>
-          <div className="max-w-3xl mx-auto relative">
-            {/* Stop Generation Button */}
-            {isLoading && (
-              <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-30">
-                <button
-                  type="button"
-                  onClick={stopGeneration}
-                  className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0A0A0A]/95 hover:bg-neutral-900 border border-white/10 text-neutral-300 text-xs shadow-xl backdrop-blur-md transition-all active:scale-95 animate-fade-in font-bold whitespace-nowrap"
-                >
-                  <Square size={10} fill="currentColor" className="text-red-500 animate-pulse" /> Stop generating
-                </button>
-              </div>
-            )}
-            <form 
-              onSubmit={handleSubmit}
-              className={`w-full relative rounded-2xl border transition-all duration-300 overflow-hidden backdrop-blur-md ${
-                themeMode === "black"
-                  ? "border-white/[0.04] bg-[#0A0A0C]/80 shadow-[0_4px_30px_rgba(0,0,0,0.7)] focus-within:border-emerald-500/30 focus-within:shadow-[0_0_40px_rgba(16,185,129,0.08)]"
-                  : "border-neutral-200 bg-white/90 shadow-[0_5px_30px_rgba(0,0,0,0.03)] focus-within:border-emerald-500/25 focus-within:shadow-[0_0_30px_rgba(16,185,129,0.04)]"
-              }`}
-            >
-            <textarea
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={(e) => {
-                // Prevent accidental submission when pressing Enter to finalize Bengali/IME composition
-                if (e.nativeEvent.isComposing) return;
-                
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e);
-                }
-              }}
-              onPaste={async (e) => {
-                const items = e.clipboardData?.items;
-                if (!items) return;
-                for (let i = 0; i < items.length; i++) {
-                  if (items[i].type.indexOf("image") !== -1) {
-                    const blob = items[i].getAsFile();
-                    if (blob) {
-                      const file = new File([blob], `pasted_image_${Date.now()}.png`, { type: blob.type });
-                      setIsFileParsing(true);
-                      try {
-                        const parsedContent = await parseAnyFile(file);
-                      setAttachedFiles((prev) => [
-                        ...prev,
-                        {
-                          name: file.name,
-                          content: parsedContent,
-                          type: file.type || "image/png",
-                        },
-                      ]);
-                      } catch (err: any) {
-                        console.error("Paste image parsing error:", err);
-                        alert(`Could not parse pasted image: ${err.message || "Unknown error"}`);
-                      } finally {
-                        setIsFileParsing(false);
-                      }
-                      e.preventDefault(); // Stop default paste so the image doesn't try to paste as raw data
-                      return;
-                    }
-                  }
-                }
-              }}
-              placeholder={(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.placeholder || "Describe your startup idea and which country/market you are targeting..."}
-              className={`w-full bg-transparent border-0 ring-0 focus:ring-0 focus:outline-none text-sm px-5 py-4 resize-none h-[64px] min-h-[50px] max-h-[200px] ${
-                themeMode === "black"
-                  ? "placeholder-neutral-600 text-neutral-200"
-                  : "placeholder-neutral-400 text-neutral-800 font-medium"
-              }`}
-              disabled={isLoading}
-              onFocus={(e) => {
-                const target = e.currentTarget;
-                if (typeof window !== "undefined" && (window as any).triggerKachaResize) {
-                  (window as any).triggerKachaResize();
-                }
-                setTimeout(() => {
-                  target.closest("form")?.scrollIntoView({ behavior: "auto", block: "nearest" });
-                  scrollToBottom();
-                }, 100);
-                setTimeout(() => {
-                  target.closest("form")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-                  scrollToBottom();
-                  if (typeof window !== "undefined" && (window as any).triggerKachaResize) {
-                    (window as any).triggerKachaResize();
-                  }
-                }, 300);
-              }}
-            />
-
-            {/* Attached file preview or parsing indicator */}
-            {/* Attached files preview */}
-            {attachedFiles.length > 0 && (
-              <div className="mx-5 my-2 flex flex-wrap gap-2.5">
-                {attachedFiles.map((att, attIdx) => {
-                  const imageMatch = att.content.match(/\[IMAGE_BASE64:(data:image\/[^\]]+)\]/);
-                  const isImage = !!imageMatch;
-                  const imgSrc = imageMatch ? imageMatch[1] : "";
-
-                  if (isImage) {
-                    return (
-                      <div key={attIdx} className="relative group/thumb w-14 h-14 rounded-xl border overflow-hidden shadow-md animate-fade-in flex-shrink-0" style={{ borderColor: themeMode === "black" ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)" }}>
-                        <img 
-                          src={imgSrc} 
-                          alt={att.name} 
-                          className="w-full h-full object-cover" 
-                        />
-                        {/* Hover Overlay with Delete button */}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-all duration-200">
-                          <button
-                            type="button"
-                            onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx))}
-                            className="p-1 rounded-full bg-red-600/95 text-white hover:bg-red-700 hover:scale-110 transition duration-150"
-                            title="Remove image"
-                          >
-                            <X size={10} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div key={attIdx} className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-2 max-w-[200px] shadow-sm animate-fade-in ${
-                      themeMode === "black"
-                        ? "bg-gradient-to-r from-neutral-200/10 to-transparent border-neutral-200/15 text-white"
-                        : "bg-[#FAFAFA] border-neutral-200 text-neutral-850"
-                    }`}>
-                      <FileText size={13} className="text-emerald-400 flex-shrink-0" />
-                      <span className="truncate font-semibold flex-1">{att.name}</span>
-                      <button 
-                        type="button" 
-                        onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx))}
-                        className="p-0.5 text-neutral-400 hover:text-red-400 transition"
-                        title="Remove file"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
+                    >
+                      <span>{model.icon}</span>
+                      <span>{model.name.replace(" (Thinking)", "")}</span>
+                    </button>
                   );
                 })}
               </div>
-            )}
-            {isFileParsing && (
-              <div className={`mx-5 my-2 text-xs flex items-center gap-1.5 animate-pulse ${
-                themeMode === "black" ? "text-neutral-500" : "text-neutral-450"
-              }`}>
-                <Loader2 size={12} className={`animate-spin ${themeMode === "black" ? "text-neutral-200" : "text-neutral-600"}`} />
-                <span>Parsing document data...</span>
-              </div>
-            )}
+            </div>
 
-            <div className={`flex items-center justify-between px-5 pb-3 border-t pt-2.5 transition-colors duration-300 ${
-              themeMode === "black"
-                ? "bg-[#0D0D0D] border-neutral-900"
-                : "bg-[#FAFAFA] border-neutral-150"
-            }`}>
-              {/* Media tools */}
-              <div className="flex items-center gap-2">
-                {/* Hidden File Input */}
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileUpload} 
-                  accept=".txt,.md,.csv,.json,.pdf,.docx,.xlsx,.xls,.png,.jpg,.jpeg,.webp"
-                  className="hidden" 
-                  multiple
-                />
-                
-                {/* Paperclip Button */}
+            {/* Settings Row (Brain Trust + Board Size) */}
+            <div className="flex items-center justify-between border-t border-dashed pt-1.5 mt-0.5" style={{ borderColor: themeMode === "black" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)" }}>
+              <span className={`text-[8px] font-black uppercase tracking-wider ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
+                }`}>Cooperative Board:</span>
+
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => handleBrainTrustToggle(!isBrainTrust)}
                   disabled={isLoading || isFileParsing}
-                  title="Attach file (PDF, Word, Excel, Images, Text)"
-                  className={`p-2 rounded-xl border transition duration-300 ${
-                    themeMode === "black"
-                      ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20"
-                      : "border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800 hover:border-neutral-300"
-                  }`}
-                >
-                  <Paperclip size={15} />
-                </button>
-
-                {/* Camera Button */}
-                <button
-                  type="button"
-                  onClick={startCamera}
-                  disabled={isLoading || isFileParsing}
-                  title="Take Photo"
-                  className={`p-2 rounded-xl border transition duration-300 ${
-                    themeMode === "black"
-                      ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20"
-                      : "border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800 hover:border-neutral-300"
-                  }`}
-                >
-                  <Camera size={15} />
-                </button>
-
-                {/* Brain Trust Toggle */}
-                <div className="flex items-center gap-1.5 ml-2">
-                   <button
-                     type="button"
-                     onClick={() => handleBrainTrustToggle(!isBrainTrust)}
-                     disabled={isLoading || isFileParsing}
-                     title="Executive Board: Massively Parallel Deep Analysis"
-                     className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${
-                       isBrainTrust 
-                         ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]" 
-                         : themeMode === "black"
-                           ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600"
-                           : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 shadow-sm"
-                     }`}
-                   >
-                     <span>🧠 {boardSize}-Agent Board</span>
-                     <div className={`w-2 h-2 rounded-full ${isBrainTrust ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)] animate-ping" : "bg-neutral-700"}`}></div>
-                   </button>
-                   {isBrainTrust && (
-                     <select
-                       value={boardSize}
-                       onChange={(e) => setBoardSize(Number(e.target.value))}
-                       className={`px-2 py-1 text-[9px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${
-                         themeMode === "black" 
-                           ? "bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white"
-                           : "bg-white border-neutral-200 text-neutral-600 hover:text-black shadow-sm"
-                       }`}
-                     >
-                       <option value={3}>3 Agents</option>
-                       <option value={5}>5 Agents</option>
-                       <option value={9}>9 Agents</option>
-                       <option value={16}>16 Agents</option>
-                     </select>
-                   )}
-                 </div>
-
-                {/* Mic Button */}
-                <button
-                  type="button"
-                  onClick={toggleListening}
-                  title={isListening ? "Stop listening" : "Dictate (Speech to Text)"}
-                  className={`p-2 rounded-xl border transition duration-300 ${
-                    isListening 
-                      ? "bg-red-500/10 border-red-500/30 text-red-500 animate-pulse" 
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border text-[9px] font-black uppercase tracking-wider transition-all duration-300 ${isBrainTrust
+                      ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
                       : themeMode === "black"
-                        ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-red-400 hover:border-red-500/20"
-                        : "border-neutral-200 bg-white text-neutral-500 hover:text-red-500 hover:border-red-200"
-                  }`}
+                        ? "bg-neutral-900/40 border-neutral-800 text-neutral-500"
+                        : "bg-white border-neutral-200 text-neutral-500 shadow-sm"
+                    }`}
                 >
-                  {isListening ? <MicOff size={15} /> : <Mic size={15} />}
+                  <span>🧠 Board: {isBrainTrust ? "ON" : "OFF"}</span>
+                  <div className={`w-1.5 h-1.5 rounded-full ${isBrainTrust ? "bg-red-500 animate-pulse" : "bg-neutral-700"}`} />
                 </button>
+                {isBrainTrust && (
+                  <select
+                    value={boardSize}
+                    onChange={(e) => setBoardSize(Number(e.target.value))}
+                    className={`px-1.5 py-0.5 text-[8px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${themeMode === "black"
+                        ? "bg-neutral-950 border-neutral-800 text-neutral-400"
+                        : "bg-white border-neutral-200 text-neutral-600 shadow-sm"
+                      }`}
+                  >
+                    <option value={3}>3 Ag</option>
+                    <option value={5}>5 Ag</option>
+                    <option value={9}>9 Ag</option>
+                    <option value={16}>16 Ag</option>
+                  </select>
+                )}
               </div>
+            </div>
+          </div>
 
-              <span className={`text-[10px] select-none hidden md:inline-flex items-center gap-1 ml-4 ${
-                themeMode === "black" ? "text-neutral-600" : "text-neutral-400"
-              }`}>
-                <CornerDownLeft size={10} /> Press Enter to send consultation
-              </span>
-              
-              <button 
-                type="submit"
-                disabled={isLoading || (!inputMessage.trim() && !attachedFile)}
-                className={`ml-auto p-2.5 rounded-xl flex items-center justify-center transition duration-300 ${
-                  isLoading || (!inputMessage.trim() && !attachedFile)
-                    ? themeMode === "black"
-                      ? "bg-neutral-900 text-neutral-600 cursor-not-allowed border border-neutral-900/40" 
-                      : "bg-neutral-100 text-neutral-450 cursor-not-allowed border border-neutral-200"
-                    : themeMode === "black"
-                      ? "bg-neutral-200 hover:bg-white hover:scale-105 active:scale-95 text-neutral-950 font-bold"
-                      : "bg-neutral-900 hover:bg-black hover:scale-105 active:scale-95 text-white font-bold"
-                }`}
+          {/* Scrollable Conversation area */}
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8 space-y-6">
+            {messages.length === 0 ? (
+              /* Welcome / Onboarding Screen */
+              <div className="max-w-2xl mx-auto pt-8 pb-12 flex flex-col items-center justify-center text-center relative">
+                <div className="relative group mb-8">
+                  {/* Dynamic concentric glowing halos */}
+                  <div className="absolute -inset-4 rounded-full opacity-40 blur-2xl group-hover:opacity-60 transition duration-1000 animate-pulse" style={{ background: `radial-gradient(circle, ${aiColor}88, transparent)` }}></div>
+                  <div className="absolute -inset-1 rounded-full opacity-70 blur-lg group-hover:opacity-95 transition duration-1000 animate-pulse" style={{ background: `radial-gradient(circle, ${aiColor}55, transparent)` }}></div>
+                  <div className={`relative p-2.5 rounded-full border shadow-[0_8px_32px_rgba(0,0,0,0.3)] flex items-center justify-center transition-colors duration-300 ${themeMode === "black" ? "bg-white/[0.02] border-white/[0.08]" : "bg-black/[0.01] border-neutral-200/50 shadow-[0_8px_32px_rgba(0,0,0,0.02)]"
+                    }`}>
+                    <AIAvatar size={80} className={`border ${themeMode === "black" ? "border-white/[0.08]" : "border-neutral-200"}`} />
+                  </div>
+                </div>
+
+                <h2 className={`text-2xl sm:text-3xl font-extrabold mt-4 tracking-tight transition-colors duration-300 ${themeMode === "black"
+                    ? "bg-clip-text text-transparent bg-gradient-to-b from-white via-neutral-100 to-neutral-400"
+                    : "text-neutral-900"
+                  }`}>
+                  {aiName}:{" "}
+                  <span className={`font-semibold transition-colors duration-300 ${themeMode === "black" ? "text-emerald-400" : "text-emerald-600"}`}>
+                    {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.banglaName || "Specialist"}
+                  </span>
+                </h2>
+                <p className={`mt-4 leading-relaxed max-w-xl text-xs sm:text-sm font-medium transition-colors duration-300 ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"
+                  }`}>
+                  {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.banglaDesc || "কুদ্দুস আলীর ২০+ বছরের বাস্তব বিজনেস অভিজ্ঞতার আলোকে যেকোনো আইডিয়া যাচাই করুন।"}
+                </p>
+
+                {/* Warning box */}
+                <div className={`mt-6 w-full p-4 rounded-xl border text-xs flex items-center gap-2.5 justify-center shadow-sm transition duration-300 ${themeMode === "black"
+                    ? "border-amber-500/25 bg-amber-500/5 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.04)]"
+                    : "border-amber-200 bg-amber-500/10 text-amber-955 shadow-[0_0_15px_rgba(245,158,11,0.05)] font-semibold"
+                  }`}>
+                  <Sparkles size={14} className={`flex-shrink-0 animate-pulse ${themeMode === "black" ? "text-neutral-200" : "text-amber-700"}`} />
+                  <span>● <strong>Operational Advisor Warning:</strong> Please specify your <strong>target country and primary market</strong> first for accurate feedback.</span>
+                </div>
+
+                {/* Prompt Suggestions Grid */}
+                <div className="mt-10 w-full text-left">
+                  <div className={`flex items-center gap-2.5 mb-4 border-b pb-3 ${themeMode === "black" ? "border-neutral-900" : "border-neutral-200"
+                    }`}>
+                    <span className={`text-xs font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-200" : "text-neutral-850"
+                      }`}>
+                      Select a Case / Consultation Prompt
+                    </span>
+
+                    <div className="relative flex items-center justify-center">
+                      {/* Concentric glowing ping wave */}
+                      {!isGeneratingPrompts && (
+                        <span className="absolute inline-flex h-6 w-6 rounded-full bg-amber-500/40 animate-ping pointer-events-none"></span>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleGeneratePrompts}
+                        disabled={isGeneratingPrompts}
+                        title="Generate New AI Consultation Cases"
+                        className={`relative z-10 p-2 rounded-full border transition-all duration-300 hover:scale-115 active:scale-90 ${isGeneratingPrompts
+                            ? "opacity-50 cursor-not-allowed"
+                            : themeMode === "black"
+                              ? "bg-amber-500/20 border-amber-500 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.35)] hover:shadow-[0_0_22px_rgba(245,158,11,0.6)] hover:border-amber-400"
+                              : "bg-amber-500/15 border-amber-500/50 text-amber-700 shadow-[0_0_12px_rgba(245,158,11,0.2)] hover:shadow-[0_0_18px_rgba(245,158,11,0.45)] hover:border-amber-600"
+                          }`}
+                      >
+                        {isGeneratingPrompts ? (
+                          <Loader2 size={13} className="animate-spin text-amber-500" />
+                        ) : (
+                          <Sparkles size={13} className="text-amber-500" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {(customSuggestions[selectedAgentId] || ((allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.suggestions || [])).map((suggestText, sIdx) => {
+                      const isObj = typeof suggestText === "object" && suggestText !== null;
+                      const cardTitle = isObj ? (suggestText as any).title : "Consultation Scenario";
+                      const cardPrompt = isObj ? (suggestText as any).prompt : String(suggestText);
+                      const cardTag = isObj ? (suggestText as any).tag : "Strategy";
+                      const cardLevel = isObj ? (suggestText as any).level : "Intermediate";
+
+                      const levelColors: Record<string, string> = {
+                        "Beginner": "bg-green-500/10 text-green-400 border-green-500/20",
+                        "Intermediate": "bg-blue-500/10 text-blue-400 border-blue-500/20",
+                        "Advanced": "bg-purple-500/10 text-purple-400 border-purple-500/20",
+                        "Expert": "bg-rose-500/10 text-rose-400 border-rose-500/20",
+                      };
+
+                      return (
+                        <button
+                          key={sIdx}
+                          onClick={() => handleQuickSuggest(cardPrompt)}
+                          className={`relative p-5 text-left rounded-2xl border transition-all duration-300 text-xs leading-relaxed hover:scale-[1.01] hover:-translate-y-0.5 active:scale-[0.99] flex flex-col justify-between gap-4 group overflow-hidden ${themeMode === "black"
+                              ? "border-neutral-800 bg-[#0c0c0c]/80 hover:border-amber-500/40 text-neutral-300 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
+                              : "border-neutral-250 hover:border-amber-500/35 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:shadow-lg"
+                            }`}
+                        >
+                          <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-amber-500/10 transition-all duration-500"></div>
+
+                          <div className="flex items-center justify-between w-full relative z-10">
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wide ${themeMode === "black" ? "bg-neutral-950 border-neutral-850 text-neutral-400" : "bg-neutral-50 border-neutral-200 text-neutral-550"
+                              }`}>
+                              🏷️ {cardTag}
+                            </span>
+                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wider ${levelColors[cardLevel] || "bg-blue-500/10 text-blue-400 border-blue-500/20"}`}>
+                              {cardLevel}
+                            </span>
+                          </div>
+
+                          <div className="relative z-10 space-y-1.5 flex-1">
+                            <h4 className={`text-[12px] font-black tracking-wide ${themeMode === "black" ? "text-neutral-100 group-hover:text-amber-400" : "text-neutral-950 group-hover:text-amber-850"
+                              } transition-colors duration-300`}>
+                              {cardTitle}
+                            </h4>
+                            <p className={`text-[11px] leading-relaxed line-clamp-3 ${themeMode === "black" ? "text-neutral-400 group-hover:text-neutral-300" : "text-neutral-500 group-hover:text-neutral-755"
+                              } transition-colors duration-350`}>
+                              &ldquo;{cardPrompt}&rdquo;
+                            </p>
+                          </div>
+
+                          <div className={`text-[9px] font-black tracking-widest uppercase flex items-center gap-1.5 transition-all duration-300 group-hover:text-amber-400 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"
+                            }`}>
+                            <span>Activate Case</span>
+                            <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Add Custom Suggestion Prompt Widget */}
+                  <div className={`mt-5 p-3 rounded-xl border flex items-center gap-2 ${themeMode === "black"
+                      ? "bg-neutral-950/40 border-neutral-900"
+                      : "bg-[#F8FAFC] border-neutral-200"
+                    }`}>
+                    <input
+                      type="text"
+                      placeholder="Type and add a custom case prompt to this list dynamically..."
+                      value={customPromptText}
+                      onChange={(e) => setCustomPromptText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddCustomPrompt();
+                        }
+                      }}
+                      className={`flex-1 text-xs bg-transparent border-0 outline-none focus:ring-0 px-2 ${themeMode === "black" ? "text-neutral-200 placeholder-neutral-700" : "text-neutral-800 placeholder-neutral-400"
+                        }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCustomPrompt}
+                      disabled={!customPromptText.trim()}
+                      className={`text-[10px] font-extrabold px-3 py-2 rounded-lg border transition-all duration-300 uppercase tracking-wider ${themeMode === "black"
+                          ? "bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:text-neutral-100 disabled:opacity-40"
+                          : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50 hover:text-neutral-800 disabled:opacity-40"
+                        }`}
+                    >
+                      ➕ Add Case
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Historical & Streamed Messages */
+              <div className="max-w-3xl mx-auto w-full space-y-8 pb-12 overflow-x-hidden">
+                {messages.map((msg, index) => {
+                  // If it is AI's response
+                  if (msg.role === "assistant") {
+                    return (
+                      <div key={index} className="flex gap-2 sm:gap-4 items-start animate-fade-in">
+                        <AIAvatar size={36} className={`flex-shrink-0 border ${themeMode === "black" ? "border-white/10" : "border-neutral-200"}`} />
+                        <div className="flex flex-col gap-1.5 flex-1 min-w-0 overflow-hidden group/msg relative">
+                          <span className="text-xs font-black tracking-wider flex items-center gap-1.5" style={{ color: aiColor }}>
+                            {aiName.toUpperCase()}
+                          </span>
+                          <div className={`border rounded-2xl rounded-tl-none px-4 sm:px-6 py-4 sm:py-5 leading-relaxed text-sm shadow-md backdrop-blur-md prose prose-sm max-w-full w-full overflow-hidden relative transition-colors duration-300 ${themeMode === "black"
+                              ? "bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border-white/5 text-neutral-200 prose-invert"
+                              : "bg-gradient-to-br from-[#FFFFFF] to-[#F8FAFC] border-neutral-200/80 text-neutral-800 shadow-md prose-neutral"
+                            }`}>
+                            {msg.content ? (() => {
+                              const { thought, content: finalContent } = parseThoughtAndContent(msg.content);
+                              const isMessageLast = index === messages.length - 1;
+                              const showSpinner = isMessageLast && isLoading && !finalContent;
+
+                              // If streaming has finished but finalContent is empty, fallback to show thoughts so it is not blank
+                              const contentToRender = finalContent || ((!isLoading || !isMessageLast) ? thought : "");
+
+                              return (
+                                <div className="w-full max-w-full overflow-hidden break-words [&_*]:max-w-full [&_pre]:overflow-x-auto [&_code]:break-all [&_p]:break-words [&_li]:break-words">
+                                  {showSpinner ? (
+                                    // Show a clean, premium spinner while generating, hiding raw internal thoughts
+                                    <div className="flex items-center gap-2.5 py-2.5">
+                                      <Loader2 size={16} className="animate-spin text-amber-500" />
+                                      <span className={`text-xs font-black tracking-wider uppercase animate-pulse ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"
+                                        }`}>
+                                        Specialist is preparing response...
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <ReactMarkdown
+                                      remarkPlugins={[remarkGfm]}
+                                      components={{
+                                        blockquote({ node, children, ...props }) {
+                                          return (
+                                            <blockquote
+                                              className={`relative my-6 px-5 py-4 rounded-xl border-l-[3px] ${themeMode === "black"
+                                                  ? "bg-[#0a0a0a]/80 border-amber-500 text-amber-300 shadow-[0_0_25px_rgba(245,158,11,0.15)] ring-1 ring-white/5"
+                                                  : "bg-amber-500/5 border-amber-500 text-amber-900 shadow-md ring-1 ring-black/5"
+                                                } font-mono text-[11px] sm:text-xs tracking-wide leading-relaxed overflow-hidden backdrop-blur-md [&>p]:m-0 [&>p]:mb-1.5 last:[&>p]:mb-0`}
+                                              {...props}
+                                            >
+                                              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-amber-500/10 to-transparent pointer-events-none rounded-r-xl"></div>
+                                              <div className="absolute -left-[3px] top-1/4 w-[3px] h-1/2 bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.8)] animate-pulse rounded-r"></div>
+                                              <div className="relative z-10">
+                                                {children}
+                                              </div>
+                                            </blockquote>
+                                          );
+                                        },
+                                        code({ node, className, children, ...props }) {
+                                          const match = /language-(\w+)/.exec(className || "");
+                                          const lang = match ? match[1] : "";
+                                          const codeString = String(children).replace(/\n$/, "");
+
+                                          if (lang === "mermaid") {
+                                            return <MermaidDiagram chart={codeString} />;
+                                          }
+                                          if (lang === "pdf") {
+                                            return <PDFArtifactCard content={codeString} />;
+                                          }
+                                          if (lang === "word" || lang === "docx") {
+                                            return <WordArtifactCard content={codeString} />;
+                                          }
+                                          if (lang === "excel" || lang === "csv") {
+                                            return <ExcelArtifactCard content={codeString} />;
+                                          }
+
+                                          return (
+                                            <code className={className} {...props}>
+                                              {children}
+                                            </code>
+                                          );
+                                        }
+                                      }}
+                                    >
+                                      {cleanArrows(contentToRender)}
+                                    </ReactMarkdown>
+                                  )}
+                                </div>
+                              );
+                            })() : (
+                              <div className="flex gap-1 items-center py-2">
+                                <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:-0.3s] ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
+                                <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:-0.15s] ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
+                                <span className={`w-2 h-2 rounded-full animate-bounce ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
+                              </div>
+                            )}
+                          </div>
+                          {msg.content && (
+                            <div className="flex justify-start items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(msg.content, `msg-${index}`)}
+                                className={`opacity-75 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded-md border flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 shadow-inner ${themeMode === "black"
+                                    ? "bg-[#0F0F0F] border-white/5 text-neutral-400 hover:text-neutral-200"
+                                    : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 shadow-sm"
+                                  }`}
+                                title="Copy response"
+                              >
+                                {copiedId === `msg-${index}` ? (
+                                  <>
+                                    <Check size={11} className="text-emerald-400" />
+                                    <span className="text-emerald-400 font-extrabold">COPIED</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy size={11} />
+                                    <span>COPY RESPONSE</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // User's message
+                  const base64GlobalRegex = /\[IMAGE_BASE64:(data:image\/[^\]]+)\]/g;
+                  const imageUrls: string[] = [];
+                  if (msg.content) {
+                    let match;
+                    base64GlobalRegex.lastIndex = 0;
+                    while ((match = base64GlobalRegex.exec(msg.content)) !== null) {
+                      imageUrls.push(match[1]);
+                    }
+                  }
+
+                  // Beautifully clean raw message contents to hide internal developer/OCR debug tags from user screen
+                  let cleanContent = "";
+                  if (msg.content) {
+                    const withoutBase64 = msg.content.replace(base64GlobalRegex, "").trim();
+
+                    // Bulletproof case-insensitive match for the User Prompt tag
+                    const promptMatch = withoutBase64.match(/User Prompt:\s*([\s\S]*)$/i);
+                    if (promptMatch) {
+                      const extractedPrompt = promptMatch[1].trim();
+                      if (extractedPrompt === "Please analyze the extracted text above based on your specialized agent role." ||
+                        extractedPrompt === "Please analyze the extracted documents above based on your specialized agent role.") {
+                        const docMatches = withoutBase64.match(/\[ATTACHED DOCUMENT:\s*([^\]]+)\]/gi);
+                        const count = docMatches ? docMatches.length : 1;
+                        cleanContent = `📎 ${count} Document(s) analyzed`;
+                      } else {
+                        cleanContent = extractedPrompt;
+                      }
+                    } else {
+                      // Fallback to strip other internal brackets if they exist
+                      cleanContent = withoutBase64;
+                    }
+                  }
+
+                  // Parse attached documents dynamically to support direct client-side downloads!
+                  const docMatches: { name: string; content: string }[] = [];
+                  if (msg.content) {
+                    const docRegex = /\[ATTACHED DOCUMENT:\s*([^\]]+)\]\s*\n\`\`\`([\s\S]*?)\`\`\`/gi;
+                    let docM;
+                    docRegex.lastIndex = 0;
+                    while ((docM = docRegex.exec(msg.content)) !== null) {
+                      docMatches.push({
+                        name: docM[1],
+                        content: docM[2].trim()
+                      });
+                    }
+                  }
+
+                  return (
+                    <div key={index} className="flex gap-4 items-start justify-end animate-fade-in font-sans">
+                      <div className="flex flex-col gap-1.5 items-end max-w-[80%] group/msg relative">
+                        <span className={`text-[9px] font-black tracking-widest uppercase flex items-center gap-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-450"}`}>
+                          YOUR BUSINESS INQUIRY
+                          {themeMode === "black" && <span className="w-1 h-1 bg-emerald-400 rounded-full animate-ping" />}
+                        </span>
+                        <div className={`border rounded-2xl rounded-tr-none px-5 py-4 text-sm flex flex-col items-end relative transition-all duration-300 shadow-lg ${themeMode === "black"
+                            ? "bg-emerald-950/15 border-emerald-500/15 text-emerald-50/95"
+                            : "bg-amber-500/10 border-amber-500/20 text-neutral-800 shadow-md"
+                          }`}>
+                          {imageUrls.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-3 max-w-full justify-end">
+                              {imageUrls.map((url, imgIdx) => (
+                                <div key={imgIdx} className={`relative rounded-xl overflow-hidden border group shadow-md max-w-[180px] sm:max-w-[220px] ${themeMode === "black" ? "border-white/10" : "border-neutral-200"
+                                  }`}>
+                                  <img
+                                    src={url}
+                                    alt={`Uploaded visual context ${imgIdx + 1}`}
+                                    className="max-h-40 max-w-full object-contain rounded-xl transition-transform duration-300 group-hover:scale-105"
+                                  />
+                                  {/* Glowing Hover Action Overlay with Download Icon */}
+                                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2 z-10">
+                                    <a
+                                      href={url}
+                                      download={`attached_image_${imgIdx + 1}.png`}
+                                      className="p-2 bg-emerald-500 hover:bg-emerald-400 text-black rounded-lg transition duration-250 shadow-lg transform scale-90 group-hover:scale-100 flex items-center justify-center"
+                                      title="Download Image"
+                                    >
+                                      <Download size={14} />
+                                    </a>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {cleanContent && (
+                            <span className="text-left w-full block whitespace-pre-wrap">{cleanContent}</span>
+                          )}
+
+                          {/* Render Attached Documents for Direct Download */}
+                          {docMatches.length > 0 && (
+                            <div className="mt-3 w-full border-t border-dashed border-neutral-700/30 pt-3 flex flex-col gap-2">
+                              <span className="text-[10px] font-extrabold text-neutral-400 tracking-widest uppercase block self-start">Embedded Documents</span>
+                              <div className="flex flex-wrap gap-2 self-start w-full">
+                                {docMatches.map((doc, docIdx) => {
+                                  const downloadUri = `data:text/plain;charset=utf-8,${encodeURIComponent(doc.content)}`;
+                                  return (
+                                    <div key={docIdx} className={`p-2.5 rounded-xl border flex items-center gap-2 text-xs w-full max-w-[260px] justify-between ${themeMode === "black" ? "bg-neutral-950/40 border-white/5" : "bg-white border-neutral-250 shadow-sm"
+                                      }`}>
+                                      <div className="flex items-center gap-2 truncate">
+                                        <FileText size={14} className="text-emerald-400 flex-shrink-0 animate-pulse" />
+                                        <span className="truncate font-semibold text-neutral-300" title={doc.name}>{doc.name}</span>
+                                      </div>
+                                      <a
+                                        href={downloadUri}
+                                        download={doc.name.endsWith(".txt") ? doc.name : `${doc.name}.txt`}
+                                        className="p-1.5 bg-neutral-900 hover:bg-neutral-800 text-emerald-400 rounded-lg transition border border-white/5 flex items-center justify-center shadow-inner"
+                                        title={`Download parsed ${doc.name}`}
+                                      >
+                                        <Download size={11} />
+                                      </a>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {cleanContent && (
+                          <div className="flex justify-end w-full">
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(cleanContent, `msg-${index}`)}
+                              className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-neutral-500 hover:text-neutral-300 flex items-center gap-1 text-[10px] font-bold"
+                              title="Copy input"
+                            >
+                              {copiedId === `msg-${index}` ? (
+                                <>
+                                  <Check size={12} className="text-emerald-500" />
+                                  <span className="text-emerald-500">Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy size={12} />
+                                  <span>Copy</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Typing indicator */}
+                {isLoading && messages[messages.length - 1]?.content !== "" && (
+                  <TypingIndicator aiName={aiName} aiColor={aiColor} />
+                )}
+
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </div>
+
+          {/* Input Text Form Area */}
+          <div className={`p-3 pb-6 sm:p-4 md:p-6 border-t transition-colors duration-300 ${themeMode === "black"
+              ? "border-white/5 bg-gradient-to-t from-[#020202] to-black"
+              : "border-neutral-200 bg-gradient-to-t from-[#F8FAFC] to-[#F1F5F9]"
+            }`}>
+            <div className="max-w-3xl mx-auto relative">
+              {/* Stop Generation Button */}
+              {isLoading && (
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-30">
+                  <button
+                    type="button"
+                    onClick={stopGeneration}
+                    className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0A0A0A]/95 hover:bg-neutral-900 border border-white/10 text-neutral-300 text-xs shadow-xl backdrop-blur-md transition-all active:scale-95 animate-fade-in font-bold whitespace-nowrap"
+                  >
+                    <Square size={10} fill="currentColor" className="text-red-500 animate-pulse" /> Stop generating
+                  </button>
+                </div>
+              )}
+              <form
+                onSubmit={handleSubmit}
+                className={`w-full relative rounded-2xl border transition-all duration-300 overflow-hidden backdrop-blur-md ${themeMode === "black"
+                    ? "border-white/[0.04] bg-[#0A0A0C]/80 shadow-[0_4px_30px_rgba(0,0,0,0.7)] focus-within:border-emerald-500/30 focus-within:shadow-[0_0_40px_rgba(16,185,129,0.08)]"
+                    : "border-neutral-200 bg-white/90 shadow-[0_5px_30px_rgba(0,0,0,0.03)] focus-within:border-emerald-500/25 focus-within:shadow-[0_0_30px_rgba(16,185,129,0.04)]"
+                  }`}
               >
-                <Send size={15} />
+                <textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    // Prevent accidental submission when pressing Enter to finalize Bengali/IME composition
+                    if (e.nativeEvent.isComposing) return;
+
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit(e);
+                    }
+                  }}
+                  onPaste={async (e) => {
+                    const items = e.clipboardData?.items;
+                    if (!items) return;
+                    for (let i = 0; i < items.length; i++) {
+                      if (items[i].type.indexOf("image") !== -1) {
+                        const blob = items[i].getAsFile();
+                        if (blob) {
+                          const file = new File([blob], `pasted_image_${Date.now()}.png`, { type: blob.type });
+                          setIsFileParsing(true);
+                          try {
+                            const parsedContent = await parseAnyFile(file);
+                            setAttachedFiles((prev) => [
+                              ...prev,
+                              {
+                                name: file.name,
+                                content: parsedContent,
+                                type: file.type || "image/png",
+                              },
+                            ]);
+                          } catch (err: any) {
+                            console.error("Paste image parsing error:", err);
+                            alert(`Could not parse pasted image: ${err.message || "Unknown error"}`);
+                          } finally {
+                            setIsFileParsing(false);
+                          }
+                          e.preventDefault(); // Stop default paste so the image doesn't try to paste as raw data
+                          return;
+                        }
+                      }
+                    }
+                  }}
+                  placeholder={(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.placeholder || "Describe your startup idea and which country/market you are targeting..."}
+                  className={`w-full bg-transparent border-0 ring-0 focus:ring-0 focus:outline-none text-sm px-5 py-4 resize-none h-[64px] min-h-[50px] max-h-[200px] ${themeMode === "black"
+                      ? "placeholder-neutral-600 text-neutral-200"
+                      : "placeholder-neutral-400 text-neutral-800 font-medium"
+                    }`}
+                  disabled={isLoading}
+                  onFocus={(e) => {
+                    const target = e.currentTarget;
+                    if (typeof window !== "undefined" && (window as any).triggerKachaResize) {
+                      (window as any).triggerKachaResize();
+                    }
+                    setTimeout(() => {
+                      target.closest("form")?.scrollIntoView({ behavior: "auto", block: "nearest" });
+                      scrollToBottom();
+                    }, 100);
+                    setTimeout(() => {
+                      target.closest("form")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                      scrollToBottom();
+                      if (typeof window !== "undefined" && (window as any).triggerKachaResize) {
+                        (window as any).triggerKachaResize();
+                      }
+                    }, 300);
+                  }}
+                />
+
+                {/* Attached file preview or parsing indicator */}
+                {/* Attached files preview */}
+                {attachedFiles.length > 0 && (
+                  <div className="mx-5 my-2 flex flex-wrap gap-2.5">
+                    {attachedFiles.map((att, attIdx) => {
+                      const imageMatch = att.content.match(/\[IMAGE_BASE64:(data:image\/[^\]]+)\]/);
+                      const isImage = !!imageMatch;
+                      const imgSrc = imageMatch ? imageMatch[1] : "";
+
+                      if (isImage) {
+                        return (
+                          <div key={attIdx} className="relative group/thumb w-14 h-14 rounded-xl border overflow-hidden shadow-md animate-fade-in flex-shrink-0" style={{ borderColor: themeMode === "black" ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)" }}>
+                            <img
+                              src={imgSrc}
+                              alt={att.name}
+                              className="w-full h-full object-cover"
+                            />
+                            {/* Hover Overlay with Delete button */}
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-all duration-200">
+                              <button
+                                type="button"
+                                onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx))}
+                                className="p-1 rounded-full bg-red-600/95 text-white hover:bg-red-700 hover:scale-110 transition duration-150"
+                                title="Remove image"
+                              >
+                                <X size={10} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div key={attIdx} className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-2 max-w-[200px] shadow-sm animate-fade-in ${themeMode === "black"
+                            ? "bg-gradient-to-r from-neutral-200/10 to-transparent border-neutral-200/15 text-white"
+                            : "bg-[#FAFAFA] border-neutral-200 text-neutral-850"
+                          }`}>
+                          <FileText size={13} className="text-emerald-400 flex-shrink-0" />
+                          <span className="truncate font-semibold flex-1">{att.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx))}
+                            className="p-0.5 text-neutral-400 hover:text-red-400 transition"
+                            title="Remove file"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {isFileParsing && (
+                  <div className={`mx-5 my-2 text-xs flex items-center gap-1.5 animate-pulse ${themeMode === "black" ? "text-neutral-500" : "text-neutral-450"
+                    }`}>
+                    <Loader2 size={12} className={`animate-spin ${themeMode === "black" ? "text-neutral-200" : "text-neutral-600"}`} />
+                    <span>Parsing document data...</span>
+                  </div>
+                )}
+
+                <div className={`flex items-center justify-between px-5 pb-3 border-t pt-2.5 transition-colors duration-300 ${themeMode === "black"
+                    ? "bg-[#0D0D0D] border-neutral-900"
+                    : "bg-[#FAFAFA] border-neutral-150"
+                  }`}>
+                  {/* Media tools */}
+                  <div className="flex items-center gap-2">
+                    {/* Hidden File Input */}
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      accept=".txt,.md,.csv,.json,.pdf,.docx,.xlsx,.xls,.png,.jpg,.jpeg,.webp"
+                      className="hidden"
+                      multiple
+                    />
+
+                    {/* Paperclip Button */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isLoading || isFileParsing}
+                      title="Attach file (PDF, Word, Excel, Images, Text)"
+                      className={`p-2 rounded-xl border transition duration-300 ${themeMode === "black"
+                          ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20"
+                          : "border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800 hover:border-neutral-300"
+                        }`}
+                    >
+                      <Paperclip size={15} />
+                    </button>
+
+                    {/* Camera Button */}
+                    <button
+                      type="button"
+                      onClick={startCamera}
+                      disabled={isLoading || isFileParsing}
+                      title="Take Photo"
+                      className={`p-2 rounded-xl border transition duration-300 ${themeMode === "black"
+                          ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20"
+                          : "border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800 hover:border-neutral-300"
+                        }`}
+                    >
+                      <Camera size={15} />
+                    </button>
+
+                    {/* Brain Trust Toggle */}
+                    <div className="flex items-center gap-1.5 ml-2">
+                      <button
+                        type="button"
+                        onClick={() => handleBrainTrustToggle(!isBrainTrust)}
+                        disabled={isLoading || isFileParsing}
+                        title="Executive Board: Massively Parallel Deep Analysis"
+                        className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${isBrainTrust
+                            ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                            : themeMode === "black"
+                              ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600"
+                              : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 shadow-sm"
+                          }`}
+                      >
+                        <span>🧠 {boardSize}-Agent Board</span>
+                        <div className={`w-2 h-2 rounded-full ${isBrainTrust ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)] animate-ping" : "bg-neutral-700"}`}></div>
+                      </button>
+                      {isBrainTrust && (
+                        <select
+                          value={boardSize}
+                          onChange={(e) => setBoardSize(Number(e.target.value))}
+                          className={`px-2 py-1 text-[9px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${themeMode === "black"
+                              ? "bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white"
+                              : "bg-white border-neutral-200 text-neutral-600 hover:text-black shadow-sm"
+                            }`}
+                        >
+                          <option value={3}>3 Agents</option>
+                          <option value={5}>5 Agents</option>
+                          <option value={9}>9 Agents</option>
+                          <option value={16}>16 Agents</option>
+                        </select>
+                      )}
+                    </div>
+
+                    {/* Mic Button */}
+                    <button
+                      type="button"
+                      onClick={toggleListening}
+                      title={isListening ? "Stop listening" : "Dictate (Speech to Text)"}
+                      className={`p-2 rounded-xl border transition duration-300 ${isListening
+                          ? "bg-red-500/10 border-red-500/30 text-red-500 animate-pulse"
+                          : themeMode === "black"
+                            ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-red-400 hover:border-red-500/20"
+                            : "border-neutral-200 bg-white text-neutral-500 hover:text-red-500 hover:border-red-200"
+                        }`}
+                    >
+                      {isListening ? <MicOff size={15} /> : <Mic size={15} />}
+                    </button>
+                  </div>
+
+                  <span className={`text-[10px] select-none hidden md:inline-flex items-center gap-1 ml-4 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"
+                    }`}>
+                    <CornerDownLeft size={10} /> Press Enter to send consultation
+                  </span>
+
+                  <button
+                    type="submit"
+                    disabled={isLoading || (!inputMessage.trim() && !attachedFile)}
+                    className={`ml-auto p-2.5 rounded-xl flex items-center justify-center transition duration-300 ${isLoading || (!inputMessage.trim() && !attachedFile)
+                        ? themeMode === "black"
+                          ? "bg-neutral-900 text-neutral-600 cursor-not-allowed border border-neutral-900/40"
+                          : "bg-neutral-100 text-neutral-450 cursor-not-allowed border border-neutral-200"
+                        : themeMode === "black"
+                          ? "bg-neutral-200 hover:bg-white hover:scale-105 active:scale-95 text-neutral-950 font-bold"
+                          : "bg-neutral-900 hover:bg-black hover:scale-105 active:scale-95 text-white font-bold"
+                      }`}
+                  >
+                    <Send size={15} />
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      {/* Camera Modal Overlay */}
+      {isCameraOpen && (
+        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ${themeMode === "black" ? "bg-black/90 backdrop-blur-md" : "bg-neutral-900/60 backdrop-blur-sm"
+          }`}>
+          <div className={`relative w-full max-w-lg border rounded-3xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ${themeMode === "black" ? "bg-[#0A0A0A] border-white/10" : "bg-white border-neutral-200"
+            }`}>
+            {/* Header */}
+            <div className={`flex items-center justify-between p-4 border-b ${themeMode === "black" ? "border-white/5" : "border-neutral-150"
+              }`}>
+              <span className={`font-bold text-sm tracking-wide ${themeMode === "black" ? "text-white" : "text-neutral-850"}`}>Capture Photo</span>
+              <button
+                onClick={stopCamera}
+                className={`transition ${themeMode === "black" ? "text-neutral-400 hover:text-white" : "text-neutral-500 hover:text-neutral-800"}`}
+              >
+                <XCircle size={20} />
               </button>
             </div>
+
+            {/* Video Stream */}
+            <div className="relative bg-black flex-1 aspect-[4/3] sm:aspect-video flex items-center justify-center">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            {/* Hidden Canvas */}
+            <canvas ref={canvasRef} className="hidden" />
+
+            {/* Footer Controls */}
+            <div className={`p-4 flex items-center justify-center border-t ${themeMode === "black" ? "border-white/5 bg-[#050505]" : "border-neutral-150 bg-[#FAFAFA]"
+              }`}>
+              <button
+                onClick={capturePhoto}
+                className={`group relative flex items-center justify-center w-16 h-16 rounded-full border-4 transition duration-300 ${themeMode === "black"
+                    ? "bg-white/10 border-white/20 hover:border-white"
+                    : "bg-black/5 border-neutral-300 hover:border-neutral-800"
+                  }`}
+              >
+                <div className={`w-12 h-12 rounded-full group-hover:scale-95 transition-transform duration-300 ${themeMode === "black" ? "bg-white" : "bg-neutral-800"
+                  }`}></div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings / Manage Account Modal */}
+      {isSettingsModalOpen && (
+        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in ${themeMode === "black" ? "bg-black/90 backdrop-blur-md" : "bg-neutral-900/60 backdrop-blur-sm"
+          }`}>
+          <div className={`relative w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col p-6 space-y-6 transition-all duration-300 border ${themeMode === "black" ? "bg-[#0A0A0A] border-white/10" : "bg-white border-neutral-200"
+            }`}>
+            {/* Header */}
+            <div className={`flex items-center justify-between border-b pb-4 ${themeMode === "black" ? "border-white/5" : "border-neutral-150"
+              }`}>
+              <div className="flex items-center gap-2">
+                <Settings className="text-[#10b981]" size={20} />
+                <h2 className={`font-bold text-lg tracking-wide ${themeMode === "black" ? "text-white" : "text-neutral-850"}`}>Manage Account</h2>
+              </div>
+              <button
+                onClick={() => setIsSettingsModalOpen(false)}
+                className={`p-1 rounded-full transition ${themeMode === "black" ? "text-neutral-400 hover:text-white hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
+                  }`}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* User Account Info */}
+            <div className={`space-y-2 p-4 rounded-2xl border ${themeMode === "black" ? "bg-[#050505] border-neutral-900" : "bg-[#F8FAFC] border-neutral-200"
+              }`}>
+              <span className={`text-[10px] font-bold uppercase tracking-wider block ${themeMode === "black" ? "text-neutral-500" : "text-neutral-450"
+                }`}>Logged in as</span>
+              <div className="flex items-center gap-3">
+                <UserButton />
+                <div className="flex flex-col text-left">
+                  <span className={`text-sm font-bold truncate ${themeMode === "black" ? "text-neutral-200" : "text-neutral-800"
+                    }`}>
+                    {user?.primaryEmailAddress?.emailAddress || "Advisory Member"}
+                  </span>
+                  <span className="text-[10px] text-[#10b981] font-bold tracking-wider">PREMIUM ADVISORY MEMBER</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Options / Action Controls */}
+            <div className="space-y-4">
+              {/* 1. Delete Attached File */}
+              <div className="flex flex-col space-y-2">
+                <span className={`text-xs font-bold ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>Current File Attachments ({attachedFiles.length})</span>
+                {attachedFiles.length > 0 ? (
+                  <div className="space-y-2">
+                    {attachedFiles.map((att, attIdx) => (
+                      <div key={attIdx} className={`flex items-center justify-between p-3 rounded-2xl text-xs border ${themeMode === "black" ? "bg-red-500/5 border-red-500/10" : "bg-red-500/10 border-red-200"
+                        }`}>
+                        <div className="flex items-center gap-2 truncate">
+                          <FileText size={15} className="text-red-500 flex-shrink-0" />
+                          <span className={`truncate font-semibold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-805"}`}>{att.name}</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Remove file "${att.name}"?`)) {
+                              setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx));
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-bold transition duration-300"
+                        >
+                          Delete File
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={`p-3 text-center rounded-2xl text-xs border ${themeMode === "black" ? "bg-neutral-900/30 border-neutral-900 text-neutral-500" : "bg-neutral-50 border-neutral-200 text-neutral-450"
+                    }`}>
+                    No file attached currently. You can attach a document using the clip icon in the chatbar.
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Delete All Conversations */}
+              <div className="flex flex-col space-y-2 pt-2">
+                <span className={`text-xs font-bold ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>Danger Zone</span>
+                <div className={`p-4 rounded-2xl border space-y-3 ${themeMode === "black" ? "bg-red-500/5 border-red-500/10" : "bg-red-500/5 border-red-200"
+                  }`}>
+                  <p className={`text-xs leading-relaxed ${themeMode === "black" ? "text-neutral-400" : "text-neutral-605"}`}>
+                    Permanently delete all your chat logs, consultation history, and any files embedded inside them. This cannot be undone.
+                  </p>
+                  {confirmDeleteAll ? (
+                    <div className="flex gap-2 w-full">
+                      <button
+                        type="button"
+                        onClick={handleDeleteAllChats}
+                        className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white border border-transparent rounded-xl font-bold text-xs text-center transition duration-300 flex items-center justify-center gap-2 shadow-lg shadow-red-950/20"
+                      >
+                        <Trash2 size={14} />
+                        Yes, Delete All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteAll(false)}
+                        className={`px-4 py-2.5 rounded-xl font-bold text-xs text-center transition duration-300 border ${themeMode === "black"
+                            ? "bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 border-white/5"
+                            : "bg-white hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 border-neutral-200 shadow-sm"
+                          }`}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteAll(true)}
+                      disabled={chats.length === 0}
+                      className={`w-full py-2.5 rounded-xl font-bold text-xs text-center transition duration-300 flex items-center justify-center gap-2 ${chats.length === 0
+                          ? themeMode === "black"
+                            ? "bg-neutral-950 text-neutral-700 border border-neutral-900 cursor-not-allowed"
+                            : "bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed"
+                          : "bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 hover:border-transparent"
+                        }`}
+                    >
+                      <Trash2 size={14} />
+                      Delete All Conversations
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* 5. Custom Agent Builder — Professional Glassmorphic Modal */}
+      {customAgentModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-md" onClick={() => setCustomAgentModalOpen(false)} />
+
+          {/* Modal Container */}
+          <div className={`relative max-w-md w-full max-h-[92vh] overflow-y-auto rounded-3xl p-5 sm:p-6 border shadow-2xl transition duration-300 transform scale-100 scrollbar-thin ${themeMode === "black"
+              ? "bg-[#0A0A0C]/95 border-white/10 text-neutral-100 shadow-[0_0_50px_rgba(16,185,129,0.05)]"
+              : "bg-white/95 border-neutral-200 text-neutral-900 shadow-2xl"
+            }`}>
+            {/* Modal Header */}
+            <div className={`flex items-center justify-between pb-3 border-b mb-4 ${themeMode === "black" ? "border-white/5" : "border-neutral-200"
+              }`}>
+              <div className="flex items-center gap-2.5">
+                <div className={`p-1.5 rounded-lg ${themeMode === "black" ? "bg-emerald-500/10" : "bg-emerald-50"}`}>
+                  <Plus size={14} className="text-emerald-500" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base tracking-tight">Create Custom Agent</h3>
+                  <p className={`text-[10px] mt-0.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Build your own specialist AI advisor</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCustomAgentModalOpen(false)}
+                className={`p-1.5 rounded-lg transition duration-150 ${themeMode === "black" ? "hover:bg-white/5 text-neutral-500 hover:text-neutral-200" : "hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700"
+                  }`}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleCreateCustomAgent} className="space-y-4 text-xs sm:text-sm font-medium">
+              {/* Quick AI Assist Panel */}
+              <div className={`p-3 rounded-2xl border transition duration-200 ${themeMode === "black"
+                  ? "bg-emerald-950/5 border-emerald-500/10"
+                  : "bg-emerald-500/5 border-emerald-500/15"
+                }`}>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Sparkles size={11} className="text-emerald-500 animate-pulse" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500">Quick AI Assist (Optional)</span>
+                </div>
+                <p className={`text-[9px] mb-2 leading-relaxed ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
+                  Type a basic concept (e.g. &quot;Startup Pitch Deck Roast Coach&quot;) to auto-generate all fields below at once, or use it to generate fields individually!
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Describe your agent concept..."
+                    value={agentConceptPrompt}
+                    onChange={(e) => setAgentConceptPrompt(e.target.value)}
+                    className={`flex-1 p-2 rounded-lg border outline-none text-xs ${themeMode === "black"
+                        ? "bg-black/40 border-white/5 text-white placeholder-neutral-600 focus:border-emerald-500"
+                        : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400 focus:border-emerald-500"
+                      }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleGenerateAll}
+                    disabled={isGeneratingAll || !agentConceptPrompt.trim()}
+                    className="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-neutral-950 text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 whitespace-nowrap"
+                  >
+                    {isGeneratingAll ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                    <span>Auto-Gen All</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Agent Name */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Name</label>
+                  {agentConceptPrompt.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateField("name")}
+                      disabled={isGeneratingField === "name"}
+                      className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
+                    >
+                      {isGeneratingField === "name" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                      <span>AI Gen</span>
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Growth Hacker, Content Strategist, Sales Coach..."
+                  value={newAgentName}
+                  onChange={(e) => setNewAgentName(e.target.value)}
+                  className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
+                      ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                      : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
+                    }`}
+                />
+              </div>
+
+              {/* Display Name */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Display Name</label>
+                  {agentConceptPrompt.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateField("banglaName")}
+                      disabled={isGeneratingField === "banglaName"}
+                      className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
+                    >
+                      {isGeneratingField === "banglaName" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                      <span>AI Gen</span>
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  required
+                  placeholder="Name shown in agent selector (any language)"
+                  value={newAgentBanglaName}
+                  onChange={(e) => setNewAgentBanglaName(e.target.value)}
+                  className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
+                      ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                      : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
+                    }`}
+                />
+              </div>
+
+              {/* Short Description */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Short Description</label>
+                  {agentConceptPrompt.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateField("banglaDesc")}
+                      disabled={isGeneratingField === "banglaDesc"}
+                      className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
+                    >
+                      {isGeneratingField === "banglaDesc" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                      <span>AI Gen</span>
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Customer acquisition & funnel optimization specialist"
+                  value={newAgentBanglaDesc}
+                  onChange={(e) => setNewAgentBanglaDesc(e.target.value)}
+                  className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
+                      ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                      : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
+                    }`}
+                />
+              </div>
+
+              {/* Icon Selector */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Icon</label>
+                  {agentConceptPrompt.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateField("icon")}
+                      disabled={isGeneratingField === "icon"}
+                      className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
+                    >
+                      {isGeneratingField === "icon" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                      <span>AI Gen</span>
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {["🚀", "💰", "📈", "📣", "🎨", "💻", "🧠", "🛡️", "🤝", "🔥", "🌶️", "⚡", "🎯", "📊", "🔬"].map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setNewAgentIcon(emoji)}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition duration-150 ${newAgentIcon === emoji
+                          ? "border-emerald-500 bg-emerald-500/10 scale-110 shadow-sm shadow-emerald-500/20"
+                          : themeMode === "black"
+                            ? "border-white/5 bg-neutral-900 hover:bg-neutral-800"
+                            : "border-neutral-200 bg-white hover:bg-neutral-50"
+                        }`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* System Instructions */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>System Instructions</label>
+                  {agentConceptPrompt.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateField("instructions")}
+                      disabled={isGeneratingField === "instructions"}
+                      className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
+                    >
+                      {isGeneratingField === "instructions" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                      <span>AI Gen</span>
+                    </button>
+                  )}
+                </div>
+                <p className={`text-[10px] mb-2 leading-relaxed ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
+                  Define how this agent should behave, its expertise, frameworks, and response style.
+                </p>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Act as a Growth Hacking specialist. You focus on data-driven marketing, customer acquisition cost reduction, AARRR framework optimization, and viral loop engineering..."
+                  value={newAgentInstructions}
+                  onChange={(e) => setNewAgentInstructions(e.target.value)}
+                  className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 resize-none leading-relaxed ${themeMode === "black"
+                      ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                      : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
+                    }`}
+                />
+              </div>
+
+              {/* Save Button */}
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-emerald-500/15 hover:shadow-emerald-500/35 hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2 mt-2"
+              >
+                <Plus size={14} />
+                <span>Create Agent</span>
+              </button>
             </form>
           </div>
         </div>
-      </main>
-    </div>
-
-    {/* Camera Modal Overlay */}
-    {isCameraOpen && (
-      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ${
-        themeMode === "black" ? "bg-black/90 backdrop-blur-md" : "bg-neutral-900/60 backdrop-blur-sm"
-      }`}>
-        <div className={`relative w-full max-w-lg border rounded-3xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ${
-          themeMode === "black" ? "bg-[#0A0A0A] border-white/10" : "bg-white border-neutral-200"
-        }`}>
-          {/* Header */}
-          <div className={`flex items-center justify-between p-4 border-b ${
-            themeMode === "black" ? "border-white/5" : "border-neutral-150"
-          }`}>
-            <span className={`font-bold text-sm tracking-wide ${themeMode === "black" ? "text-white" : "text-neutral-850"}`}>Capture Photo</span>
-            <button 
-              onClick={stopCamera}
-              className={`transition ${themeMode === "black" ? "text-neutral-400 hover:text-white" : "text-neutral-500 hover:text-neutral-800"}`}
-            >
-              <XCircle size={20} />
-            </button>
-          </div>
-          
-          {/* Video Stream */}
-          <div className="relative bg-black flex-1 aspect-[4/3] sm:aspect-video flex items-center justify-center">
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-              className="w-full h-full object-cover"
-            />
-          </div>
-          
-          {/* Hidden Canvas */}
-          <canvas ref={canvasRef} className="hidden" />
-          
-          {/* Footer Controls */}
-          <div className={`p-4 flex items-center justify-center border-t ${
-            themeMode === "black" ? "border-white/5 bg-[#050505]" : "border-neutral-150 bg-[#FAFAFA]"
-          }`}>
-            <button
-              onClick={capturePhoto}
-              className={`group relative flex items-center justify-center w-16 h-16 rounded-full border-4 transition duration-300 ${
-                themeMode === "black" 
-                  ? "bg-white/10 border-white/20 hover:border-white" 
-                  : "bg-black/5 border-neutral-300 hover:border-neutral-800"
-              }`}
-            >
-              <div className={`w-12 h-12 rounded-full group-hover:scale-95 transition-transform duration-300 ${
-                themeMode === "black" ? "bg-white" : "bg-neutral-800"
-              }`}></div>
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-
-    {/* Settings / Manage Account Modal */}
-    {isSettingsModalOpen && (
-      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in ${
-        themeMode === "black" ? "bg-black/90 backdrop-blur-md" : "bg-neutral-900/60 backdrop-blur-sm"
-      }`}>
-        <div className={`relative w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col p-6 space-y-6 transition-all duration-300 border ${
-          themeMode === "black" ? "bg-[#0A0A0A] border-white/10" : "bg-white border-neutral-200"
-        }`}>
-          {/* Header */}
-          <div className={`flex items-center justify-between border-b pb-4 ${
-            themeMode === "black" ? "border-white/5" : "border-neutral-150"
-          }`}>
-            <div className="flex items-center gap-2">
-              <Settings className="text-[#10b981]" size={20} />
-              <h2 className={`font-bold text-lg tracking-wide ${themeMode === "black" ? "text-white" : "text-neutral-850"}`}>Manage Account</h2>
-            </div>
-            <button 
-              onClick={() => setIsSettingsModalOpen(false)}
-              className={`p-1 rounded-full transition ${
-                themeMode === "black" ? "text-neutral-400 hover:text-white hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
-              }`}
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          {/* User Account Info */}
-          <div className={`space-y-2 p-4 rounded-2xl border ${
-            themeMode === "black" ? "bg-[#050505] border-neutral-900" : "bg-[#F8FAFC] border-neutral-200"
-          }`}>
-            <span className={`text-[10px] font-bold uppercase tracking-wider block ${
-              themeMode === "black" ? "text-neutral-500" : "text-neutral-450"
-            }`}>Logged in as</span>
-            <div className="flex items-center gap-3">
-              <UserButton />
-              <div className="flex flex-col text-left">
-                <span className={`text-sm font-bold truncate ${
-                  themeMode === "black" ? "text-neutral-200" : "text-neutral-800"
-                }`}>
-                  {user?.primaryEmailAddress?.emailAddress || "Advisory Member"}
-                </span>
-                <span className="text-[10px] text-[#10b981] font-bold tracking-wider">PREMIUM ADVISORY MEMBER</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Options / Action Controls */}
-          <div className="space-y-4">
-            {/* 1. Delete Attached File */}
-            <div className="flex flex-col space-y-2">
-              <span className={`text-xs font-bold ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>Current File Attachments ({attachedFiles.length})</span>
-              {attachedFiles.length > 0 ? (
-                <div className="space-y-2">
-                  {attachedFiles.map((att, attIdx) => (
-                    <div key={attIdx} className={`flex items-center justify-between p-3 rounded-2xl text-xs border ${
-                      themeMode === "black" ? "bg-red-500/5 border-red-500/10" : "bg-red-500/10 border-red-200"
-                    }`}>
-                      <div className="flex items-center gap-2 truncate">
-                        <FileText size={15} className="text-red-500 flex-shrink-0" />
-                        <span className={`truncate font-semibold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-805"}`}>{att.name}</span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (confirm(`Remove file "${att.name}"?`)) {
-                            setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx));
-                          }
-                        }}
-                        className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-bold transition duration-300"
-                      >
-                        Delete File
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className={`p-3 text-center rounded-2xl text-xs border ${
-                  themeMode === "black" ? "bg-neutral-900/30 border-neutral-900 text-neutral-500" : "bg-neutral-50 border-neutral-200 text-neutral-450"
-                }`}>
-                  No file attached currently. You can attach a document using the clip icon in the chatbar.
-                </div>
-              )}
-            </div>
-
-            {/* 2. Delete All Conversations */}
-            <div className="flex flex-col space-y-2 pt-2">
-              <span className={`text-xs font-bold ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>Danger Zone</span>
-              <div className={`p-4 rounded-2xl border space-y-3 ${
-                themeMode === "black" ? "bg-red-500/5 border-red-500/10" : "bg-red-500/5 border-red-200"
-              }`}>
-                <p className={`text-xs leading-relaxed ${themeMode === "black" ? "text-neutral-400" : "text-neutral-605"}`}>
-                  Permanently delete all your chat logs, consultation history, and any files embedded inside them. This cannot be undone.
-                </p>
-                {confirmDeleteAll ? (
-                  <div className="flex gap-2 w-full">
-                    <button
-                      type="button"
-                      onClick={handleDeleteAllChats}
-                      className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white border border-transparent rounded-xl font-bold text-xs text-center transition duration-300 flex items-center justify-center gap-2 shadow-lg shadow-red-950/20"
-                    >
-                      <Trash2 size={14} />
-                      Yes, Delete All
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDeleteAll(false)}
-                      className={`px-4 py-2.5 rounded-xl font-bold text-xs text-center transition duration-300 border ${
-                        themeMode === "black" 
-                          ? "bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 border-white/5" 
-                          : "bg-white hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 border-neutral-200 shadow-sm"
-                      }`}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteAll(true)}
-                    disabled={chats.length === 0}
-                    className={`w-full py-2.5 rounded-xl font-bold text-xs text-center transition duration-300 flex items-center justify-center gap-2 ${
-                      chats.length === 0 
-                        ? themeMode === "black"
-                          ? "bg-neutral-950 text-neutral-700 border border-neutral-900 cursor-not-allowed"
-                          : "bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed"
-                        : "bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 hover:border-transparent"
-                    }`}
-                  >
-                    <Trash2 size={14} />
-                    Delete All Conversations
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )}
-    {/* 5. Custom Agent Builder — Professional Glassmorphic Modal */}
-    {customAgentModalOpen && (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        {/* Backdrop */}
-        <div className="absolute inset-0 bg-black/75 backdrop-blur-md" onClick={() => setCustomAgentModalOpen(false)} />
-        
-        {/* Modal Container */}
-        <div className={`relative max-w-md w-full max-h-[92vh] overflow-y-auto rounded-3xl p-5 sm:p-6 border shadow-2xl transition duration-300 transform scale-100 scrollbar-thin ${
-          themeMode === "black"
-            ? "bg-[#0A0A0C]/95 border-white/10 text-neutral-100 shadow-[0_0_50px_rgba(16,185,129,0.05)]"
-            : "bg-white/95 border-neutral-200 text-neutral-900 shadow-2xl"
-        }`}>
-          {/* Modal Header */}
-          <div className={`flex items-center justify-between pb-3 border-b mb-4 ${
-            themeMode === "black" ? "border-white/5" : "border-neutral-200"
-          }`}>
-            <div className="flex items-center gap-2.5">
-              <div className={`p-1.5 rounded-lg ${themeMode === "black" ? "bg-emerald-500/10" : "bg-emerald-50"}`}>
-                <Plus size={14} className="text-emerald-500" />
-              </div>
-              <div>
-                <h3 className="font-extrabold text-sm sm:text-base tracking-tight">Create Custom Agent</h3>
-                <p className={`text-[10px] mt-0.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Build your own specialist AI advisor</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setCustomAgentModalOpen(false)}
-              className={`p-1.5 rounded-lg transition duration-150 ${
-                themeMode === "black" ? "hover:bg-white/5 text-neutral-500 hover:text-neutral-200" : "hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700"
-              }`}
-            >
-              <X size={16} />
-            </button>
-          </div>
-          
-          {/* Form */}
-          <form onSubmit={handleCreateCustomAgent} className="space-y-4 text-xs sm:text-sm font-medium">
-            {/* Quick AI Assist Panel */}
-            <div className={`p-3 rounded-2xl border transition duration-200 ${
-              themeMode === "black" 
-                ? "bg-emerald-950/5 border-emerald-500/10" 
-                : "bg-emerald-500/5 border-emerald-500/15"
-            }`}>
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Sparkles size={11} className="text-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500">Quick AI Assist (Optional)</span>
-              </div>
-              <p className={`text-[9px] mb-2 leading-relaxed ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
-                Type a basic concept (e.g. &quot;Startup Pitch Deck Roast Coach&quot;) to auto-generate all fields below at once, or use it to generate fields individually!
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Describe your agent concept..."
-                  value={agentConceptPrompt}
-                  onChange={(e) => setAgentConceptPrompt(e.target.value)}
-                  className={`flex-1 p-2 rounded-lg border outline-none text-xs ${
-                    themeMode === "black"
-                      ? "bg-black/40 border-white/5 text-white placeholder-neutral-600 focus:border-emerald-500"
-                      : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400 focus:border-emerald-500"
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={handleGenerateAll}
-                  disabled={isGeneratingAll || !agentConceptPrompt.trim()}
-                  className="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-neutral-950 text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 whitespace-nowrap"
-                >
-                  {isGeneratingAll ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
-                  <span>Auto-Gen All</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Agent Name */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Name</label>
-                {agentConceptPrompt.trim() && (
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateField("name")}
-                    disabled={isGeneratingField === "name"}
-                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
-                  >
-                    {isGeneratingField === "name" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                    <span>AI Gen</span>
-                  </button>
-                )}
-              </div>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Growth Hacker, Content Strategist, Sales Coach..."
-                value={newAgentName}
-                onChange={(e) => setNewAgentName(e.target.value)}
-                className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${
-                  themeMode === "black"
-                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
-                }`}
-              />
-            </div>
-
-            {/* Display Name */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Display Name</label>
-                {agentConceptPrompt.trim() && (
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateField("banglaName")}
-                    disabled={isGeneratingField === "banglaName"}
-                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
-                  >
-                    {isGeneratingField === "banglaName" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                    <span>AI Gen</span>
-                  </button>
-                )}
-              </div>
-              <input
-                type="text"
-                required
-                placeholder="Name shown in agent selector (any language)"
-                value={newAgentBanglaName}
-                onChange={(e) => setNewAgentBanglaName(e.target.value)}
-                className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${
-                  themeMode === "black"
-                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
-                }`}
-              />
-            </div>
-
-            {/* Short Description */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Short Description</label>
-                {agentConceptPrompt.trim() && (
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateField("banglaDesc")}
-                    disabled={isGeneratingField === "banglaDesc"}
-                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
-                  >
-                    {isGeneratingField === "banglaDesc" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                    <span>AI Gen</span>
-                  </button>
-                )}
-              </div>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Customer acquisition & funnel optimization specialist"
-                value={newAgentBanglaDesc}
-                onChange={(e) => setNewAgentBanglaDesc(e.target.value)}
-                className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${
-                  themeMode === "black"
-                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
-                }`}
-              />
-            </div>
-
-            {/* Icon Selector */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Icon</label>
-                {agentConceptPrompt.trim() && (
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateField("icon")}
-                    disabled={isGeneratingField === "icon"}
-                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
-                  >
-                    {isGeneratingField === "icon" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                    <span>AI Gen</span>
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {["🚀", "💰", "📈", "📣", "🎨", "💻", "🧠", "🛡️", "🤝", "🔥", "🌶️", "⚡", "🎯", "📊", "🔬"].map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => setNewAgentIcon(emoji)}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition duration-150 ${
-                      newAgentIcon === emoji
-                        ? "border-emerald-500 bg-emerald-500/10 scale-110 shadow-sm shadow-emerald-500/20"
-                        : themeMode === "black"
-                          ? "border-white/5 bg-neutral-900 hover:bg-neutral-800"
-                          : "border-neutral-200 bg-white hover:bg-neutral-50"
-                    }`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* System Instructions */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>System Instructions</label>
-                {agentConceptPrompt.trim() && (
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateField("instructions")}
-                    disabled={isGeneratingField === "instructions"}
-                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
-                  >
-                    {isGeneratingField === "instructions" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                    <span>AI Gen</span>
-                  </button>
-                )}
-              </div>
-              <p className={`text-[10px] mb-2 leading-relaxed ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
-                Define how this agent should behave, its expertise, frameworks, and response style.
-              </p>
-              <textarea
-                required
-                rows={4}
-                placeholder="Act as a Growth Hacking specialist. You focus on data-driven marketing, customer acquisition cost reduction, AARRR framework optimization, and viral loop engineering..."
-                value={newAgentInstructions}
-                onChange={(e) => setNewAgentInstructions(e.target.value)}
-                className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 resize-none leading-relaxed ${
-                  themeMode === "black"
-                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
-                }`}
-              />
-            </div>
-
-            {/* Save Button */}
-            <button
-              type="submit"
-              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-emerald-500/15 hover:shadow-emerald-500/35 hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2 mt-2"
-            >
-              <Plus size={14} />
-              <span>Create Agent</span>
-            </button>
-          </form>
-        </div>
-      </div>
-    )}
+      )}
     </>
   );
 }

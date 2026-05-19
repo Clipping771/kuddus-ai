@@ -404,10 +404,10 @@ export async function POST(req: Request) {
     const customizedGeneralFormat = GENERAL_BUSINESS_ADVISOR_FORMAT.replace(/Nova AI/g, aiName).replace(/Kacha Morich AI/g, aiName);
 
     let agentSystemPrompt = `${customizedCorePersonality}\n${customizedGeneralFormat}`;
-    
+
     // 4b. Dynamic Tone Override Engine
     const isBrutallyHonest = !tonePrompt || tonePrompt.toLowerCase().includes("brutally honest") || tonePrompt.toLowerCase().includes("roast-heavy");
-    
+
     if (!isBrutallyHonest && tonePrompt) {
       // Strip ALL aggressive/sharp language from the core personality for non-brutal tones
       let softPrompt = agentSystemPrompt
@@ -416,7 +416,7 @@ export async function POST(req: Request) {
         .replace(/Sharp like morich 🌶️, confident, bold, and practical\./gi, "Warm, supportive, and practical.")
         .replace(/Extremely sharp, confident, slightly witty, no-nonsense/gi, "Warm, friendly, professional")
         .replace(/Never give generic advice\. Always push for sharpness and execution\./gi, "Always give thoughtful, well-structured advice.");
-      
+
       agentSystemPrompt = softPrompt;
     }
 
@@ -485,10 +485,10 @@ Apply the following highly advanced analysis steps:
 
     const parseMessageContent = (role: string, rawContent: string) => {
       if (role !== "user" || !rawContent) return rawContent;
-      
+
       const base64RegexGlobal = /\[IMAGE_BASE64:(data:image\/[^\]]+)\]/g;
       const base64RegexSingle = /\[IMAGE_BASE64:(data:image\/[^\]]+)\]/;
-      
+
       const matches = rawContent.match(base64RegexGlobal);
 
       if (matches && matches.length > 0 && hasImage) {
@@ -498,7 +498,7 @@ Apply the following highly advanced analysis steps:
         }).filter(Boolean) as string[];
 
         const textPrompt = rawContent.replace(base64RegexGlobal, "").trim();
-        
+
         const contentArray: any[] = [
           {
             type: "text",
@@ -528,7 +528,7 @@ Apply the following highly advanced analysis steps:
 
       truncatedHistory.forEach((msg, idx) => {
         let msgContent = parseMessageContent(msg.role, msg.content);
-        
+
         // Safe role reminder injected directly into user's latest query to respect Alternating Roles Chat Template rule
         if (idx === truncatedHistory.length - 1 && agentId && msg.role === "user") {
           if (Array.isArray(msgContent)) {
@@ -567,7 +567,7 @@ Apply the following highly advanced analysis steps:
 
     // 6. Call OpenRouter API with Streaming OR Brain Trust Pipeline
     const primaryModel = modelId || "google/gemma-4-31b-it";
-    
+
     // Brain Trust models hardcoded
     const draftModel = "nousresearch/hermes-3-llama-3.1-405b";
     const critiqueModel = "google/gemma-4-31b-it";
@@ -598,7 +598,7 @@ Apply the following highly advanced analysis steps:
         };
 
         try {
-          if (isBrainTrust && !hasImage) { 
+          if (isBrainTrust && !hasImage) {
             // MASSIVELY PARALLEL MULTI-AGENT EXECUTIVE BOARD PIPELINE
 
             // Detect user's language from their message
@@ -610,7 +610,7 @@ Apply the following highly advanced analysis steps:
             const totalExpertsCount = Math.max(1, Math.min(14, boardSize - 2));
 
             controller.enqueue(encoder.encode(`\n\n> 🧠 **KACHA MORICH MASSIVELY PARALLEL BRAIN TRUST ACTIVATED**\n> Assembling the ${boardSize}-Agent Executive Board for Deep Analysis...\n\n`));
-            
+
             // Step 1: The Architect (Draft)
             const draftModelName = "GPT OSS 120B";
             controller.enqueue(encoder.encode(`> 📝 **[The Architect]** *(powered by ${draftModelName})* is structuring the foundational master plan...\n`));
@@ -645,21 +645,21 @@ Apply the following highly advanced analysis steps:
             const slicedAgents = Object.entries(AGENT_INSTRUCTIONS).slice(0, totalExpertsCount);
 
             for (const [agentId, agentInstruction] of slicedAgents) {
-               const assignedModel = freeModels[modelIndex % freeModels.length];
-               modelIndex++;
+              const assignedModel = freeModels[modelIndex % freeModels.length];
+              modelIndex++;
 
-               const msgs = [
-                  ...formattedMessages,
-                  { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` },
-                  { role: "user", content: `You are the specialized agent for: ${agentId}.\n\nYour instructions are:\n${agentInstruction}\n\nCritically review the Architect's draft above from the strict perspective of your specialized role. Identify flaws, propose improvements, and provide highly actionable advice that ONLY someone with your expertise would know. ${langInstruction}` }
-               ];
+              const msgs = [
+                ...formattedMessages,
+                { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` },
+                { role: "user", content: `You are the specialized agent for: ${agentId}.\n\nYour instructions are:\n${agentInstruction}\n\nCritically review the Architect's draft above from the strict perspective of your specialized role. Identify flaws, propose improvements, and provide highly actionable advice that ONLY someone with your expertise would know. ${langInstruction}` }
+              ];
 
-               expertPromises.push(safeFetch(assignedModel, msgs, agentId));
-               
-               // Simulate UI logging dynamically
-               if (modelIndex === slicedAgents.length || modelIndex % 3 === 0) {
-                 controller.enqueue(encoder.encode(`  ┣ ⚙️ Firing expert panel requests... (${modelIndex}/${slicedAgents.length})\n`));
-               }
+              expertPromises.push(safeFetch(assignedModel, msgs, agentId));
+
+              // Simulate UI logging dynamically
+              if (modelIndex === slicedAgents.length || modelIndex % 3 === 0) {
+                controller.enqueue(encoder.encode(`  ┣ ⚙️ Firing expert panel requests... (${modelIndex}/${slicedAgents.length})\n`));
+              }
             }
 
             const expertResults = await Promise.all(expertPromises);
@@ -668,17 +668,18 @@ Apply the following highly advanced analysis steps:
 
             // Step 3: Synthesis Stream by the CEO (Main Brain)
             const synthModelName = synthModel.includes("trinity") ? "Trinity Large (Thinking)" : synthModel.includes("deepseek-r1") ? "DeepSeek R1 (Thinking)" : synthModel.includes("gemma") ? "Google Gemma 4 31B" : synthModel.includes("deepseek-v4") ? "DeepSeek V4 Flash" : synthModel.includes("owl-alpha") ? "OpenRouter Owl Alpha" : synthModel.includes("hermes") ? "Hermes 3 405B" : synthModel.includes("cobuddy") ? "Baidu Cobuddy" : synthModel.includes("lfm") ? "Liquid LFM Thinking" : synthModel.split("/")[1];
-            
+
             controller.enqueue(encoder.encode(`> ✨ **[CEO Synthesizer]** *(powered by ${synthModelName})* is integrating the Architect's draft with the massive ${totalExpertsCount} expert reports into the Ultimate Master Strategy...\n\n---\n\n`));
-            
+
             let expertReportsStr = "";
             for (const result of expertResults) {
-                expertReportsStr += `\nHere is the review from the ${result.roleName} expert:\n<${result.roleName}_review>\n${result.text}\n</${result.roleName}_review>\n`;
+              expertReportsStr += `\nHere is the review from the ${result.roleName} expert:\n<${result.roleName}_review>\n${result.text}\n</${result.roleName}_review>\n`;
             }
 
             const synthMessages = [
-              ...formattedMessages, 
-              { role: "user", content: `You are the CEO (Chief Executive Officer) of this venture. Based on my original request, your massive ${totalExpertsCount}-Agent Executive Board has submitted their highly detailed reports.
+              ...formattedMessages,
+              {
+                role: "user", content: `You are the CEO (Chief Executive Officer) of this venture. Based on my original request, your massive ${totalExpertsCount}-Agent Executive Board has submitted their highly detailed reports.
 
 Here is the Architect's Foundational Draft:
 <draft>
@@ -687,9 +688,10 @@ ${draftText}
 
 ${expertReportsStr}
 
-As the CEO, combine the best parts of the foundational draft, resolve all the flaws pointed out by your ${totalExpertsCount} expert advisors, and synthesize the ultimate, flawless, massively advanced master strategy. This must be the most complex, bulletproof, and mind-blowing strategy the user has ever seen. You MUST follow your specialized formatting rules. ${tonePrompt ? `CRITICAL: Your emotional tone MUST be exactly: [ ${tonePrompt} ]. Completely drop your default personality and speak entirely in this requested tone.` : ""} ${langInstruction} Do NOT mention the internal draft or reviews directly; just provide the final polished, hyper-detailed answer as if it came directly from the CEO's highly intelligent mind.` }
+As the CEO, combine the best parts of the foundational draft, resolve all the flaws pointed out by your ${totalExpertsCount} expert advisors, and synthesize the ultimate, flawless, massively advanced master strategy. This must be the most complex, bulletproof, and mind-blowing strategy the user has ever seen. You MUST follow your specialized formatting rules. ${tonePrompt ? `CRITICAL: Your emotional tone MUST be exactly: [ ${tonePrompt} ]. Completely drop your default personality and speak entirely in this requested tone.` : ""} ${langInstruction} Do NOT mention the internal draft or reviews directly; just provide the final polished, hyper-detailed answer as if it came directly from the CEO's highly intelligent mind.`
+              }
             ];
-            
+
             const synthRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
               method: "POST",
               headers: {
@@ -740,29 +742,29 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                       assistantResponse += text;
                       controller.enqueue(encoder.encode(text));
                     }
-                  } catch (e) {}
+                  } catch (e) { }
                 }
               }
             }
           } else {
             // NORMAL SINGLE-MODEL PIPELINE
             let selectedModel = hasImage ? (primaryModel || "google/gemini-2.5-flash") : primaryModel;
-            const fallbackModels = hasImage 
+            const fallbackModels = hasImage
               ? [
-                  primaryModel,
-                  "google/gemini-2.5-flash",
-                  "google/gemini-2.5-flash:free",
-                  "google/gemini-flash-1.5",
-                  "google/gemini-flash-1.5:free",
-                  "meta-llama/llama-3.2-11b-vision-instruct:free"
-                ] 
+                primaryModel,
+                "google/gemini-2.5-flash",
+                "google/gemini-2.5-flash:free",
+                "google/gemini-flash-1.5",
+                "google/gemini-flash-1.5:free",
+                "meta-llama/llama-3.2-11b-vision-instruct:free"
+              ]
               : [
-                  primaryModel,
-                  "google/gemma-2-9b-it:free",
-                  "deepseek/deepseek-chat:free",
-                  "meta-llama/llama-3.3-70b-instruct:free",
-                  "qwen/qwen-2.5-coder-32b-instruct:free"
-                ];
+                primaryModel,
+                "google/gemma-2-9b-it:free",
+                "deepseek/deepseek-chat:free",
+                "meta-llama/llama-3.3-70b-instruct:free",
+                "qwen/qwen-2.5-coder-32b-instruct:free"
+              ];
 
             let response: any;
             for (let i = 0; i < fallbackModels.length; i++) {
@@ -825,7 +827,7 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                       assistantResponse += text;
                       controller.enqueue(encoder.encode(text));
                     }
-                  } catch (e) {}
+                  } catch (e) { }
                 }
               }
             }
