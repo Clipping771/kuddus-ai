@@ -1676,19 +1676,23 @@ export default function Dashboard() {
                     setActiveChatId(chat.id);
                     setSidebarOpen(false);
                   }}
-                  className={`group w-full flex items-center justify-between px-3 py-3 rounded-xl cursor-pointer transition duration-300 text-sm ${
+                  className={`group w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition duration-300 text-xs ${
                     activeChatId === chat.id 
                       ? themeMode === "black"
-                        ? "bg-neutral-200/10 border border-neutral-200/20 text-white font-medium" 
-                        : "bg-amber-500/10 border border-amber-500/20 text-amber-950 font-bold shadow-sm"
+                        ? "bg-white/[0.04] border border-white/[0.06] text-white font-medium shadow-[0_4px_12px_rgba(0,0,0,0.4)]" 
+                        : "bg-amber-500/10 border border-amber-500/20 text-amber-955 font-bold shadow-sm"
                       : themeMode === "black"
-                        ? "border border-transparent text-neutral-400 hover:bg-neutral-900/60 hover:text-neutral-200"
+                        ? "border border-transparent text-neutral-400 hover:bg-white/[0.02] hover:text-neutral-200"
                         : "border border-transparent text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
                   }`}
                 >
-                  <div className="flex items-center gap-2.5 truncate">
-                    <MessageSquare size={15} className={activeChatId === chat.id ? (themeMode === "black" ? "text-neutral-200" : "text-neutral-800") : "text-neutral-500"} />
-                    <span className="truncate pr-2">{parseChatTitle(chat.title).title}</span>
+                  <div className="flex items-center gap-2 truncate">
+                    {activeChatId === chat.id ? (
+                      <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse flex-shrink-0" />
+                    ) : (
+                      <MessageSquare size={13} className="text-neutral-550 flex-shrink-0" />
+                    )}
+                    <span className="truncate pr-2 font-medium">{parseChatTitle(chat.title).title}</span>
                   </div>
                   <button 
                     onClick={(e) => handleDeleteChat(e, chat.id)}
@@ -1768,9 +1772,16 @@ export default function Dashboard() {
       )}
 
       {/* 3. Main Chat Interface Container */}
-      <main className={`flex-1 min-h-0 flex flex-col relative transition-colors duration-300 ${
-        themeMode === "black" ? "bg-[#020202]" : "bg-[#F1F5F9]"
+      <main className={`flex-1 min-h-0 flex flex-col relative overflow-hidden transition-colors duration-300 ${
+        themeMode === "black" ? "bg-[#050505]" : "bg-[#F8FAFC]"
       }`}>
+        {/* Dynamic Glowing Satin Spotlight overlays for premium mood */}
+        {themeMode === "black" && (
+          <div className="absolute inset-0 pointer-events-none select-none overflow-hidden z-0 opacity-40">
+            <div className="absolute top-[10%] left-[20%] w-[50%] h-[350px] bg-gradient-to-br from-emerald-500/8 to-teal-500/0 rounded-full blur-[100px] animate-pulse duration-[10s]" />
+            <div className="absolute bottom-[10%] right-[20%] w-[45%] h-[350px] bg-gradient-to-tr from-amber-500/5 to-emerald-500/0 rounded-full blur-[100px] animate-pulse duration-[14s]" />
+          </div>
+        )}
         {/* Dynamic header */}
         <header className={`h-16 px-4 sm:px-6 border-b backdrop-blur-xl flex items-center justify-between z-10 transition-colors duration-300 ${
           themeMode === "black" 
@@ -2402,11 +2413,14 @@ export default function Dashboard() {
                  return (
                    <div key={index} className="flex gap-4 items-start justify-end animate-fade-in font-sans">
                      <div className="flex flex-col gap-1.5 items-end max-w-[80%] group/msg relative">
-                       <span className={`text-[10px] font-bold tracking-wider ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>YOUR BUSINESS INQUIRY</span>
-                       <div className={`border rounded-2xl rounded-tr-none px-5 py-4 text-sm shadow-sm flex flex-col items-end relative transition-all duration-300 ${
+                       <span className={`text-[9px] font-black tracking-widest uppercase flex items-center gap-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-450"}`}>
+                         YOUR BUSINESS INQUIRY
+                         {themeMode === "black" && <span className="w-1 h-1 bg-emerald-400 rounded-full animate-ping" />}
+                       </span>
+                       <div className={`border rounded-2xl rounded-tr-none px-5 py-4 text-sm flex flex-col items-end relative transition-all duration-300 shadow-lg ${
                          themeMode === "black"
-                           ? "bg-gradient-to-bl from-neutral-200/10 to-transparent border-neutral-200/20 text-amber-50"
-                           : "bg-amber-500/10 border-amber-500/20 text-neutral-800"
+                           ? "bg-emerald-950/15 border-emerald-500/15 text-emerald-50/95"
+                           : "bg-amber-500/10 border-amber-500/20 text-neutral-800 shadow-md"
                        }`}>
                          {imageUrls.length > 0 && (
                            <div className="flex flex-wrap gap-2 mb-3 max-w-full justify-end">
@@ -2526,10 +2540,10 @@ export default function Dashboard() {
             )}
             <form 
               onSubmit={handleSubmit}
-              className={`w-full relative rounded-2xl border transition duration-300 overflow-hidden ${
+              className={`w-full relative rounded-2xl border transition-all duration-300 overflow-hidden backdrop-blur-md ${
                 themeMode === "black"
-                  ? "border-white/10 bg-[#0A0A0A] shadow-[0_0_40px_rgba(0,0,0,0.8)] focus-within:border-neutral-200/40 focus-within:ring-1 focus-within:ring-neutral-200/20"
-                  : "border-neutral-200 bg-white shadow-[0_5px_30px_rgba(0,0,0,0.05)] focus-within:border-neutral-400 focus-within:ring-1 focus-within:ring-neutral-300"
+                  ? "border-white/[0.04] bg-[#0A0A0C]/80 shadow-[0_4px_30px_rgba(0,0,0,0.7)] focus-within:border-emerald-500/30 focus-within:shadow-[0_0_40px_rgba(16,185,129,0.08)]"
+                  : "border-neutral-200 bg-white/90 shadow-[0_5px_30px_rgba(0,0,0,0.03)] focus-within:border-emerald-500/25 focus-within:shadow-[0_0_30px_rgba(16,185,129,0.04)]"
               }`}
             >
             <textarea
