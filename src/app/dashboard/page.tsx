@@ -1872,7 +1872,9 @@ export default function Dashboard() {
                             }}
                             className={`w-full text-left flex items-center justify-between p-2.5 rounded-lg transition duration-200 ${
                               isSelected 
-                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                                ? themeMode === "black"
+                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                  : "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                 : themeMode === "black"
                                   ? "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
                                   : "border border-transparent hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
@@ -1951,7 +1953,9 @@ export default function Dashboard() {
                             }}
                             className={`w-full text-left flex items-start gap-3 p-2.5 rounded-lg transition duration-200 ${
                               isSelected 
-                                ? "bg-neutral-200/10 text-white border border-neutral-200/20" 
+                                ? themeMode === "black"
+                                  ? "bg-neutral-200/10 text-white border border-neutral-200/20"
+                                  : "bg-neutral-100 text-neutral-900 border border-neutral-200"
                                 : themeMode === "black"
                                   ? "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
                                   : "border border-transparent hover:bg-[#F1F5F9] text-neutral-700 hover:text-neutral-900"
@@ -1959,8 +1963,8 @@ export default function Dashboard() {
                           >
                             <AgentIcon size={16} className={`mt-0.5 flex-shrink-0 ${isSelected ? (themeMode === "black" ? "text-neutral-200" : "text-neutral-700") : "text-neutral-500"}`} />
                             <div className="flex flex-col text-xs leading-normal">
-                              <span className={`font-bold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-850"}`}>{agent.banglaName}</span>
-                              <span className="text-[10px] text-neutral-550 leading-normal mt-0.5">
+                              <span className={`font-bold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-900"}`}>{agent.banglaName}</span>
+                              <span className="text-[10px] text-neutral-500 leading-normal mt-0.5">
                                 {agent.banglaDesc}
                               </span>
                             </div>
