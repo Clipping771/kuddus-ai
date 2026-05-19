@@ -2058,7 +2058,7 @@ export default function Dashboard() {
  
               {/* Prompt Suggestions Grid */}
               <div className="mt-10 w-full text-left">
-                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b pb-3 ${
+                <div className={`flex items-center gap-2.5 mb-4 border-b pb-3 ${
                   themeMode === "black" ? "border-neutral-900" : "border-neutral-200"
                 }`}>
                   <span className={`text-xs font-black uppercase tracking-widest ${
@@ -2071,26 +2071,19 @@ export default function Dashboard() {
                     type="button"
                     onClick={handleGeneratePrompts}
                     disabled={isGeneratingPrompts}
-                    className={`flex items-center gap-1.5 text-[9px] font-black px-4 py-2 rounded-full border transition-all duration-300 uppercase tracking-widest ${
+                    title="Generate New AI Consultation Cases"
+                    className={`p-1.5 rounded-full border transition-all duration-300 hover:scale-105 active:scale-95 ${
                       isGeneratingPrompts
-                        ? themeMode === "black"
-                          ? "bg-[#0c0c0c] border-neutral-850 text-neutral-600 cursor-not-allowed"
-                          : "bg-neutral-100 border-neutral-200 text-neutral-450 cursor-not-allowed"
+                        ? "opacity-50 cursor-not-allowed"
                         : themeMode === "black"
-                          ? "bg-[#111111] border-neutral-800 hover:border-amber-500/40 text-neutral-300 hover:text-white hover:shadow-[0_0_15px_rgba(245,158,11,0.08)]"
-                          : "bg-neutral-900 border-neutral-800 text-white hover:bg-neutral-800 hover:shadow-md"
+                          ? "bg-neutral-950/60 border-neutral-850 text-neutral-400 hover:text-amber-400 hover:border-amber-500/30 hover:shadow-[0_0_10px_rgba(245,158,11,0.1)]"
+                          : "bg-white border-neutral-200 text-neutral-500 hover:text-amber-600 hover:border-amber-500/25 shadow-sm"
                     }`}
                   >
                     {isGeneratingPrompts ? (
-                      <>
-                        <Loader2 size={11} className="animate-spin text-neutral-400" />
-                        <span>Creating Cases...</span>
-                      </>
+                      <Loader2 size={11} className="animate-spin text-amber-500" />
                     ) : (
-                      <>
-                        <Sparkles size={11} className="text-amber-500 group-hover:scale-110 transition-transform" />
-                        <span>AI Generate New Cases</span>
-                      </>
+                      <Sparkles size={11} className="text-amber-500 animate-pulse" />
                     )}
                   </button>
                 </div>
