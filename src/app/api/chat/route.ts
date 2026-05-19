@@ -574,11 +574,15 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
             const draftText = await fetchSyncOpenRouter("openai/gpt-oss-120b:free", draftMessages);
             controller.enqueue(encoder.encode(`> ✅ **${draftModelName}** → Foundational Master Plan Completed.\n\n`));
 
-            // Step 2: Parallel Expert Panel (3 Models at once)
+            // Step 2: Parallel Expert Panel (7 Models at once)
             controller.enqueue(encoder.encode(`> 🕵️ **[Parallel Expert Panel Assembly]** Firing simultaneous deep-dive reviews...\n`));
-            controller.enqueue(encoder.encode(`  ┣ ⚙️ CTO (Tech Review) powered by Llama 3.3 70B\n`));
-            controller.enqueue(encoder.encode(`  ┣ 📈 CMO (Market Review) powered by Nvidia Nemotron 120B\n`));
-            controller.enqueue(encoder.encode(`  ┗ ♟️ Chief Risk Officer (Edge-Case Logic) powered by Trinity Large\n\n`));
+            controller.enqueue(encoder.encode(`  ┣ ⚙️ CTO (Tech Review) ➡️ Llama 3.3 70B\n`));
+            controller.enqueue(encoder.encode(`  ┣ 📈 CMO (Market Review) ➡️ Nvidia Nemotron 120B\n`));
+            controller.enqueue(encoder.encode(`  ┣ ♟️ Chief Risk Officer (Edge-Cases) ➡️ Trinity Large\n`));
+            controller.enqueue(encoder.encode(`  ┣ 💰 CFO (Finance) ➡️ Hermes 3 405B\n`));
+            controller.enqueue(encoder.encode(`  ┣ 🚀 CPO (Product & UX) ➡️ Liquid LFM Thinking\n`));
+            controller.enqueue(encoder.encode(`  ┣ ⚖️ Legal Counsel (Compliance) ➡️ Baidu Cobuddy\n`));
+            controller.enqueue(encoder.encode(`  ┗ 🧠 Innovation Director (Wild Ideas) ➡️ Owl Alpha\n\n`));
 
             const ctoMessages = [
               ...formattedMessages, 
@@ -598,23 +602,60 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
               { role: "user", content: `Act as the Chief Risk Officer and Deep Logic Analyst. Critically review the draft above using deep reasoning. Find the "Black Swan" events, hidden edge-cases, legal/compliance threats, and fundamental logical fallacies. What is the single biggest existential threat to this plan, and how do we mitigate it? Be deeply philosophical and ruthlessly logical. ${langInstruction}` }
             ];
 
-            // Execute all 3 critiques concurrently to save time and massively increase intelligence
-            const [ctoText, cmoText, riskText] = await Promise.all([
-              fetchSyncOpenRouter("meta-llama/llama-3.3-70b-instruct:free", ctoMessages),
-              fetchSyncOpenRouter("nvidia/nemotron-3-super-120b-a12b:free", cmoMessages),
-              fetchSyncOpenRouter("arcee-ai/trinity-large-thinking:free", riskMessages)
+            const cfoMessages = [
+              ...formattedMessages, 
+              { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` }, 
+              { role: "user", content: `Act as the Chief Financial Officer (CFO). Critically review the financial metrics, monetization plan, and cost structure of the draft above. Find where they are bleeding money, miscalculating margins, or ignoring hidden costs. Optimize the pricing strategy for maximum profitability. ${langInstruction}` }
+            ];
+
+            const cpoMessages = [
+              ...formattedMessages, 
+              { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` }, 
+              { role: "user", content: `Act as the Chief Product Officer (CPO). Critically review the product/service design, user experience (UX), and value proposition from the draft above. Why would users hate this? How can we make the product highly addictive and frictionless? ${langInstruction}` }
+            ];
+
+            const legalMessages = [
+              ...formattedMessages, 
+              { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` }, 
+              { role: "user", content: `Act as the Chief Legal Counsel. Review the draft above for legal compliance, regulatory hurdles, data privacy issues, and potential lawsuits. Give brutal legal advice to protect the company. ${langInstruction}` }
+            ];
+
+            const innovationMessages = [
+              ...formattedMessages, 
+              { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` }, 
+              { role: "user", content: `Act as the Director of Wild Innovation. Review the draft above. It is too boring and standard. Inject one insanely unconventional, "crazy but brilliant" idea that completely disrupts the industry and sets this plan apart from everyone else. Think outside the box. ${langInstruction}` }
+            ];
+
+            // Execute all 7 critiques concurrently. Use catch to prevent a single failure from destroying the pipeline.
+            const safeFetch = async (model: string, msgs: any[]) => {
+              try {
+                return await fetchSyncOpenRouter(model, msgs);
+              } catch (e) {
+                console.error(`Expert ${model} failed:`, e);
+                return "(Expert analysis unavailable due to API rate limit)";
+              }
+            };
+
+            const [ctoText, cmoText, riskText, cfoText, cpoText, legalText, innovationText] = await Promise.all([
+              safeFetch("meta-llama/llama-3.3-70b-instruct:free", ctoMessages),
+              safeFetch("nvidia/nemotron-3-super-120b-a12b:free", cmoMessages),
+              safeFetch("arcee-ai/trinity-large-thinking:free", riskMessages),
+              safeFetch("nousresearch/hermes-3-llama-3.1-405b", cfoMessages),
+              safeFetch("liquid/lfm-2.5-1.2b-thinking:free", cpoMessages),
+              safeFetch("baidu/cobuddy:free", legalMessages),
+              safeFetch("openrouter/owl-alpha", innovationMessages)
             ]);
 
-            controller.enqueue(encoder.encode(`> ✅ **Expert Panel** → All 3 Deep Reviews Completed Simultaneously.\n\n`));
+            controller.enqueue(encoder.encode(`> ✅ **Ultimate Expert Panel** → All 7 Deep Reviews Completed.\n\n`));
 
             // Step 3: Synthesis Stream by the CEO (Main Brain)
             const synthModelName = synthModel.includes("gemma") ? "Google Gemma 4 31B" : synthModel.includes("deepseek-v4") ? "DeepSeek V4 Flash" : synthModel.includes("owl-alpha") ? "OpenRouter Owl Alpha" : synthModel.includes("hermes") ? "Hermes 3 405B" : synthModel.includes("cobuddy") ? "Baidu Cobuddy" : synthModel.includes("lfm") ? "Liquid LFM Thinking" : synthModel.split("/")[1];
             
-            controller.enqueue(encoder.encode(`> ✨ **[CEO Synthesizer]** *(powered by ${synthModelName})* is integrating the Architect's draft with the CTO, CMO, and Risk Officer reviews into the Ultimate Master Strategy...\n\n---\n\n`));
+            controller.enqueue(encoder.encode(`> ✨ **[CEO Synthesizer]** *(powered by ${synthModelName})* is integrating the Architect's draft with the 7 expert reports (CTO, CMO, Risk, CFO, CPO, Legal, Innovation) into the Ultimate Master Strategy...\n\n---\n\n`));
             
             const synthMessages = [
               ...formattedMessages, 
-              { role: "user", content: `You are the CEO (Chief Executive Officer) of this venture. Based on my original request, your specialized Executive Board has submitted their reports.
+              { role: "user", content: `You are the CEO (Chief Executive Officer) of this venture. Based on my original request, your 9-Agent Executive Board has submitted their massive reports.
 
 Here is the Architect's Foundational Draft:
 <draft>
@@ -636,7 +677,27 @@ Here is the Chief Risk Officer's Deep Logical Critique:
 ${riskText}
 </risk_review>
 
-As the CEO, combine the best parts of the foundational draft, resolve all the flaws pointed out by the CTO, CMO, and Risk Officer, and synthesize the ultimate, flawless, massively advanced master strategy. This must be the most complex, bulletproof, and mind-blowing strategy the user has ever seen. You MUST follow your specialized formatting rules. ${tonePrompt ? `CRITICAL: Your emotional tone MUST be exactly: [ ${tonePrompt} ]. Completely drop your default personality and speak entirely in this requested tone.` : ""} ${langInstruction} Do NOT mention the internal draft or reviews directly; just provide the final polished, hyper-detailed answer as if it came directly from the CEO's highly intelligent mind.` }
+Here is the CFO's Financial Review:
+<cfo_review>
+${cfoText}
+</cfo_review>
+
+Here is the CPO's Product & UX Review:
+<cpo_review>
+${cpoText}
+</cpo_review>
+
+Here is the Legal Counsel's Compliance Review:
+<legal_review>
+${legalText}
+</legal_review>
+
+Here is the Innovation Director's Wild Idea:
+<innovation_idea>
+${innovationText}
+</innovation_idea>
+
+As the CEO, combine the best parts of the foundational draft, resolve all the flaws pointed out by the 7 experts, and synthesize the ultimate, flawless, massively advanced master strategy. This must be the most complex, bulletproof, and mind-blowing strategy the user has ever seen. You MUST follow your specialized formatting rules. ${tonePrompt ? `CRITICAL: Your emotional tone MUST be exactly: [ ${tonePrompt} ]. Completely drop your default personality and speak entirely in this requested tone.` : ""} ${langInstruction} Do NOT mention the internal draft or reviews directly; just provide the final polished, hyper-detailed answer as if it came directly from the CEO's highly intelligent mind.` }
             ];
             
             const synthRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
