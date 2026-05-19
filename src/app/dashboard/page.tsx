@@ -824,6 +824,11 @@ export default function Dashboard() {
   // Theme Mode State: "black" (dark) or "light" (clean light)
   const [themeMode, setThemeMode] = useState<"black" | "light">("black");
 
+  // Custom Pull-to-Refresh Gesture State for Nested Scrolls
+  const [pullStartY, setPullStartY] = useState(0);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+
   // Custom Agent Builder States
   const [customAgents, setCustomAgents] = useState<CustomAgent[]>([]);
   const [customAgentModalOpen, setCustomAgentModalOpen] = useState(false);
@@ -1096,6 +1101,56 @@ export default function Dashboard() {
   const handleBrainTrustToggle = (val: boolean) => {
     setIsBrainTrust(val);
     localStorage.setItem("kacha_is_braintrust", String(val));
+  };
+
+  // Custom Touch Event Handlers for Mobile Pull-to-Refresh Gesture
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    if (container.scrollTop === 0 && !isPullRefreshing) {
+      setPullStartY(e.touches[0].clientY);
+      setPullDistance(0);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (pullStartY === 0 || isPullRefreshing) return;
+    
+    const container = e.currentTarget;
+    if (container.scrollTop > 0) {
+      // Reset if scrolled down
+      setPullStartY(0);
+      setPullDistance(0);
+      return;
+    }
+
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - pullStartY;
+    
+    if (diff > 0) {
+      // Capped pull distance with tension resistance factor for native tactile feel
+      const distance = Math.min(120, diff * 0.4);
+      setPullDistance(distance);
+      
+      // Prevent native browser overscroll/refresh gesture so they do not conflict
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullDistance > 65) {
+      setIsPullRefreshing(true);
+      setPullDistance(50); // Set to active loader position
+      
+      // Perform window reload to trigger full refresh
+      setTimeout(() => {
+        window.location.reload();
+      }, 700);
+    } else {
+      setPullStartY(0);
+      setPullDistance(0);
+    }
   };
 
   // AI Personalization State (user chooses name & color on first visit)
@@ -2251,7 +2306,45 @@ export default function Dashboard() {
           </div>
 
           {/* Scrollable Conversation area */}
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8 space-y-6">
+          <div 
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8 space-y-6 relative"
+          >
+            {/* Custom Pull-to-Refresh Indicator */}
+            {pullDistance > 0 && (
+              <div 
+                className="w-full flex items-center justify-center overflow-hidden transition-all duration-75 pointer-events-none sticky top-0 z-50"
+                style={{ 
+                  height: `${pullDistance}px`,
+                  opacity: Math.min(1, pullDistance / 50)
+                }}
+              >
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
+                  themeMode === "black" 
+                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]" 
+                    : "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm"
+                }`}>
+                  {isPullRefreshing ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                      Refreshing...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <span 
+                        className="text-xs transition-transform duration-75" 
+                        style={{ transform: `rotate(${pullDistance * 4.5}deg)` }}
+                      >
+                        🌶️
+                      </span>
+                      <span>{pullDistance > 65 ? "Release to Refresh" : "Pull to Refresh"}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
             {messages.length === 0 ? (
               /* Welcome / Onboarding Screen */
               <div className="max-w-2xl mx-auto pt-8 pb-12 flex flex-col items-center justify-center text-center relative">
