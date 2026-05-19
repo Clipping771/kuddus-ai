@@ -2279,92 +2279,80 @@ export default function Dashboard() {
         </header>
 
         {/* Mobile Sub-Header AI Engine Control Bar */}
-        <div className={`md:hidden px-4 py-2 border-b flex items-center justify-between gap-2 overflow-x-auto scrollbar-none transition-colors duration-300 z-30 ${
+        <div className={`md:hidden px-4 py-2 border-b flex flex-col gap-2 transition-colors duration-300 z-30 ${
           themeMode === "black" ? "border-white/5 bg-[#050505]/95" : "border-neutral-200 bg-white/95 shadow-sm"
         }`}>
-          {/* AI Brain Model Selector (Mobile) */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border transition duration-300 font-bold text-[10px] ${
-                themeMode === "black"
-                  ? "border-white/10 bg-[#0A0A0A]/50 text-neutral-300 hover:text-white"
-                  : "border-neutral-200 bg-white text-neutral-700 hover:text-neutral-900"
-              }`}
-            >
-              <span>{MODELS_LIST.find((m) => m.id === selectedModelId)?.icon}</span>
-              <span>{MODELS_LIST.find((m) => m.id === selectedModelId)?.name || "Select AI Brain"}</span>
-              <ChevronDown size={10} />
-            </button>
-            {modelDropdownOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setModelDropdownOpen(false)} />
-                <div className={`absolute left-0 mt-2 w-52 rounded-xl border p-1 shadow-2xl z-50 divide-y space-y-1 ${
-                  themeMode === "black"
-                    ? "border-neutral-800 bg-[#090909]/95 backdrop-blur-md divide-neutral-900 text-neutral-300"
-                    : "border-neutral-200 bg-white divide-neutral-100 text-neutral-800 shadow-xl"
-                }`}>
-                  <div className="space-y-0.5">
-                    {MODELS_LIST.map((model) => (
-                      <button
-                        key={model.id}
-                        type="button"
-                        onClick={() => {
-                          handleModelChange(model.id);
-                          setModelDropdownOpen(false);
-                        }}
-                        className={`w-full text-left flex items-center justify-between p-2 rounded-lg transition duration-200 ${
-                          selectedModelId === model.id 
-                            ? themeMode === "black" ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-50 text-emerald-700"
-                            : themeMode === "black" ? "hover:bg-neutral-900 text-neutral-300" : "hover:bg-neutral-50 text-neutral-700"
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs">{model.icon}</span>
-                          <span className="text-[10px] font-bold">{model.name}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
+          {/* Models Scroll Bar */}
+          <div className="flex flex-col gap-1">
+            <span className={`text-[8px] font-black uppercase tracking-wider ${
+              themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
+            }`}>Select AI Brain Model:</span>
+            
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+              {MODELS_LIST.map((model) => {
+                const isSelected = selectedModelId === model.id;
+                return (
+                  <button
+                    key={model.id}
+                    type="button"
+                    onClick={() => handleModelChange(model.id)}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider whitespace-nowrap transition-all duration-300 flex-shrink-0 ${
+                      isSelected
+                        ? themeMode === "black"
+                          ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                          : "bg-emerald-50 border-emerald-500/30 text-emerald-700 shadow-sm"
+                        : themeMode === "black"
+                          ? "bg-neutral-900/40 border-neutral-800 text-neutral-400 hover:text-neutral-200"
+                          : "bg-white border-neutral-250 text-neutral-600 hover:text-neutral-900"
+                    }`}
+                  >
+                    <span>{model.icon}</span>
+                    <span>{model.name.replace(" (Thinking)", "")}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Brain Trust Switch (Mobile) */}
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => handleBrainTrustToggle(!isBrainTrust)}
-              disabled={isLoading || isFileParsing}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border text-[9px] font-black uppercase tracking-wider transition-all duration-300 ${
-                isBrainTrust 
-                  ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]" 
-                  : themeMode === "black"
-                    ? "bg-neutral-900/40 border-neutral-800 text-neutral-500"
-                    : "bg-white border-neutral-200 text-neutral-500 shadow-sm"
-              }`}
-            >
-              <span>🧠 Board: {isBrainTrust ? "ON" : "OFF"}</span>
-              <div className={`w-1.5 h-1.5 rounded-full ${isBrainTrust ? "bg-red-500 animate-pulse" : "bg-neutral-700"}`} />
-            </button>
-            {isBrainTrust && (
-              <select
-                value={boardSize}
-                onChange={(e) => setBoardSize(Number(e.target.value))}
-                className={`px-1.5 py-0.5 text-[8px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${
-                  themeMode === "black" 
-                    ? "bg-neutral-950 border-neutral-800 text-neutral-400"
-                    : "bg-white border-neutral-200 text-neutral-600 shadow-sm"
+          {/* Settings Row (Brain Trust + Board Size) */}
+          <div className="flex items-center justify-between border-t border-dashed pt-1.5 mt-0.5" style={{ borderColor: themeMode === "black" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)" }}>
+            <span className={`text-[8px] font-black uppercase tracking-wider ${
+              themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
+            }`}>Cooperative Board:</span>
+            
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleBrainTrustToggle(!isBrainTrust)}
+                disabled={isLoading || isFileParsing}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border text-[9px] font-black uppercase tracking-wider transition-all duration-300 ${
+                  isBrainTrust 
+                    ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]" 
+                    : themeMode === "black"
+                      ? "bg-neutral-900/40 border-neutral-800 text-neutral-500"
+                      : "bg-white border-neutral-200 text-neutral-500 shadow-sm"
                 }`}
               >
-                <option value={3}>3 Ag</option>
-                <option value={5}>5 Ag</option>
-                <option value={9}>9 Ag</option>
-                <option value={16}>16 Ag</option>
-              </select>
-            )}
+                <span>🧠 Board: {isBrainTrust ? "ON" : "OFF"}</span>
+                <div className={`w-1.5 h-1.5 rounded-full ${isBrainTrust ? "bg-red-500 animate-pulse" : "bg-neutral-700"}`} />
+              </button>
+              {isBrainTrust && (
+                <select
+                  value={boardSize}
+                  onChange={(e) => setBoardSize(Number(e.target.value))}
+                  className={`px-1.5 py-0.5 text-[8px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${
+                    themeMode === "black" 
+                      ? "bg-neutral-950 border-neutral-800 text-neutral-400"
+                      : "bg-white border-neutral-200 text-neutral-600 shadow-sm"
+                  }`}
+                >
+                  <option value={3}>3 Ag</option>
+                  <option value={5}>5 Ag</option>
+                  <option value={9}>9 Ag</option>
+                  <option value={16}>16 Ag</option>
+                </select>
+              )}
+            </div>
           </div>
         </div>
  
