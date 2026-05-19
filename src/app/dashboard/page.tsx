@@ -2329,7 +2329,24 @@ export default function Dashboard() {
                 const base64Regex = /\[IMAGE_BASE64:(data:image\/[^\]]+)\]/;
                 const hasImageMatch = msg.content?.match(base64Regex);
                 const imageUrl = hasImageMatch ? hasImageMatch[1] : null;
-                const cleanContent = msg.content ? msg.content.replace(base64Regex, "").trim() : "";
+                
+                // Beautifully clean raw message contents to hide internal developer/OCR debug tags from user screen
+                let cleanContent = "";
+                if (msg.content) {
+                  const withoutBase64 = msg.content.replace(base64Regex, "").trim();
+                  const userPromptIndex = withoutBase64.lastIndexOf("User Prompt:");
+                  if (userPromptIndex !== -1) {
+                    const extractedPrompt = withoutBase64.substring(userPromptIndex + "User Prompt:".length).trim();
+                    if (extractedPrompt === "Please analyze the extracted text above based on your specialized agent role.") {
+                      const docMatch = msg.content.match(/\[ATTACHED DOCUMENT:\s*([^\]]+)\]/);
+                      cleanContent = `📎 Document analyzed: ${docMatch ? docMatch[1] : "document"}`;
+                    } else {
+                      cleanContent = extractedPrompt;
+                    }
+                  } else {
+                    cleanContent = withoutBase64;
+                  }
+                }
 
                 return (
                   <div key={index} className="flex gap-4 items-start justify-end animate-fade-in font-sans">
