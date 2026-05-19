@@ -39,7 +39,8 @@ Respond ONLY with a raw, valid JSON object (no markdown, no backticks) with the 
         model: "google/gemini-2.5-flash",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.7,
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
+        max_tokens: 1500
       }),
     });
 
