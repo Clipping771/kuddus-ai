@@ -2183,6 +2183,24 @@ export default function Dashboard() {
                                   <ReactMarkdown 
                                     remarkPlugins={[remarkGfm]}
                                     components={{
+                                      blockquote({ node, children, ...props }) {
+                                        return (
+                                          <blockquote 
+                                            className={`relative my-6 px-5 py-4 rounded-xl border-l-[3px] ${
+                                              themeMode === "black"
+                                                ? "bg-[#0a0a0a]/80 border-amber-500 text-amber-300 shadow-[0_0_25px_rgba(245,158,11,0.15)] ring-1 ring-white/5"
+                                                : "bg-amber-500/5 border-amber-500 text-amber-900 shadow-md ring-1 ring-black/5"
+                                            } font-mono text-[11px] sm:text-xs tracking-wide leading-relaxed overflow-hidden backdrop-blur-md [&>p]:m-0 [&>p]:mb-1.5 last:[&>p]:mb-0`}
+                                            {...props}
+                                          >
+                                            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-amber-500/10 to-transparent pointer-events-none rounded-r-xl"></div>
+                                            <div className="absolute -left-[3px] top-1/4 w-[3px] h-1/2 bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.8)] animate-pulse rounded-r"></div>
+                                            <div className="relative z-10">
+                                              {children}
+                                            </div>
+                                          </blockquote>
+                                        );
+                                      },
                                       code({ node, className, children, ...props }) {
                                         const match = /language-(\w+)/.exec(className || "");
                                         const lang = match ? match[1] : "";
