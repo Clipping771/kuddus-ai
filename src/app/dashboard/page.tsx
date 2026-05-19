@@ -2495,17 +2495,17 @@ export default function Dashboard() {
                   type="button"
                   onClick={() => handleBrainTrustToggle(!isBrainTrust)}
                   disabled={isLoading || isFileParsing}
-                  title="Brain Trust Mode: Multi-Agent Deep Research"
+                  title="16-Agent Executive Board: Massively Parallel Deep Analysis"
                   className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 ml-2 rounded-full border text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${
                     isBrainTrust 
-                      ? "bg-amber-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)]" 
+                      ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]" 
                       : themeMode === "black"
                         ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600"
                         : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 shadow-sm"
                   }`}
                 >
-                  <span>🧠 Brain Trust</span>
-                  <div className={`w-2 h-2 rounded-full ${isBrainTrust ? "bg-amber-400 animate-pulse" : "bg-neutral-750"}`}></div>
+                  <span>🧠 16-Agent Board</span>
+                  <div className={`w-2 h-2 rounded-full ${isBrainTrust ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)] animate-ping" : "bg-neutral-700"}`}></div>
                 </button>
 
                 {/* Mic Button */}
