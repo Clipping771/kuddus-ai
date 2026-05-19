@@ -847,13 +847,13 @@ export default function Dashboard() {
       if (themeMode === "light") {
         root.classList.remove("dark");
         root.classList.add("light");
-        body.style.backgroundColor = "#F1F5F9";
-        body.style.color = "#1E293B";
+        body.style.backgroundColor = "#F8FAFC";
+        body.style.color = "#0A0A0C";
       } else {
         root.classList.remove("light");
         root.classList.add("dark");
-        body.style.backgroundColor = "#020202";
-        body.style.color = "#F5F5F5";
+        body.style.backgroundColor = "#050505";
+        body.style.color = "#F5F5F7";
       }
     }
   }, [themeMode]);
@@ -1652,10 +1652,10 @@ export default function Dashboard() {
           <div className="px-4 py-3">
             <button 
               onClick={handleNewChat}
-              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border transition duration-300 shadow-sm text-sm font-bold ${
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border transition-all duration-300 shadow-sm text-xs font-bold ${
                 themeMode === "black"
                   ? "border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent hover:from-white/[0.08] text-neutral-200 hover:text-white"
-                  : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-800 hover:text-neutral-900"
+                  : "border-transparent bg-[#0A0A0C] hover:bg-neutral-800 text-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:scale-[1.01] active:scale-[0.99] transform"
               }`}
             >
               <Plus size={16} /> New Analysis
@@ -2066,21 +2066,29 @@ export default function Dashboard() {
           {messages.length === 0 ? (
             /* Welcome / Onboarding Screen */
             <div className="max-w-2xl mx-auto pt-8 pb-12 flex flex-col items-center justify-center text-center relative">
-              <div className="relative group">
+              <div className="relative group mb-8">
+                {/* Dynamic concentric glowing halos */}
+                <div className="absolute -inset-4 rounded-full opacity-30 blur-xl group-hover:opacity-50 transition duration-1000 animate-pulse" style={{ background: `radial-gradient(circle, ${aiColor}, transparent)` }}></div>
                 <div className="absolute -inset-1 rounded-full opacity-60 blur-md group-hover:opacity-90 transition duration-1000" style={{ background: `radial-gradient(circle, ${aiColor}44, transparent)` }}></div>
-                <AIAvatar size={88} className={`relative mb-6 border-2 ${themeMode === "black" ? "border-white/10" : "border-neutral-200"}`} />
+                <div className={`relative p-2.5 rounded-full border shadow-[0_8px_32px_rgba(0,0,0,0.15)] flex items-center justify-center transition-colors duration-300 ${
+                  themeMode === "black" ? "bg-white/[0.01] border-white/10" : "bg-black/[0.01] border-neutral-200/50 shadow-[0_8px_32px_rgba(0,0,0,0.02)]"
+                }`}>
+                  <AIAvatar size={80} className={`border ${themeMode === "black" ? "border-white/10" : "border-neutral-200"}`} />
+                </div>
               </div>
  
-              <h2 className={`text-xl sm:text-2xl md:text-3xl font-extrabold mt-4 leading-normal ${
-                themeMode === "black" ? "text-neutral-100" : "text-neutral-900"
+              <h2 className={`text-2xl sm:text-3xl font-extrabold mt-4 tracking-tight transition-colors duration-300 ${
+                themeMode === "black" 
+                  ? "bg-clip-text text-transparent bg-gradient-to-b from-white to-neutral-450" 
+                  : "text-neutral-900"
               }`}>
                 {aiName}:{" "}
-                <span className={themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}>
+                <span className={`font-semibold transition-colors duration-300 ${themeMode === "black" ? "text-emerald-400" : "text-emerald-600"}`}>
                   {AGENTS_LIST.find((a) => a.id === selectedAgentId)?.banglaName || "Specialist"}
                 </span>
               </h2>
-              <p className={`mt-4 leading-relaxed max-w-xl text-sm ${
-                themeMode === "black" ? "text-neutral-400/80" : "text-neutral-600"
+              <p className={`mt-4 leading-relaxed max-w-xl text-xs sm:text-sm font-medium transition-colors duration-300 ${
+                themeMode === "black" ? "text-neutral-400" : "text-neutral-500"
               }`}>
                 {AGENTS_LIST.find((a) => a.id === selectedAgentId)?.banglaDesc || "কুদ্দুস আলীর ২০+ বছরের বাস্তব বিজনেস অভিজ্ঞতার আলোকে যেকোনো আইডিয়া যাচাই করুন।"}
               </p>
