@@ -808,6 +808,7 @@ export default function Dashboard() {
 
   // Multi-Agent Brain Trust State
   const [isBrainTrust, setIsBrainTrust] = useState(false);
+  const [boardSize, setBoardSize] = useState<number>(16);
 
   // Theme Mode State: "black" (dark) or "light" (clean light)
   const [themeMode, setThemeMode] = useState<"black" | "light">("black");
@@ -1466,6 +1467,7 @@ export default function Dashboard() {
           aiName: aiName,
           tonePrompt: TONES_LIST.find(t => t.id === selectedToneId)?.prompt,
           isBrainTrust: isBrainTrust,
+          boardSize: boardSize,
         }),
       });
 
@@ -2509,22 +2511,40 @@ export default function Dashboard() {
                 </button>
 
                 {/* Brain Trust Toggle */}
-                <button
-                  type="button"
-                  onClick={() => handleBrainTrustToggle(!isBrainTrust)}
-                  disabled={isLoading || isFileParsing}
-                  title="16-Agent Executive Board: Massively Parallel Deep Analysis"
-                  className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 ml-2 rounded-full border text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${
-                    isBrainTrust 
-                      ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]" 
-                      : themeMode === "black"
-                        ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600"
-                        : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 shadow-sm"
-                  }`}
-                >
-                  <span>🧠 16-Agent Board</span>
-                  <div className={`w-2 h-2 rounded-full ${isBrainTrust ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)] animate-ping" : "bg-neutral-700"}`}></div>
-                </button>
+                <div className="flex items-center gap-1.5 ml-2">
+                   <button
+                     type="button"
+                     onClick={() => handleBrainTrustToggle(!isBrainTrust)}
+                     disabled={isLoading || isFileParsing}
+                     title="Executive Board: Massively Parallel Deep Analysis"
+                     className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${
+                       isBrainTrust 
+                         ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]" 
+                         : themeMode === "black"
+                           ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600"
+                           : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 shadow-sm"
+                     }`}
+                   >
+                     <span>🧠 {boardSize}-Agent Board</span>
+                     <div className={`w-2 h-2 rounded-full ${isBrainTrust ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)] animate-ping" : "bg-neutral-700"}`}></div>
+                   </button>
+                   {isBrainTrust && (
+                     <select
+                       value={boardSize}
+                       onChange={(e) => setBoardSize(Number(e.target.value))}
+                       className={`px-2 py-1 text-[9px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${
+                         themeMode === "black" 
+                           ? "bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white"
+                           : "bg-white border-neutral-200 text-neutral-600 hover:text-black shadow-sm"
+                       }`}
+                     >
+                       <option value={3}>3 Agents</option>
+                       <option value={5}>5 Agents</option>
+                       <option value={9}>9 Agents</option>
+                       <option value={16}>16 Agents</option>
+                     </select>
+                   )}
+                 </div>
 
                 {/* Mic Button */}
                 <button

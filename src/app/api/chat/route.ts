@@ -247,7 +247,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { message, chatId, agentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust } = await req.json();
+    const { message, chatId, agentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust, boardSize = 16 } = await req.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
@@ -565,7 +565,9 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
               ? "CRITICAL: You MUST respond entirely in Bengali (Bangla) script. Do NOT use English in your response."
               : "CRITICAL: Detect the language of the user's original message and respond ENTIRELY in that exact same language. Do NOT switch to English or any other language.";
 
-            controller.enqueue(encoder.encode("\n\n> 🧠 **KACHA MORICH MASSIVELY PARALLEL BRAIN TRUST ACTIVATED**\n> Assembling the 16-Agent Executive Board for Deep Analysis...\n\n"));
+            const totalExpertsCount = Math.max(1, Math.min(14, boardSize - 2));
+
+            controller.enqueue(encoder.encode(`\n\n> 🧠 **KACHA MORICH MASSIVELY PARALLEL BRAIN TRUST ACTIVATED**\n> Assembling the ${boardSize}-Agent Executive Board for Deep Analysis...\n\n`));
             
             // Step 1: The Architect (Draft)
             const draftModelName = "GPT OSS 120B";
@@ -574,8 +576,8 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
             const draftText = await fetchSyncOpenRouter("openai/gpt-oss-120b:free", draftMessages);
             controller.enqueue(encoder.encode(`> ✅ **${draftModelName}** → Foundational Master Plan Completed.\n\n`));
 
-            // Step 2: Parallel Expert Panel (15 Models at once)
-            controller.enqueue(encoder.encode(`> 🕵️ **[Massive 15-Seat Expert Panel Assembly]** Firing simultaneous deep-dive reviews across all departments...\n`));
+            // Step 2: Parallel Expert Panel (Dynamic Experts)
+            controller.enqueue(encoder.encode(`> 🕵️ **[Massive ${totalExpertsCount}-Seat Expert Panel Assembly]** Firing simultaneous deep-dive reviews across active departments...\n`));
 
             const freeModels = [
               "meta-llama/llama-3.3-70b-instruct:free",
@@ -598,7 +600,9 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
             const expertPromises = [];
             let modelIndex = 0;
 
-            for (const [agentId, agentInstruction] of Object.entries(AGENT_INSTRUCTIONS)) {
+            const slicedAgents = Object.entries(AGENT_INSTRUCTIONS).slice(0, totalExpertsCount);
+
+            for (const [agentId, agentInstruction] of slicedAgents) {
                const assignedModel = freeModels[modelIndex % freeModels.length];
                modelIndex++;
 
@@ -610,20 +614,20 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
 
                expertPromises.push(safeFetch(assignedModel, msgs, agentId));
                
-               // Simulate UI logging
-               if (modelIndex % 3 === 0) {
-                 controller.enqueue(encoder.encode(`  ┣ ⚙️ Firing expert panel requests... (${modelIndex}/15)\n`));
+               // Simulate UI logging dynamically
+               if (modelIndex === slicedAgents.length || modelIndex % 3 === 0) {
+                 controller.enqueue(encoder.encode(`  ┣ ⚙️ Firing expert panel requests... (${modelIndex}/${slicedAgents.length})\n`));
                }
             }
 
             const expertResults = await Promise.all(expertPromises);
 
-            controller.enqueue(encoder.encode(`> ✅ **Ultimate Expert Panel** → All 15 Deep Reviews Completed.\n\n`));
+            controller.enqueue(encoder.encode(`> ✅ **Ultimate Expert Panel** → All ${totalExpertsCount} Deep Reviews Completed.\n\n`));
 
             // Step 3: Synthesis Stream by the CEO (Main Brain)
             const synthModelName = synthModel.includes("gemma") ? "Google Gemma 4 31B" : synthModel.includes("deepseek-v4") ? "DeepSeek V4 Flash" : synthModel.includes("owl-alpha") ? "OpenRouter Owl Alpha" : synthModel.includes("hermes") ? "Hermes 3 405B" : synthModel.includes("cobuddy") ? "Baidu Cobuddy" : synthModel.includes("lfm") ? "Liquid LFM Thinking" : synthModel.split("/")[1];
             
-            controller.enqueue(encoder.encode(`> ✨ **[CEO Synthesizer]** *(powered by ${synthModelName})* is integrating the Architect's draft with the massive 15 expert reports into the Ultimate Master Strategy...\n\n---\n\n`));
+            controller.enqueue(encoder.encode(`> ✨ **[CEO Synthesizer]** *(powered by ${synthModelName})* is integrating the Architect's draft with the massive ${totalExpertsCount} expert reports into the Ultimate Master Strategy...\n\n---\n\n`));
             
             let expertReportsStr = "";
             for (const result of expertResults) {
@@ -632,7 +636,7 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
 
             const synthMessages = [
               ...formattedMessages, 
-              { role: "user", content: `You are the CEO (Chief Executive Officer) of this venture. Based on my original request, your massive 15-Agent Executive Board has submitted their highly detailed reports.
+              { role: "user", content: `You are the CEO (Chief Executive Officer) of this venture. Based on my original request, your massive ${totalExpertsCount}-Agent Executive Board has submitted their highly detailed reports.
 
 Here is the Architect's Foundational Draft:
 <draft>
@@ -641,7 +645,7 @@ ${draftText}
 
 ${expertReportsStr}
 
-As the CEO, combine the best parts of the foundational draft, resolve all the flaws pointed out by your 15 expert advisors, and synthesize the ultimate, flawless, massively advanced master strategy. This must be the most complex, bulletproof, and mind-blowing strategy the user has ever seen. You MUST follow your specialized formatting rules. ${tonePrompt ? `CRITICAL: Your emotional tone MUST be exactly: [ ${tonePrompt} ]. Completely drop your default personality and speak entirely in this requested tone.` : ""} ${langInstruction} Do NOT mention the internal draft or reviews directly; just provide the final polished, hyper-detailed answer as if it came directly from the CEO's highly intelligent mind.` }
+As the CEO, combine the best parts of the foundational draft, resolve all the flaws pointed out by your ${totalExpertsCount} expert advisors, and synthesize the ultimate, flawless, massively advanced master strategy. This must be the most complex, bulletproof, and mind-blowing strategy the user has ever seen. You MUST follow your specialized formatting rules. ${tonePrompt ? `CRITICAL: Your emotional tone MUST be exactly: [ ${tonePrompt} ]. Completely drop your default personality and speak entirely in this requested tone.` : ""} ${langInstruction} Do NOT mention the internal draft or reviews directly; just provide the final polished, hyper-detailed answer as if it came directly from the CEO's highly intelligent mind.` }
             ];
             
             const synthRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
