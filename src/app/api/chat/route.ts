@@ -557,7 +557,7 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
 
         try {
           if (isBrainTrust && !hasImage) { 
-            // MULTI-AGENT BRAIN TRUST PIPELINE
+            // MASSIVELY PARALLEL MULTI-AGENT EXECUTIVE BOARD PIPELINE
 
             // Detect user's language from their message
             const hasBangla = /[\u0980-\u09FF]/.test(message);
@@ -565,47 +565,78 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
               ? "CRITICAL: You MUST respond entirely in Bengali (Bangla) script. Do NOT use English in your response."
               : "CRITICAL: Detect the language of the user's original message and respond ENTIRELY in that exact same language. Do NOT switch to English or any other language.";
 
-            controller.enqueue(encoder.encode("\n\n> 🧠 **KACHA MORICH BRAIN TRUST ACTIVATED**\n> Assembling the 15-Agent Executive Board for Deep Analysis...\n\n"));
+            controller.enqueue(encoder.encode("\n\n> 🧠 **KACHA MORICH MASSIVELY PARALLEL BRAIN TRUST ACTIVATED**\n> Assembling the 5-Agent Executive Board for Deep Analysis...\n\n"));
             
-            // Readable model name helpers
-            const draftModelName = draftModel.includes("deepseek-r1") ? "DeepSeek R1" : draftModel.split("/")[1];
-            const critiqueModelName = critiqueModel.includes("gemma") ? "Google Gemma 4 31B" : critiqueModel.split("/")[1];
-            const synthModelName = synthModel.includes("gemma") ? "Google Gemma 4 31B" : synthModel.includes("deepseek-r1") ? "DeepSeek R1" : synthModel.includes("deepseek-chat") ? "DeepSeek V3 Chat" : synthModel.includes("owl-alpha") ? "OpenRouter Owl Alpha" : synthModel.split("/")[1];
+            // Step 1: The Architect (Draft)
+            const draftModelName = "GPT OSS 120B";
+            controller.enqueue(encoder.encode(`> 📝 **[The Architect]** *(powered by ${draftModelName})* is structuring the foundational master plan...\n`));
+            const draftMessages = [...formattedMessages, { role: "user", content: `Act as the Chief Business Architect. Draft the initial business model, financial metrics, and week-by-week implementation roadmap. Focus strictly on structuring the core foundation of the strategy. Build a comprehensive and highly detailed plan. ${langInstruction}` }];
+            const draftText = await fetchSyncOpenRouter("openai/gpt-oss-120b:free", draftMessages);
+            controller.enqueue(encoder.encode(`> ✅ **${draftModelName}** → Foundational Master Plan Completed.\n\n`));
 
-            // Step 1: Draft by CFO & Project Manager
-            controller.enqueue(encoder.encode(`> 📝 **[CFO & Project Manager]** *(powered by ${draftModelName})* is drafting the financial runway and operational roadmap...\n`));
-            const draftMessages = [...formattedMessages, { role: "user", content: `Act as the CFO and Project Manager. Draft the initial business model, financial metrics, and week-by-week implementation roadmap. Focus strictly on numbers, execution timelines, and costs. ${langInstruction}` }];
-            const draftText = await fetchSyncOpenRouter(draftModel, draftMessages);
-            controller.enqueue(encoder.encode(`> ✅ **${draftModelName}** → Financial Runway & Roadmap Draft Completed.\n\n`));
+            // Step 2: Parallel Expert Panel (3 Models at once)
+            controller.enqueue(encoder.encode(`> 🕵️ **[Parallel Expert Panel Assembly]** Firing simultaneous deep-dive reviews...\n`));
+            controller.enqueue(encoder.encode(`  ┣ ⚙️ CTO (Tech Review) powered by Llama 3.3 70B\n`));
+            controller.enqueue(encoder.encode(`  ┣ 📈 CMO (Market Review) powered by Nvidia Nemotron 120B\n`));
+            controller.enqueue(encoder.encode(`  ┗ ♟️ Chief Risk Officer (Edge-Case Logic) powered by Trinity Large\n\n`));
 
-            // Step 2: Critique by CTO & Marketing Specialists
-            controller.enqueue(encoder.encode(`> 🕵️ **[CTO & Marketing Director]** *(powered by ${critiqueModelName})* is ruthlessly testing the tech-stack, product-market fit, and risk profile...\n`));
-            const critiqueMessages = [
+            const ctoMessages = [
               ...formattedMessages, 
-              { role: "assistant", content: `Here is the initial CFO & PM roadmap:\n\n${draftText}` }, 
-              { role: "user", content: `Act as the CTO and Chief Marketing Officer. Critically review the draft above. Identify technical bottlenecks, marketing gaps, competitive threats, and structural loopholes. Be brutally honest, highly technical, and deeply analytical. ${langInstruction}` }
+              { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` }, 
+              { role: "user", content: `Act as the Chief Technology Officer (CTO). Critically review the draft above. Identify technical bottlenecks, system design flaws, automation gaps, and operational impossibilities. Be brutally honest, highly technical, and strictly analytical. Do NOT praise the draft, only find its flaws and propose high-tech solutions. ${langInstruction}` }
             ];
-            const critiqueText = await fetchSyncOpenRouter(critiqueModel, critiqueMessages);
-            controller.enqueue(encoder.encode(`> ✅ **${critiqueModelName}** → Tech-Stack & Market-Fit Peer Review Completed.\n\n`));
+
+            const cmoMessages = [
+              ...formattedMessages, 
+              { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` }, 
+              { role: "user", content: `Act as the Chief Marketing Officer (CMO). Critically review the draft above. Analyze the market positioning, competitor threats, customer psychology, and monetization strategy. Where will this fail to get customers? How can we make it viral and extremely profitable? Be aggressive and highly strategic. ${langInstruction}` }
+            ];
+
+            const riskMessages = [
+              ...formattedMessages, 
+              { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` }, 
+              { role: "user", content: `Act as the Chief Risk Officer and Deep Logic Analyst. Critically review the draft above using deep reasoning. Find the "Black Swan" events, hidden edge-cases, legal/compliance threats, and fundamental logical fallacies. What is the single biggest existential threat to this plan, and how do we mitigate it? Be deeply philosophical and ruthlessly logical. ${langInstruction}` }
+            ];
+
+            // Execute all 3 critiques concurrently to save time and massively increase intelligence
+            const [ctoText, cmoText, riskText] = await Promise.all([
+              fetchSyncOpenRouter("meta-llama/llama-3.3-70b-instruct:free", ctoMessages),
+              fetchSyncOpenRouter("nvidia/nemotron-3-super-120b-a12b:free", cmoMessages),
+              fetchSyncOpenRouter("arcee-ai/trinity-large-thinking:free", riskMessages)
+            ]);
+
+            controller.enqueue(encoder.encode(`> ✅ **Expert Panel** → All 3 Deep Reviews Completed Simultaneously.\n\n`));
 
             // Step 3: Synthesis Stream by the CEO (Main Brain)
-            controller.enqueue(encoder.encode(`> ✨ **[CEO Synthesizer]** *(powered by ${synthModelName})* is integrating all specialist insights into the final Master Strategy...\n\n---\n\n`));
+            const synthModelName = synthModel.includes("gemma") ? "Google Gemma 4 31B" : synthModel.includes("deepseek-v4") ? "DeepSeek V4 Flash" : synthModel.includes("owl-alpha") ? "OpenRouter Owl Alpha" : synthModel.includes("hermes") ? "Hermes 3 405B" : synthModel.includes("cobuddy") ? "Baidu Cobuddy" : synthModel.includes("lfm") ? "Liquid LFM Thinking" : synthModel.split("/")[1];
+            
+            controller.enqueue(encoder.encode(`> ✨ **[CEO Synthesizer]** *(powered by ${synthModelName})* is integrating the Architect's draft with the CTO, CMO, and Risk Officer reviews into the Ultimate Master Strategy...\n\n---\n\n`));
             
             const synthMessages = [
               ...formattedMessages, 
-              { role: "user", content: `You are the CEO (Chief Executive Officer) of this venture. Based on my original request, your specialized departments have submitted their reports.
+              { role: "user", content: `You are the CEO (Chief Executive Officer) of this venture. Based on my original request, your specialized Executive Board has submitted their reports.
 
-Here is the CFO & Project Manager's operational draft:
+Here is the Architect's Foundational Draft:
 <draft>
 ${draftText}
 </draft>
 
-Here is the CTO & CMO's critical peer-review of that draft:
-<critique>
-${critiqueText}
-</critique>
+Here is the CTO's Technical Review:
+<cto_review>
+${ctoText}
+</cto_review>
 
-As the CEO, combine the best parts of the operational draft, resolve all the tech/marketing flaws pointed out in the critique, and synthesize the ultimate, flawless master strategy. You MUST follow your specialized formatting rules. ${tonePrompt ? `CRITICAL: Your emotional tone MUST be exactly: [ ${tonePrompt} ]. Completely drop your default personality and speak entirely in this requested tone.` : ""} ${langInstruction} Do NOT mention the internal draft or critique directly; just provide the final polished, hyper-detailed answer as if it came directly from the CEO's office.` }
+Here is the CMO's Market & Profitability Review:
+<cmo_review>
+${cmoText}
+</cmo_review>
+
+Here is the Chief Risk Officer's Deep Logical Critique:
+<risk_review>
+${riskText}
+</risk_review>
+
+As the CEO, combine the best parts of the foundational draft, resolve all the flaws pointed out by the CTO, CMO, and Risk Officer, and synthesize the ultimate, flawless, massively advanced master strategy. This must be the most complex, bulletproof, and mind-blowing strategy the user has ever seen. You MUST follow your specialized formatting rules. ${tonePrompt ? `CRITICAL: Your emotional tone MUST be exactly: [ ${tonePrompt} ]. Completely drop your default personality and speak entirely in this requested tone.` : ""} ${langInstruction} Do NOT mention the internal draft or reviews directly; just provide the final polished, hyper-detailed answer as if it came directly from the CEO's highly intelligent mind.` }
             ];
             
             const synthRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -615,7 +646,7 @@ As the CEO, combine the best parts of the operational draft, resolve all the tec
                 "Content-Type": "application/json",
                 "HTTP-Referer": "https://kachamorich.vercel.app",
               },
-              body: JSON.stringify({ model: synthModel, messages: synthMessages, stream: true, max_tokens: 3500 }),
+              body: JSON.stringify({ model: synthModel, messages: synthMessages, stream: true, max_tokens: 4000 }),
             });
             if (!synthRes.ok) throw new Error("Synthesis failed");
 
