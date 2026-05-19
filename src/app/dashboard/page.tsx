@@ -2071,16 +2071,20 @@ export default function Dashboard() {
                     type="button"
                     onClick={handleGeneratePrompts}
                     disabled={isGeneratingPrompts}
-                    className={`flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-lg border transition-all duration-300 uppercase tracking-wider ${
-                      themeMode === "black"
-                        ? "bg-[#FF8C00]/10 border-[#FF8C00]/30 text-[#FF8C00] hover:bg-[#FF8C00]/20 disabled:opacity-50 shadow-[0_0_10px_rgba(255,140,0,0.05)]"
-                        : "bg-amber-500/10 border-amber-500/30 text-amber-850 hover:bg-amber-500/20 disabled:opacity-50"
+                    className={`flex items-center gap-1.5 text-[9px] font-black px-4 py-2 rounded-full border transition-all duration-300 uppercase tracking-widest ${
+                      isGeneratingPrompts
+                        ? themeMode === "black"
+                          ? "bg-neutral-800 border-neutral-700 text-neutral-400 cursor-not-allowed"
+                          : "bg-neutral-200 border-neutral-300 text-neutral-500 cursor-not-allowed"
+                        : themeMode === "black"
+                          ? "bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 border-none text-white shadow-[0_0_20px_rgba(245,158,11,0.35)] hover:shadow-[0_0_30px_rgba(245,158,11,0.55)] hover:scale-[1.02]"
+                          : "bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 border-none text-white shadow-md hover:shadow-lg hover:scale-[1.02]"
                     }`}
                   >
                     {isGeneratingPrompts ? (
                       <>
-                        <Loader2 size={11} className="animate-spin" />
-                        <span>Generating...</span>
+                        <Loader2 size={11} className="animate-spin text-white" />
+                        <span>Creating Cases...</span>
                       </>
                     ) : (
                       <>
@@ -2091,20 +2095,66 @@ export default function Dashboard() {
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {(customSuggestions[selectedAgentId] || (AGENTS_LIST.find((a) => a.id === selectedAgentId)?.suggestions || [])).map((suggestText, sIdx) => (
-                    <button 
-                      key={sIdx}
-                      onClick={() => handleQuickSuggest(suggestText)}
-                      className={`p-4 text-left rounded-xl border transition duration-300 text-xs leading-relaxed shadow-sm hover:scale-[1.01] active:scale-[0.99] ${
-                        themeMode === "black"
-                          ? "border-neutral-900 bg-neutral-900/20 hover:border-neutral-700/60 hover:bg-neutral-900/50 text-neutral-300 hover:shadow-[0_0_15px_rgba(255,140,0,0.03)]"
-                          : "border-neutral-200 hover:border-neutral-300 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:shadow-md"
-                      }`}
-                    >
-                      ✨ &ldquo;{suggestText}&rdquo;
-                    </button>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {(customSuggestions[selectedAgentId] || (AGENTS_LIST.find((a) => a.id === selectedAgentId)?.suggestions || [])).map((suggestText, sIdx) => {
+                    const isObj = typeof suggestText === "object" && suggestText !== null;
+                    const cardTitle = isObj ? (suggestText as any).title : "Consultation Scenario";
+                    const cardPrompt = isObj ? (suggestText as any).prompt : String(suggestText);
+                    const cardTag = isObj ? (suggestText as any).tag : "Strategy";
+                    const cardLevel = isObj ? (suggestText as any).level : "Intermediate";
+
+                    const levelColors: Record<string, string> = {
+                      "Beginner": "bg-green-500/10 text-green-400 border-green-500/20",
+                      "Intermediate": "bg-blue-500/10 text-blue-400 border-blue-500/20",
+                      "Advanced": "bg-purple-500/10 text-purple-400 border-purple-500/20",
+                      "Expert": "bg-rose-500/10 text-rose-400 border-rose-500/20",
+                    };
+
+                    return (
+                      <button 
+                        key={sIdx}
+                        onClick={() => handleQuickSuggest(cardPrompt)}
+                        className={`relative p-5 text-left rounded-2xl border transition-all duration-300 text-xs leading-relaxed hover:scale-[1.01] hover:-translate-y-0.5 active:scale-[0.99] flex flex-col justify-between gap-4 group overflow-hidden ${
+                          themeMode === "black"
+                            ? "border-neutral-800 bg-[#0c0c0c]/80 hover:border-amber-500/40 text-neutral-300 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
+                            : "border-neutral-250 hover:border-amber-500/35 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:shadow-lg"
+                        }`}
+                      >
+                        <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-amber-500/10 transition-all duration-500"></div>
+                        
+                        <div className="flex items-center justify-between w-full relative z-10">
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wide ${
+                            themeMode === "black" ? "bg-neutral-950 border-neutral-850 text-neutral-400" : "bg-neutral-50 border-neutral-200 text-neutral-550"
+                          }`}>
+                            🏷️ {cardTag}
+                          </span>
+                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wider ${levelColors[cardLevel] || "bg-blue-500/10 text-blue-400 border-blue-500/20"}`}>
+                            {cardLevel}
+                          </span>
+                        </div>
+
+                        <div className="relative z-10 space-y-1.5 flex-1">
+                          <h4 className={`text-[12px] font-black tracking-wide ${
+                            themeMode === "black" ? "text-neutral-100 group-hover:text-amber-400" : "text-neutral-950 group-hover:text-amber-850"
+                          } transition-colors duration-300`}>
+                            {cardTitle}
+                          </h4>
+                          <p className={`text-[11px] leading-relaxed line-clamp-3 ${
+                            themeMode === "black" ? "text-neutral-400 group-hover:text-neutral-300" : "text-neutral-500 group-hover:text-neutral-755"
+                          } transition-colors duration-350`}>
+                            &ldquo;{cardPrompt}&rdquo;
+                          </p>
+                        </div>
+                        
+                        <div className={`text-[9px] font-black tracking-widest uppercase flex items-center gap-1.5 transition-all duration-300 group-hover:text-amber-400 ${
+                          themeMode === "black" ? "text-neutral-600" : "text-neutral-400"
+                        }`}>
+                          <span>Activate Case</span>
+                          <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* Add Custom Suggestion Prompt Widget */}
