@@ -756,6 +756,7 @@ const MODELS_LIST = [
   { id: "baidu/cobuddy:free", name: "Baidu Cobuddy", icon: "🐼", badge: "Free" },
   { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B", icon: "🦙", badge: "Free" },
   { id: "arcee-ai/trinity-large-thinking:free", name: "Trinity Large", icon: "🧩", badge: "Free" },
+  { id: "liquid/lfm-2.5-1.2b-thinking:free", name: "Liquid LFM Thinking", icon: "💧", badge: "Free" },
   { id: "openrouter/owl-alpha", name: "Owl Alpha", icon: "🦉", badge: "Free Reasoning" },
 ];
 
