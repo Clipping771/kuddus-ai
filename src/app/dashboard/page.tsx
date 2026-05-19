@@ -1775,11 +1775,14 @@ export default function Dashboard() {
       <main className={`flex-1 min-h-0 flex flex-col relative overflow-hidden transition-colors duration-300 ${
         themeMode === "black" ? "bg-[#050505]" : "bg-[#F8FAFC]"
       }`}>
-        {/* Dynamic Glowing Satin Spotlight overlays for premium mood */}
+        {/* Dynamic Glowing Satin Spotlight overlays & high-fidelity micro-grid pattern */}
         {themeMode === "black" && (
-          <div className="absolute inset-0 pointer-events-none select-none overflow-hidden z-0 opacity-40">
-            <div className="absolute top-[10%] left-[20%] w-[50%] h-[350px] bg-gradient-to-br from-emerald-500/8 to-teal-500/0 rounded-full blur-[100px] animate-pulse duration-[10s]" />
-            <div className="absolute bottom-[10%] right-[20%] w-[45%] h-[350px] bg-gradient-to-tr from-amber-500/5 to-emerald-500/0 rounded-full blur-[100px] animate-pulse duration-[14s]" />
+          <div className="absolute inset-0 pointer-events-none select-none overflow-hidden z-0">
+            {/* Soft high-contrast atmospheric spotlights */}
+            <div className="absolute top-[-10%] left-[10%] w-[60%] h-[450px] bg-gradient-to-br from-emerald-500/12 to-teal-500/0 rounded-full blur-[130px] animate-pulse duration-[12s] opacity-75" />
+            <div className="absolute bottom-[5%] right-[10%] w-[55%] h-[400px] bg-gradient-to-tr from-amber-500/8 to-emerald-500/0 rounded-full blur-[130px] animate-pulse duration-[16s] opacity-65" />
+            {/* Micro grid pattern for Silicon Valley tactile depth */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none opacity-80" />
           </div>
         )}
         {/* Dynamic header */}
@@ -2068,18 +2071,18 @@ export default function Dashboard() {
             <div className="max-w-2xl mx-auto pt-8 pb-12 flex flex-col items-center justify-center text-center relative">
               <div className="relative group mb-8">
                 {/* Dynamic concentric glowing halos */}
-                <div className="absolute -inset-4 rounded-full opacity-30 blur-xl group-hover:opacity-50 transition duration-1000 animate-pulse" style={{ background: `radial-gradient(circle, ${aiColor}, transparent)` }}></div>
-                <div className="absolute -inset-1 rounded-full opacity-60 blur-md group-hover:opacity-90 transition duration-1000" style={{ background: `radial-gradient(circle, ${aiColor}44, transparent)` }}></div>
-                <div className={`relative p-2.5 rounded-full border shadow-[0_8px_32px_rgba(0,0,0,0.15)] flex items-center justify-center transition-colors duration-300 ${
-                  themeMode === "black" ? "bg-white/[0.01] border-white/10" : "bg-black/[0.01] border-neutral-200/50 shadow-[0_8px_32px_rgba(0,0,0,0.02)]"
+                <div className="absolute -inset-4 rounded-full opacity-40 blur-2xl group-hover:opacity-60 transition duration-1000 animate-pulse" style={{ background: `radial-gradient(circle, ${aiColor}88, transparent)` }}></div>
+                <div className="absolute -inset-1 rounded-full opacity-70 blur-lg group-hover:opacity-95 transition duration-1000 animate-pulse" style={{ background: `radial-gradient(circle, ${aiColor}55, transparent)` }}></div>
+                <div className={`relative p-2.5 rounded-full border shadow-[0_8px_32px_rgba(0,0,0,0.3)] flex items-center justify-center transition-colors duration-300 ${
+                  themeMode === "black" ? "bg-white/[0.02] border-white/[0.08]" : "bg-black/[0.01] border-neutral-200/50 shadow-[0_8px_32px_rgba(0,0,0,0.02)]"
                 }`}>
-                  <AIAvatar size={80} className={`border ${themeMode === "black" ? "border-white/10" : "border-neutral-200"}`} />
+                  <AIAvatar size={80} className={`border ${themeMode === "black" ? "border-white/[0.08]" : "border-neutral-200"}`} />
                 </div>
               </div>
  
               <h2 className={`text-2xl sm:text-3xl font-extrabold mt-4 tracking-tight transition-colors duration-300 ${
                 themeMode === "black" 
-                  ? "bg-clip-text text-transparent bg-gradient-to-b from-white to-neutral-450" 
+                  ? "bg-clip-text text-transparent bg-gradient-to-b from-white via-neutral-100 to-neutral-400" 
                   : "text-neutral-900"
               }`}>
                 {aiName}:{" "}
@@ -2094,9 +2097,9 @@ export default function Dashboard() {
               </p>
  
               {/* Warning box */}
-              <div className={`mt-6 w-full p-4 rounded-xl border text-xs flex items-center gap-2 justify-center shadow-sm transition duration-300 ${
+              <div className={`mt-6 w-full p-4 rounded-xl border text-xs flex items-center gap-2.5 justify-center shadow-sm transition duration-300 ${
                 themeMode === "black"
-                  ? "border-neutral-800 bg-neutral-900/40 text-neutral-300 shadow-[0_0_15px_rgba(245,158,11,0.02)]"
+                  ? "border-amber-500/25 bg-amber-500/5 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.04)]"
                   : "border-amber-200 bg-amber-500/10 text-amber-955 shadow-[0_0_15px_rgba(245,158,11,0.05)] font-semibold"
               }`}>
                 <Sparkles size={14} className={`flex-shrink-0 animate-pulse ${themeMode === "black" ? "text-neutral-200" : "text-amber-700"}`} />
