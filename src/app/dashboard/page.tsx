@@ -3331,7 +3331,7 @@ export default function Dashboard() {
                 <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500">Quick AI Assist (Optional)</span>
               </div>
               <p className={`text-[9px] mb-2 leading-relaxed ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
-                Type a basic concept (e.g. "Startup Pitch Deck Roast Coach") to auto-generate all fields below at once, or use it to generate fields individually!
+                Type a basic concept (e.g. &quot;Startup Pitch Deck Roast Coach&quot;) to auto-generate all fields below at once, or use it to generate fields individually!
               </p>
               <div className="flex gap-2">
                 <input
