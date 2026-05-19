@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
+// Fisher-Yates shuffle helper to ensure randomized high-quality suggestions on every single fall back
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export async function POST(req: Request) {
-  // Capture agent details first to ensure fallback structures can be correctly built in case of timeout
   let agentId = "generic";
   let agentName = "Specialist AI";
   let agentDesc = "Business consultant";
@@ -21,7 +30,7 @@ export async function POST(req: Request) {
     console.error("Auth/body read error:", authError);
   }
 
-  // Predefined structured fallback suggestions (returned instantly if API hangs or times out)
+  // Predefined structured fallback suggestions pools (shuffled dynamically)
   const fallbacks: Record<string, any[]> = {
     "daily-innovation-idea-agent": [
       {
@@ -46,6 +55,24 @@ export async function POST(req: Request) {
         title: "Blue Ocean CX Support Automator",
         prompt: "Draft a Blue Ocean strategy for an automated customer support solution targeting e-commerce stores.",
         tag: "Operations",
+        level: "Expert"
+      },
+      {
+        title: "Micro-SaaS Newsletter Engine",
+        prompt: "Propose a curated newsletter micro-SaaS business concept that automates tech trend aggregation.",
+        tag: "Growth",
+        level: "Intermediate"
+      },
+      {
+        title: "Sustainable Packaging Concept",
+        prompt: "Suggest 3 low-cost eco-friendly packaging alternatives for small direct-to-consumer cosmetic brands.",
+        tag: "Innovation",
+        level: "Advanced"
+      },
+      {
+        title: "B2B AI Sourcing Consultant",
+        prompt: "Outline a profitable B2B agency business model providing custom AI workflow integrations for manufacturing.",
+        tag: "Strategy",
         level: "Expert"
       }
     ],
@@ -73,6 +100,24 @@ export async function POST(req: Request) {
         prompt: "What are the best cost-saving alternatives to expensive enterprise CRMs like Salesforce?",
         tag: "Operations",
         level: "Intermediate"
+      },
+      {
+        title: "Bootstrap SaaS Pricing Design",
+        prompt: "Draft a dynamic pricing tier matrix for a self-funded productivity app to maximize average contract value.",
+        tag: "Growth",
+        level: "Advanced"
+      },
+      {
+        title: "Freelancer Tax Setup Guide",
+        prompt: "Draft an optimal cash flow management guide for an independent consultant earning over £80,000.",
+        tag: "Finance",
+        level: "Intermediate"
+      },
+      {
+        title: "Direct Merchant Fee Optimization",
+        prompt: "What cost cutting strategies can an e-commerce brand implement to reduce Stripe merchant transaction fees?",
+        tag: "Operations",
+        level: "Advanced"
       }
     ]
   };
@@ -101,10 +146,29 @@ export async function POST(req: Request) {
       prompt: `Provide 3 highly actionable tips to grow my operation today under the supervision of ${agentName}.`,
       tag: "Revenue",
       level: "Intermediate"
+    },
+    {
+      title: "Competitive Landscape Review",
+      prompt: `Analyze the main competitive entry barriers and growth blockers for my startup under ${agentName}.`,
+      tag: "Growth",
+      level: "Advanced"
+    },
+    {
+      title: "Bottleneck Process Analysis",
+      prompt: `How can I identify and debug process blockages in my operational workflows for ${agentName}?`,
+      tag: "Operations",
+      level: "Intermediate"
+    },
+    {
+      title: "AI Integration Workflow Audit",
+      prompt: `What core workflows in my daily business can be automated using LLMs overseen by ${agentName}?`,
+      tag: "Innovation",
+      level: "Expert"
     }
   ];
 
-  const responseSuggestions = fallbacks[agentId] || genericFallbacks;
+  // Randomly shuffle fallback pools on every single request
+  const responseSuggestions = shuffleArray(fallbacks[agentId] || genericFallbacks).slice(0, 4);
 
   // AI-driven live generation block
   try {
@@ -156,9 +220,9 @@ Example Output:
         model: "meta-llama/llama-3.3-70b-instruct:free", // Extremely fast, highly responsive, superb JSON parser
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Generate 4 brand new dynamic, structured case suggestions for "${agentName}".` }
+          { role: "user", content: `Generate 4 brand new dynamic, structured case suggestions for "${agentName}". Random salt: ${Math.random() * 100000}. Ensure these business ideas are completely unique and cover different angles.` }
         ],
-        temperature: 0.8,
+        temperature: 0.9, // Higher temperature for rich diversity and variety
         max_tokens: 600,
       }),
     });
@@ -183,9 +247,9 @@ Example Output:
       return NextResponse.json({ suggestions: parsedArray });
     }
   } catch (error) {
-    console.warn("AI generation failed, timed out, or timed out. Returning high quality structured fallbacks instantly:", error);
+    console.warn("AI generation failed, timed out, or rate-limited. Returning dynamically shuffled static fallbacks instantly:", error);
   }
 
-  // Gracefully fallback to high-quality static suggestions INSTANTLY if OpenRouter fails or hangs
+  // Gracefully fallback to shuffled static suggestions INSTANTLY
   return NextResponse.json({ suggestions: responseSuggestions });
 }
