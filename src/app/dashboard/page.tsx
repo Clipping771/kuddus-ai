@@ -193,7 +193,8 @@ import {
   Check,
   Square,
   Sun,
-  Moon
+  Moon,
+  Download
 } from "lucide-react";
 import Link from "next/link";
 import { parseAnyFile } from "@/lib/fileParser";
@@ -937,7 +938,15 @@ export default function Dashboard() {
   const aiColor = "#10b981";
 
   // File Upload State
-  const [attachedFile, setAttachedFile] = useState<{ name: string; content: string; type: string } | null>(null);
+  const [attachedFiles, setAttachedFiles] = useState<{ name: string; content: string; type: string }[]>([]);
+  const attachedFile = attachedFiles.length > 0 ? attachedFiles[0] : null;
+  const setAttachedFile = (val: any) => {
+    if (val === null) {
+      setAttachedFiles([]);
+    } else {
+      setAttachedFiles([val]);
+    }
+  };
   const [isFileParsing, setIsFileParsing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -1226,22 +1235,28 @@ export default function Dashboard() {
 
   // C. File Upload Setup
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     setIsFileParsing(true);
     try {
-      const parsedContent = await parseAnyFile(file);
-      setAttachedFile({
-        name: file.name,
-        content: parsedContent,
-        type: file.type || "text/plain",
-      });
+      const parsedResults = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const parsedContent = await parseAnyFile(file);
+          return {
+            name: file.name,
+            content: parsedContent,
+            type: file.type || "text/plain",
+          };
+        })
+      );
+      setAttachedFiles((prev) => [...prev, ...parsedResults]);
     } catch (err: any) {
-      console.error("File parsing error:", err);
-      alert(`Could not parse file: ${err.message || "Unknown error"}`);
+      console.error("Multi-file parsing error:", err);
+      alert(`Could not parse one or more files: ${err.message || "Unknown error"}`);
     } finally {
       setIsFileParsing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -1294,11 +1309,14 @@ export default function Dashboard() {
       setIsFileParsing(true);
       try {
         const parsedContent = await parseAnyFile(file);
-        setAttachedFile({
-          name: file.name,
-          content: parsedContent,
-          type: file.type || "image/jpeg",
-        });
+        setAttachedFiles((prev) => [
+          ...prev,
+          {
+            name: file.name,
+            content: parsedContent,
+            type: file.type || "image/jpeg",
+          },
+        ]);
       } catch (err: any) {
         console.error("Camera file parsing error:", err);
         alert(`Could not parse photo: ${err.message || "Unknown error"}`);
@@ -1419,7 +1437,7 @@ export default function Dashboard() {
   // 5. Submit Message to Kacha Morich AI (with Real-time Streaming!)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!inputMessage.trim() && !attachedFile) || isLoading) return;
+    if ((!inputMessage.trim() && attachedFiles.length === 0) || isLoading) return;
 
     // Stop listening if user was dictating
     if (isListening && recognitionRef.current) {
@@ -1434,19 +1452,27 @@ export default function Dashboard() {
 
     // Format the final message sent to AI with attached file contents if present
     let messageToSend = userMessageContent;
-    const currentAttachment = attachedFile;
-    if (attachedFile) {
-      messageToSend = `[ATTACHED DOCUMENT: ${attachedFile.name}]\n\`\`\`\n${attachedFile.content}\n\`\`\`\n\nUser Prompt: ${userMessageContent || "Please analyze the extracted text above based on your specialized agent role."}`;
-      setAttachedFile(null);
+    const currentAttachments = [...attachedFiles];
+    if (currentAttachments.length > 0) {
+      const documentsBlock = currentAttachments.map(
+        (att) => `[ATTACHED DOCUMENT: ${att.name}]\n\`\`\`\n${att.content}\n\`\`\``
+      ).join("\n\n");
+      messageToSend = `${documentsBlock}\n\nUser Prompt: ${userMessageContent || "Please analyze the extracted documents above based on your specialized agent role."}`;
+      setAttachedFiles([]);
     }
 
     // Append user's message locally (show clean message in chat UI, not the giant raw file block)
-    const base64Match = currentAttachment?.content.match(/\[IMAGE_BASE64:(data:image\/[^\]]+)\]/);
-    const base64Tag = base64Match ? `[IMAGE_BASE64:${base64Match[1]}]` : "";
+    const base64Tags = currentAttachments
+      .map(att => {
+        const match = att.content.match(/\[IMAGE_BASE64:(data:image\/[^\]]+)\]/);
+        return match ? `[IMAGE_BASE64:${match[1]}]` : "";
+      })
+      .filter(Boolean)
+      .join("\n");
 
     const newUserMessage: Message = { 
       role: "user", 
-      content: (base64Tag ? base64Tag + "\n" : "") + (userMessageContent || `Attached file: ${currentAttachment ? currentAttachment.name : "file"}`) 
+      content: (base64Tags ? base64Tags + "\n" : "") + (userMessageContent || `Attached ${currentAttachments.length} file(s): ${currentAttachments.map(a => a.name).join(", ")}`) 
     };
     setMessages((prev) => [...prev, newUserMessage]);
 
@@ -2318,61 +2344,131 @@ export default function Dashboard() {
                                 </>
                               )}
                             </button>
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
-                  );
-                }
+                  </div>
+                );
+              }
 
                 // User's message
-                const base64Regex = /\[IMAGE_BASE64:(data:image\/[^\]]+)\]/;
-                const hasImageMatch = msg.content?.match(base64Regex);
-                const imageUrl = hasImageMatch ? hasImageMatch[1] : null;
+                const base64GlobalRegex = /\[IMAGE_BASE64:(data:image\/[^\]]+)\]/g;
+                const imageUrls: string[] = [];
+                if (msg.content) {
+                  let match;
+                  base64GlobalRegex.lastIndex = 0;
+                  while ((match = base64GlobalRegex.exec(msg.content)) !== null) {
+                    imageUrls.push(match[1]);
+                  }
+                }
                 
                 // Beautifully clean raw message contents to hide internal developer/OCR debug tags from user screen
                 let cleanContent = "";
                 if (msg.content) {
-                  const withoutBase64 = msg.content.replace(base64Regex, "").trim();
-                  const userPromptIndex = withoutBase64.lastIndexOf("User Prompt:");
-                  if (userPromptIndex !== -1) {
-                    const extractedPrompt = withoutBase64.substring(userPromptIndex + "User Prompt:".length).trim();
-                    if (extractedPrompt === "Please analyze the extracted text above based on your specialized agent role.") {
-                      const docMatch = msg.content.match(/\[ATTACHED DOCUMENT:\s*([^\]]+)\]/);
-                      cleanContent = `📎 Document analyzed: ${docMatch ? docMatch[1] : "document"}`;
+                  const withoutBase64 = msg.content.replace(base64GlobalRegex, "").trim();
+                  
+                  // Bulletproof case-insensitive match for the User Prompt tag
+                  const promptMatch = withoutBase64.match(/User Prompt:\s*([\s\S]*)$/i);
+                  if (promptMatch) {
+                    const extractedPrompt = promptMatch[1].trim();
+                    if (extractedPrompt === "Please analyze the extracted text above based on your specialized agent role." ||
+                        extractedPrompt === "Please analyze the extracted documents above based on your specialized agent role.") {
+                      const docMatches = withoutBase64.match(/\[ATTACHED DOCUMENT:\s*([^\]]+)\]/gi);
+                      const count = docMatches ? docMatches.length : 1;
+                      cleanContent = `📎 ${count} Document(s) analyzed`;
                     } else {
                       cleanContent = extractedPrompt;
                     }
                   } else {
+                    // Fallback to strip other internal brackets if they exist
                     cleanContent = withoutBase64;
                   }
                 }
 
-                return (
-                  <div key={index} className="flex gap-4 items-start justify-end animate-fade-in font-sans">
-                    <div className="flex flex-col gap-1.5 items-end max-w-[80%] group/msg relative">
-                      <span className={`text-[10px] font-bold tracking-wider ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>YOUR BUSINESS INQUIRY</span>
-                      <div className={`border rounded-2xl rounded-tr-none px-5 py-4 text-sm shadow-sm flex flex-col items-end relative transition-all duration-300 ${
-                        themeMode === "black"
-                          ? "bg-gradient-to-bl from-neutral-200/10 to-transparent border-neutral-200/20 text-amber-50"
-                          : "bg-amber-500/10 border-amber-500/20 text-neutral-800"
-                      }`}>
-                        {imageUrl && (
-                          <div className={`mb-2 relative rounded-xl overflow-hidden border group shadow-md max-w-full ${
-                            themeMode === "black" ? "border-white/10" : "border-neutral-200"
-                          }`}>
-                            <img 
-                              src={imageUrl} 
-                              alt="Uploaded visual context" 
-                              className="max-h-60 max-w-full object-contain rounded-xl"
-                            />
-                          </div>
-                        )}
-                        {cleanContent && (
-                          <span className="text-left w-full block whitespace-pre-wrap">{cleanContent}</span>
-                        )}
-                      </div>
-                      {cleanContent && (
+                 // Parse attached documents dynamically to support direct client-side downloads!
+                 const docMatches: { name: string; content: string }[] = [];
+                 if (msg.content) {
+                   const docRegex = /\[ATTACHED DOCUMENT:\s*([^\]]+)\]\s*\n\`\`\`([\s\S]*?)\`\`\`/gi;
+                   let docM;
+                   docRegex.lastIndex = 0;
+                   while ((docM = docRegex.exec(msg.content)) !== null) {
+                     docMatches.push({
+                       name: docM[1],
+                       content: docM[2].trim()
+                     });
+                   }
+                 }
+
+                 return (
+                   <div key={index} className="flex gap-4 items-start justify-end animate-fade-in font-sans">
+                     <div className="flex flex-col gap-1.5 items-end max-w-[80%] group/msg relative">
+                       <span className={`text-[10px] font-bold tracking-wider ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>YOUR BUSINESS INQUIRY</span>
+                       <div className={`border rounded-2xl rounded-tr-none px-5 py-4 text-sm shadow-sm flex flex-col items-end relative transition-all duration-300 ${
+                         themeMode === "black"
+                           ? "bg-gradient-to-bl from-neutral-200/10 to-transparent border-neutral-200/20 text-amber-50"
+                           : "bg-amber-500/10 border-amber-500/20 text-neutral-800"
+                       }`}>
+                         {imageUrls.length > 0 && (
+                           <div className="flex flex-wrap gap-2 mb-3 max-w-full justify-end">
+                             {imageUrls.map((url, imgIdx) => (
+                               <div key={imgIdx} className={`relative rounded-xl overflow-hidden border group shadow-md max-w-[180px] sm:max-w-[220px] ${
+                                 themeMode === "black" ? "border-white/10" : "border-neutral-200"
+                               }`}>
+                                 <img 
+                                   src={url} 
+                                   alt={`Uploaded visual context ${imgIdx + 1}`} 
+                                   className="max-h-40 max-w-full object-contain rounded-xl transition-transform duration-300 group-hover:scale-105"
+                                 />
+                                 {/* Glowing Hover Action Overlay with Download Icon */}
+                                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2 z-10">
+                                   <a 
+                                     href={url} 
+                                     download={`attached_image_${imgIdx + 1}.png`}
+                                     className="p-2 bg-emerald-500 hover:bg-emerald-400 text-black rounded-lg transition duration-250 shadow-lg transform scale-90 group-hover:scale-100 flex items-center justify-center"
+                                     title="Download Image"
+                                   >
+                                     <Download size={14} />
+                                   </a>
+                                 </div>
+                               </div>
+                             ))}
+                           </div>
+                         )}
+                         {cleanContent && (
+                           <span className="text-left w-full block whitespace-pre-wrap">{cleanContent}</span>
+                         )}
+                         
+                         {/* Render Attached Documents for Direct Download */}
+                         {docMatches.length > 0 && (
+                           <div className="mt-3 w-full border-t border-dashed border-neutral-700/30 pt-3 flex flex-col gap-2">
+                             <span className="text-[10px] font-extrabold text-neutral-400 tracking-widest uppercase block self-start">Embedded Documents</span>
+                             <div className="flex flex-wrap gap-2 self-start w-full">
+                               {docMatches.map((doc, docIdx) => {
+                                 const downloadUri = `data:text/plain;charset=utf-8,${encodeURIComponent(doc.content)}`;
+                                 return (
+                                   <div key={docIdx} className={`p-2.5 rounded-xl border flex items-center gap-2 text-xs w-full max-w-[260px] justify-between ${
+                                     themeMode === "black" ? "bg-neutral-950/40 border-white/5" : "bg-white border-neutral-250 shadow-sm"
+                                   }`}>
+                                     <div className="flex items-center gap-2 truncate">
+                                       <FileText size={14} className="text-emerald-400 flex-shrink-0 animate-pulse" />
+                                       <span className="truncate font-semibold text-neutral-300" title={doc.name}>{doc.name}</span>
+                                     </div>
+                                     <a
+                                       href={downloadUri}
+                                       download={doc.name.endsWith(".txt") ? doc.name : `${doc.name}.txt`}
+                                       className="p-1.5 bg-neutral-900 hover:bg-neutral-800 text-emerald-400 rounded-lg transition border border-white/5 flex items-center justify-center shadow-inner"
+                                       title={`Download parsed ${doc.name}`}
+                                     >
+                                       <Download size={11} />
+                                     </a>
+                                   </div>
+                                 );
+                               })}
+                             </div>
+                           </div>
+                         )}
+                       </div>
+                       {cleanContent && (
                         <div className="flex justify-end w-full">
                           <button
                             type="button"
@@ -2459,11 +2555,14 @@ export default function Dashboard() {
                       setIsFileParsing(true);
                       try {
                         const parsedContent = await parseAnyFile(file);
-                        setAttachedFile({
+                      setAttachedFiles((prev) => [
+                        ...prev,
+                        {
                           name: file.name,
                           content: parsedContent,
                           type: file.type || "image/png",
-                        });
+                        },
+                      ]);
                       } catch (err: any) {
                         console.error("Paste image parsing error:", err);
                         alert(`Could not parse pasted image: ${err.message || "Unknown error"}`);
@@ -2503,25 +2602,27 @@ export default function Dashboard() {
             />
 
             {/* Attached file preview or parsing indicator */}
-            {attachedFile && (
-              <div className={`mx-5 my-2 px-3 py-1.5 rounded-lg border text-xs flex items-center justify-between max-w-sm ${
-                themeMode === "black"
-                  ? "bg-neutral-200/10 border-neutral-200/20 text-white"
-                  : "bg-neutral-100 border-neutral-200 text-neutral-850"
-              }`}>
-                <div className="flex items-center gap-2 truncate">
-                  <FileText size={14} className={themeMode === "black" ? "text-neutral-200" : "text-neutral-600"} />
-                  <span className="truncate font-semibold">{attachedFile.name}</span>
-                </div>
-                <button 
-                  type="button" 
-                  onClick={() => setAttachedFile(null)}
-                  className={`p-0.5 transition ${
-                    themeMode === "black" ? "text-neutral-500 hover:text-red-400" : "text-neutral-400 hover:text-red-500"
-                  }`}
-                >
-                  <X size={14} />
-                </button>
+            {/* Attached files preview */}
+            {attachedFiles.length > 0 && (
+              <div className="mx-5 my-2 flex flex-wrap gap-2">
+                {attachedFiles.map((att, attIdx) => (
+                  <div key={attIdx} className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-2 max-w-[200px] shadow-sm animate-fade-in ${
+                    themeMode === "black"
+                      ? "bg-gradient-to-r from-neutral-200/10 to-transparent border-neutral-200/15 text-white"
+                      : "bg-[#FAFAFA] border-neutral-200 text-neutral-850"
+                  }`}>
+                    <FileText size={13} className="text-emerald-400 flex-shrink-0" />
+                    <span className="truncate font-semibold flex-1">{att.name}</span>
+                    <button 
+                      type="button" 
+                      onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx))}
+                      className="p-0.5 text-neutral-400 hover:text-red-400 transition"
+                      title="Remove file"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
             {isFileParsing && (
@@ -2765,26 +2866,29 @@ export default function Dashboard() {
           <div className="space-y-4">
             {/* 1. Delete Attached File */}
             <div className="flex flex-col space-y-2">
-              <span className={`text-xs font-bold ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>Current File Attachment</span>
-              {attachedFile ? (
-                <div className={`flex items-center justify-between p-3 rounded-2xl text-xs border ${
-                  themeMode === "black" ? "bg-red-500/5 border-red-500/10" : "bg-red-500/10 border-red-200"
-                }`}>
-                  <div className="flex items-center gap-2 truncate">
-                    <FileText size={15} className="text-red-500 flex-shrink-0" />
-                    <span className={`truncate font-semibold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-800"}`}>{attachedFile.name}</span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      if (confirm("Are you sure you want to remove the current file attachment?")) {
-                        setAttachedFile(null);
-                        alert("File attachment removed successfully.");
-                      }
-                    }}
-                    className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-bold transition duration-300"
-                  >
-                    Delete File
-                  </button>
+              <span className={`text-xs font-bold ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>Current File Attachments ({attachedFiles.length})</span>
+              {attachedFiles.length > 0 ? (
+                <div className="space-y-2">
+                  {attachedFiles.map((att, attIdx) => (
+                    <div key={attIdx} className={`flex items-center justify-between p-3 rounded-2xl text-xs border ${
+                      themeMode === "black" ? "bg-red-500/5 border-red-500/10" : "bg-red-500/10 border-red-200"
+                    }`}>
+                      <div className="flex items-center gap-2 truncate">
+                        <FileText size={15} className="text-red-500 flex-shrink-0" />
+                        <span className={`truncate font-semibold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-805"}`}>{att.name}</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Remove file "${att.name}"?`)) {
+                            setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx));
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-bold transition duration-300"
+                      >
+                        Delete File
+                      </button>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className={`p-3 text-center rounded-2xl text-xs border ${
