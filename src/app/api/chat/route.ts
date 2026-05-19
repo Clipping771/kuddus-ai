@@ -565,7 +565,7 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
               ? "CRITICAL: You MUST respond entirely in Bengali (Bangla) script. Do NOT use English in your response."
               : "CRITICAL: Detect the language of the user's original message and respond ENTIRELY in that exact same language. Do NOT switch to English or any other language.";
 
-            controller.enqueue(encoder.encode("\n\n> 🧠 **KACHA MORICH MASSIVELY PARALLEL BRAIN TRUST ACTIVATED**\n> Assembling the 5-Agent Executive Board for Deep Analysis...\n\n"));
+            controller.enqueue(encoder.encode("\n\n> 🧠 **KACHA MORICH MASSIVELY PARALLEL BRAIN TRUST ACTIVATED**\n> Assembling the 16-Agent Executive Board for Deep Analysis...\n\n"));
             
             // Step 1: The Architect (Draft)
             const draftModelName = "GPT OSS 120B";
