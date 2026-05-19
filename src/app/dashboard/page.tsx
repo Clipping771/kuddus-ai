@@ -2587,9 +2587,15 @@ export default function Dashboard() {
           }`}>
             <button
               onClick={capturePhoto}
-              className="group relative flex items-center justify-center w-16 h-16 rounded-full bg-white/10 border-4 border-white/20 hover:border-white transition duration-300"
+              className={`group relative flex items-center justify-center w-16 h-16 rounded-full border-4 transition duration-300 ${
+                themeMode === "black" 
+                  ? "bg-white/10 border-white/20 hover:border-white" 
+                  : "bg-black/5 border-neutral-300 hover:border-neutral-800"
+              }`}
             >
-              <div className="w-12 h-12 bg-white rounded-full group-hover:scale-95 transition-transform duration-300"></div>
+              <div className={`w-12 h-12 rounded-full group-hover:scale-95 transition-transform duration-300 ${
+                themeMode === "black" ? "bg-white" : "bg-neutral-800"
+              }`}></div>
             </button>
           </div>
         </div>
