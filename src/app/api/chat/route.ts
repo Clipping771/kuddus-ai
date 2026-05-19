@@ -461,6 +461,20 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
       }
     }
 
+    const hasImage = message.includes("[IMAGE_BASE64:") || (history && history.some((h: any) => h.content.includes("[IMAGE_BASE64:")));
+
+    if (hasImage) {
+      agentSystemPrompt += `
+
+## 👁️ ULTRA-ADVANCED MULTIMODAL VISION DECODING PROTOCOL (CRITICAL)
+You are analyzing one or more screenshots, photos, or images uploaded directly by the user. 
+Apply the following highly advanced analysis steps:
+1. **Pixel-Perfect UI/UX Teardown**: Critically inspect the layout, typography, colors, padding, contrast, and visual hierarchy of what is shown. Point out exact conversion rate optimization (CRO) flaws or aesthetic glitches.
+2. **Dynamic OCR Verification**: Match the visual components with any extracted text or numbers to perform audits (e.g. audit financial charts, competitor designs, copy/text errors, or system states).
+3. **Hyper-Actionable Strategic Roadmap**: Give concrete recommendations for redesigning, improving, or taking advantage of what is shown in the image, tailored strictly to your active specialist role.
+4. **Bangla-English Blend**: Maintain your bold, witty, and brutally honest Kacha Morich personality. Offer direct expert advice with zero fluff.`;
+    }
+
     // 5b. Format history for LLM messages array (System prompt must be at position 0)
     const formattedMessages: any[] = [
       {
@@ -468,8 +482,6 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
         content: agentSystemPrompt,
       },
     ];
-
-    const hasImage = message.includes("[IMAGE_BASE64:") || (history && history.some((h: any) => h.content.includes("[IMAGE_BASE64:")));
 
     const parseMessageContent = (role: string, rawContent: string) => {
       if (role !== "user" || !rawContent) return rawContent;
@@ -734,9 +746,16 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
             }
           } else {
             // NORMAL SINGLE-MODEL PIPELINE
-            let selectedModel = hasImage ? "google/gemini-2.5-flash" : primaryModel;
+            let selectedModel = hasImage ? (primaryModel || "google/gemini-2.5-flash") : primaryModel;
             const fallbackModels = hasImage 
-              ? ["google/gemini-2.5-flash"] 
+              ? [
+                  primaryModel,
+                  "google/gemini-2.5-flash",
+                  "google/gemini-2.5-flash:free",
+                  "google/gemini-flash-1.5",
+                  "google/gemini-flash-1.5:free",
+                  "meta-llama/llama-3.2-11b-vision-instruct:free"
+                ] 
               : [primaryModel, "google/gemma-4-31b-it", "deepseek/deepseek-v4-flash", "google/gemini-2.5-flash"];
 
             let response: any;
