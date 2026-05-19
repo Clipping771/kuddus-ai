@@ -574,130 +574,74 @@ You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adap
             const draftText = await fetchSyncOpenRouter("openai/gpt-oss-120b:free", draftMessages);
             controller.enqueue(encoder.encode(`> ✅ **${draftModelName}** → Foundational Master Plan Completed.\n\n`));
 
-            // Step 2: Parallel Expert Panel (7 Models at once)
-            controller.enqueue(encoder.encode(`> 🕵️ **[Parallel Expert Panel Assembly]** Firing simultaneous deep-dive reviews...\n`));
-            controller.enqueue(encoder.encode(`  ┣ ⚙️ CTO (Tech Review) ➡️ Llama 3.3 70B\n`));
-            controller.enqueue(encoder.encode(`  ┣ 📈 CMO (Market Review) ➡️ Nvidia Nemotron 120B\n`));
-            controller.enqueue(encoder.encode(`  ┣ ♟️ Chief Risk Officer (Edge-Cases) ➡️ Trinity Large\n`));
-            controller.enqueue(encoder.encode(`  ┣ 💰 CFO (Finance) ➡️ Hermes 3 405B\n`));
-            controller.enqueue(encoder.encode(`  ┣ 🚀 CPO (Product & UX) ➡️ Liquid LFM Thinking\n`));
-            controller.enqueue(encoder.encode(`  ┣ ⚖️ Legal Counsel (Compliance) ➡️ Baidu Cobuddy\n`));
-            controller.enqueue(encoder.encode(`  ┗ 🧠 Innovation Director (Wild Ideas) ➡️ Owl Alpha\n\n`));
+            // Step 2: Parallel Expert Panel (15 Models at once)
+            controller.enqueue(encoder.encode(`> 🕵️ **[Massive 15-Seat Expert Panel Assembly]** Firing simultaneous deep-dive reviews across all departments...\n`));
 
-            const ctoMessages = [
-              ...formattedMessages, 
-              { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` }, 
-              { role: "user", content: `Act as the Chief Technology Officer (CTO). Critically review the draft above. Identify technical bottlenecks, system design flaws, automation gaps, and operational impossibilities. Be brutally honest, highly technical, and strictly analytical. Do NOT praise the draft, only find its flaws and propose high-tech solutions. ${langInstruction}` }
+            const freeModels = [
+              "meta-llama/llama-3.3-70b-instruct:free",
+              "nvidia/nemotron-3-super-120b-a12b:free",
+              "arcee-ai/trinity-large-thinking:free",
+              "openai/gpt-oss-120b:free",
+              "liquid/lfm-2.5-1.2b-thinking:free",
+              "baidu/cobuddy:free"
             ];
 
-            const cmoMessages = [
-              ...formattedMessages, 
-              { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` }, 
-              { role: "user", content: `Act as the Chief Marketing Officer (CMO). Critically review the draft above. Analyze the market positioning, competitor threats, customer psychology, and monetization strategy. Where will this fail to get customers? How can we make it viral and extremely profitable? Be aggressive and highly strategic. ${langInstruction}` }
-            ];
-
-            const riskMessages = [
-              ...formattedMessages, 
-              { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` }, 
-              { role: "user", content: `Act as the Chief Risk Officer and Deep Logic Analyst. Critically review the draft above using deep reasoning. Find the "Black Swan" events, hidden edge-cases, legal/compliance threats, and fundamental logical fallacies. What is the single biggest existential threat to this plan, and how do we mitigate it? Be deeply philosophical and ruthlessly logical. ${langInstruction}` }
-            ];
-
-            const cfoMessages = [
-              ...formattedMessages, 
-              { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` }, 
-              { role: "user", content: `Act as the Chief Financial Officer (CFO). Critically review the financial metrics, monetization plan, and cost structure of the draft above. Find where they are bleeding money, miscalculating margins, or ignoring hidden costs. Optimize the pricing strategy for maximum profitability. ${langInstruction}` }
-            ];
-
-            const cpoMessages = [
-              ...formattedMessages, 
-              { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` }, 
-              { role: "user", content: `Act as the Chief Product Officer (CPO). Critically review the product/service design, user experience (UX), and value proposition from the draft above. Why would users hate this? How can we make the product highly addictive and frictionless? ${langInstruction}` }
-            ];
-
-            const legalMessages = [
-              ...formattedMessages, 
-              { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` }, 
-              { role: "user", content: `Act as the Chief Legal Counsel. Review the draft above for legal compliance, regulatory hurdles, data privacy issues, and potential lawsuits. Give brutal legal advice to protect the company. ${langInstruction}` }
-            ];
-
-            const innovationMessages = [
-              ...formattedMessages, 
-              { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` }, 
-              { role: "user", content: `Act as the Director of Wild Innovation. Review the draft above. It is too boring and standard. Inject one insanely unconventional, "crazy but brilliant" idea that completely disrupts the industry and sets this plan apart from everyone else. Think outside the box. ${langInstruction}` }
-            ];
-
-            // Execute all 7 critiques concurrently. Use catch to prevent a single failure from destroying the pipeline.
-            const safeFetch = async (model: string, msgs: any[]) => {
+            const safeFetch = async (model: string, msgs: any[], roleName: string) => {
               try {
-                return await fetchSyncOpenRouter(model, msgs);
+                return { roleName, text: await fetchSyncOpenRouter(model, msgs) };
               } catch (e) {
-                console.error(`Expert ${model} failed:`, e);
-                return "(Expert analysis unavailable due to API rate limit)";
+                console.error(`Expert ${model} (${roleName}) failed:`, e);
+                return { roleName, text: "(Expert analysis unavailable due to API rate limit)" };
               }
             };
 
-            const [ctoText, cmoText, riskText, cfoText, cpoText, legalText, innovationText] = await Promise.all([
-              safeFetch("meta-llama/llama-3.3-70b-instruct:free", ctoMessages),
-              safeFetch("nvidia/nemotron-3-super-120b-a12b:free", cmoMessages),
-              safeFetch("arcee-ai/trinity-large-thinking:free", riskMessages),
-              safeFetch("nousresearch/hermes-3-llama-3.1-405b", cfoMessages),
-              safeFetch("liquid/lfm-2.5-1.2b-thinking:free", cpoMessages),
-              safeFetch("baidu/cobuddy:free", legalMessages),
-              safeFetch("openrouter/owl-alpha", innovationMessages)
-            ]);
+            const expertPromises = [];
+            let modelIndex = 0;
 
-            controller.enqueue(encoder.encode(`> ✅ **Ultimate Expert Panel** → All 7 Deep Reviews Completed.\n\n`));
+            for (const [agentId, agentInstruction] of Object.entries(AGENT_INSTRUCTIONS)) {
+               const assignedModel = freeModels[modelIndex % freeModels.length];
+               modelIndex++;
+
+               const msgs = [
+                  ...formattedMessages,
+                  { role: "assistant", content: `Here is the Architect's foundational draft:\n\n${draftText}` },
+                  { role: "user", content: `You are the specialized agent for: ${agentId}.\n\nYour instructions are:\n${agentInstruction}\n\nCritically review the Architect's draft above from the strict perspective of your specialized role. Identify flaws, propose improvements, and provide highly actionable advice that ONLY someone with your expertise would know. ${langInstruction}` }
+               ];
+
+               expertPromises.push(safeFetch(assignedModel, msgs, agentId));
+               
+               // Simulate UI logging
+               if (modelIndex % 3 === 0) {
+                 controller.enqueue(encoder.encode(`  ┣ ⚙️ Firing expert panel requests... (${modelIndex}/15)\n`));
+               }
+            }
+
+            const expertResults = await Promise.all(expertPromises);
+
+            controller.enqueue(encoder.encode(`> ✅ **Ultimate Expert Panel** → All 15 Deep Reviews Completed.\n\n`));
 
             // Step 3: Synthesis Stream by the CEO (Main Brain)
             const synthModelName = synthModel.includes("gemma") ? "Google Gemma 4 31B" : synthModel.includes("deepseek-v4") ? "DeepSeek V4 Flash" : synthModel.includes("owl-alpha") ? "OpenRouter Owl Alpha" : synthModel.includes("hermes") ? "Hermes 3 405B" : synthModel.includes("cobuddy") ? "Baidu Cobuddy" : synthModel.includes("lfm") ? "Liquid LFM Thinking" : synthModel.split("/")[1];
             
-            controller.enqueue(encoder.encode(`> ✨ **[CEO Synthesizer]** *(powered by ${synthModelName})* is integrating the Architect's draft with the 7 expert reports (CTO, CMO, Risk, CFO, CPO, Legal, Innovation) into the Ultimate Master Strategy...\n\n---\n\n`));
+            controller.enqueue(encoder.encode(`> ✨ **[CEO Synthesizer]** *(powered by ${synthModelName})* is integrating the Architect's draft with the massive 15 expert reports into the Ultimate Master Strategy...\n\n---\n\n`));
             
+            let expertReportsStr = "";
+            for (const result of expertResults) {
+                expertReportsStr += `\nHere is the review from the ${result.roleName} expert:\n<${result.roleName}_review>\n${result.text}\n</${result.roleName}_review>\n`;
+            }
+
             const synthMessages = [
               ...formattedMessages, 
-              { role: "user", content: `You are the CEO (Chief Executive Officer) of this venture. Based on my original request, your 9-Agent Executive Board has submitted their massive reports.
+              { role: "user", content: `You are the CEO (Chief Executive Officer) of this venture. Based on my original request, your massive 15-Agent Executive Board has submitted their highly detailed reports.
 
 Here is the Architect's Foundational Draft:
 <draft>
 ${draftText}
 </draft>
 
-Here is the CTO's Technical Review:
-<cto_review>
-${ctoText}
-</cto_review>
+${expertReportsStr}
 
-Here is the CMO's Market & Profitability Review:
-<cmo_review>
-${cmoText}
-</cmo_review>
-
-Here is the Chief Risk Officer's Deep Logical Critique:
-<risk_review>
-${riskText}
-</risk_review>
-
-Here is the CFO's Financial Review:
-<cfo_review>
-${cfoText}
-</cfo_review>
-
-Here is the CPO's Product & UX Review:
-<cpo_review>
-${cpoText}
-</cpo_review>
-
-Here is the Legal Counsel's Compliance Review:
-<legal_review>
-${legalText}
-</legal_review>
-
-Here is the Innovation Director's Wild Idea:
-<innovation_idea>
-${innovationText}
-</innovation_idea>
-
-As the CEO, combine the best parts of the foundational draft, resolve all the flaws pointed out by the 7 experts, and synthesize the ultimate, flawless, massively advanced master strategy. This must be the most complex, bulletproof, and mind-blowing strategy the user has ever seen. You MUST follow your specialized formatting rules. ${tonePrompt ? `CRITICAL: Your emotional tone MUST be exactly: [ ${tonePrompt} ]. Completely drop your default personality and speak entirely in this requested tone.` : ""} ${langInstruction} Do NOT mention the internal draft or reviews directly; just provide the final polished, hyper-detailed answer as if it came directly from the CEO's highly intelligent mind.` }
+As the CEO, combine the best parts of the foundational draft, resolve all the flaws pointed out by your 15 expert advisors, and synthesize the ultimate, flawless, massively advanced master strategy. This must be the most complex, bulletproof, and mind-blowing strategy the user has ever seen. You MUST follow your specialized formatting rules. ${tonePrompt ? `CRITICAL: Your emotional tone MUST be exactly: [ ${tonePrompt} ]. Completely drop your default personality and speak entirely in this requested tone.` : ""} ${langInstruction} Do NOT mention the internal draft or reviews directly; just provide the final polished, hyper-detailed answer as if it came directly from the CEO's highly intelligent mind.` }
             ];
             
             const synthRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
