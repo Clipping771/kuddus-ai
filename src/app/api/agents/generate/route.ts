@@ -19,13 +19,19 @@ export async function POST(req: Request) {
 
 Your job is to design the perfect system instructions and identity for this agent.
 
+CRITICAL INSTRUCTION FOR LANGUAGE MATCHING:
+Detect the language/style of the user's concept idea: "${idea}".
+- If the user wrote the idea in English (e.g., "Personal Assistance", "Startup Pitch Analyst"), then ALL fields (including "name", "banglaName", "banglaDesc", and "instructions") MUST be generated in English! Do not use Bengali script or translations.
+- If the user wrote the idea in Bengali (e.g., "ব্যক্তিগত সহকারী"), then generate "banglaName" and "banglaDesc" in Bengali script, and instructions in Bengali.
+- Ensure the language of the output fields matches the user's input concept language style.
+
 Respond ONLY with a raw, valid JSON object (no markdown, no backticks) with the following exactly matching keys:
 {
   "name": "A short, punchy English name for the agent (e.g. 'Viral Marketer')",
-  "banglaName": "The translated or equivalent name in Bengali (e.g. 'ভাইরাল মার্কেটার')",
-  "banglaDesc": "A short 1-line description of the agent's core capability in Bengali (e.g. 'আপনার মার্কেটিং ক্যাম্পেইন ভাইরাল করার স্পেশালিস্ট')",
+  "banglaName": "The Display Name in the detected language (e.g. 'Personal Assistant' if English, 'ব্যক্তিগত সহকারী' if Bengali)",
+  "banglaDesc": "A short 1-line description of the agent's core capability in the detected language (e.g. 'Your dedicated assistant for daily tasks' if English, 'আপনার দৈনন্দিন কাজ করার সহকারী' if Bengali)",
   "icon": "A single suitable emoji that represents the agent",
-  "instructions": "The highly detailed system prompt/instructions for the agent in English. Must include tone, framework, and rules for how it should respond to the user."
+  "instructions": "The highly detailed system prompt/instructions for the agent in the detected language. Must include tone, framework, and rules for how it should respond."
 }`;
 
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
