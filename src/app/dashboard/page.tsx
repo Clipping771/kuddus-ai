@@ -749,6 +749,7 @@ const TONES_LIST = [
 
 const MODELS_LIST = [
   { id: "google/gemma-4-31b-it", name: "Google Gemma 31B", icon: "💎", badge: "Primary" },
+  { id: "deepseek/deepseek-r1:free", name: "DeepSeek R1 (Thinking)", icon: "🔮", badge: "Reasoning King" },
   { id: "deepseek/deepseek-v4-flash", name: "DeepSeek V4 Flash", icon: "⚡", badge: "Super Fast" },
   { id: "nousresearch/hermes-3-llama-3.1-405b", name: "Hermes 3 405B Instruct", icon: "🧠", badge: "Max Reasoning" },
   { id: "openai/gpt-oss-120b:free", name: "GPT OSS 120B", icon: "🤖", badge: "OSS Giant" },
