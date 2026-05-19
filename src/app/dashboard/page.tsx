@@ -2074,21 +2074,21 @@ export default function Dashboard() {
                     className={`flex items-center gap-1.5 text-[9px] font-black px-4 py-2 rounded-full border transition-all duration-300 uppercase tracking-widest ${
                       isGeneratingPrompts
                         ? themeMode === "black"
-                          ? "bg-neutral-800 border-neutral-700 text-neutral-400 cursor-not-allowed"
-                          : "bg-neutral-200 border-neutral-300 text-neutral-500 cursor-not-allowed"
+                          ? "bg-[#0c0c0c] border-neutral-850 text-neutral-600 cursor-not-allowed"
+                          : "bg-neutral-100 border-neutral-200 text-neutral-450 cursor-not-allowed"
                         : themeMode === "black"
-                          ? "bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 border-none text-white shadow-[0_0_20px_rgba(245,158,11,0.35)] hover:shadow-[0_0_30px_rgba(245,158,11,0.55)] hover:scale-[1.02]"
-                          : "bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 border-none text-white shadow-md hover:shadow-lg hover:scale-[1.02]"
+                          ? "bg-[#111111] border-neutral-800 hover:border-amber-500/40 text-neutral-300 hover:text-white hover:shadow-[0_0_15px_rgba(245,158,11,0.08)]"
+                          : "bg-neutral-900 border-neutral-800 text-white hover:bg-neutral-800 hover:shadow-md"
                     }`}
                   >
                     {isGeneratingPrompts ? (
                       <>
-                        <Loader2 size={11} className="animate-spin text-white" />
+                        <Loader2 size={11} className="animate-spin text-neutral-400" />
                         <span>Creating Cases...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles size={11} className="animate-pulse" />
+                        <Sparkles size={11} className="text-amber-500 group-hover:scale-110 transition-transform" />
                         <span>AI Generate New Cases</span>
                       </>
                     )}
