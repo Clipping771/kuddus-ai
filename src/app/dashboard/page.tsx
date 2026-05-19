@@ -1935,8 +1935,7 @@ export default function Dashboard() {
               <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none opacity-80" />
             </div>
           )}
-          {/* Dynamic header */}
-          <header className={`h-16 px-4 sm:px-6 border-b backdrop-blur-xl flex items-center justify-between z-30 transition-colors duration-300 ${themeMode === "black"
+          <header className={`h-16 px-4 sm:px-6 border-b backdrop-blur-xl flex items-center justify-between z-40 transition-colors duration-300 ${themeMode === "black"
               ? "border-white/5 bg-[#050505]/80"
               : "border-neutral-200 bg-[#FFFFFF]/80 shadow-sm"
             }`}>
@@ -2020,71 +2019,7 @@ export default function Dashboard() {
                 </span>
               </div>
             </div>
-
             <div className="flex items-center gap-3">
-              {/* AI Brain Selector Dropdown */}
-              <div className="relative hidden md:block">
-                <button
-                  type="button"
-                  onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition duration-300 font-bold shadow-sm text-xs ${themeMode === "black"
-                      ? "border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 text-neutral-300 hover:text-white hover:border-neutral-200/30"
-                      : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
-                    }`}
-                >
-                  <span>{MODELS_LIST.find((m) => m.id === selectedModelId)?.icon}</span>
-                  <span className="truncate max-w-[100px]">
-                    {MODELS_LIST.find((m) => m.id === selectedModelId)?.name || "Select AI Brain"}
-                  </span>
-                  <ChevronDown size={13} className={`text-neutral-500 transition duration-300 ${modelDropdownOpen ? "rotate-180 text-neutral-200" : ""}`} />
-                </button>
-
-                {modelDropdownOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setModelDropdownOpen(false)} />
-                    <div className={`absolute right-0 mt-2.5 w-60 rounded-xl border p-2 shadow-2xl z-50 divide-y space-y-1 ${themeMode === "black"
-                        ? "border-neutral-800 bg-[#090909]/95 backdrop-blur-md divide-neutral-900 text-neutral-300"
-                        : "border-neutral-200 bg-white divide-neutral-100 text-neutral-800 shadow-xl"
-                      }`}>
-                      <div className={`px-3 py-1.5 text-[9px] font-black tracking-widest uppercase ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
-                        }`}>
-                        Select AI Brain Model
-                      </div>
-                      <div className="pt-1.5 space-y-0.5 font-sans">
-                        {MODELS_LIST.map((model) => {
-                          const isSelected = selectedModelId === model.id;
-                          return (
-                            <button
-                              key={model.id}
-                              type="button"
-                              onClick={() => {
-                                handleModelChange(model.id);
-                                setModelDropdownOpen(false);
-                              }}
-                              className={`w-full text-left flex items-center justify-between p-2.5 rounded-lg transition duration-200 ${isSelected
-                                  ? themeMode === "black"
-                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                    : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                  : themeMode === "black"
-                                    ? "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
-                                    : "border border-transparent hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
-                                }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span>{model.icon}</span>
-                                <span className="text-xs font-bold">{model.name}</span>
-                              </div>
-                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${themeMode === "black" ? "bg-white/5 text-neutral-400" : "bg-neutral-100 text-neutral-500"
-                                }`}>{model.badge}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
               {/* Elite Agent Selector Dropdown */}
               <div className="relative">
                 <button
@@ -2242,15 +2177,15 @@ export default function Dashboard() {
             </div>
           </header>
 
-          {/* Mobile Sub-Header AI Engine Control Bar */}
-          <div className={`md:hidden px-4 py-2 border-b flex flex-col gap-2 transition-colors duration-300 z-30 ${themeMode === "black" ? "border-white/5 bg-[#050505]/95" : "border-neutral-200 bg-white/95 shadow-sm"
+          {/* Premium Sub-Header AI Engine Control Bar (Horizontal Pill Scroller) */}
+          <div className={`px-4 sm:px-6 py-2 border-b flex flex-col md:flex-row md:items-center justify-between gap-3 transition-colors duration-300 z-20 ${themeMode === "black" ? "border-white/5 bg-[#050505]/95" : "border-neutral-200 bg-white/95 shadow-sm"
             }`}>
             {/* Models Scroll Bar */}
-            <div className="flex flex-col gap-1">
-              <span className={`text-[8px] font-black uppercase tracking-wider ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
+            <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-3 flex-1 min-w-0">
+              <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider whitespace-nowrap ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
                 }`}>Select AI Brain Model:</span>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 min-w-0">
                 {MODELS_LIST.map((model) => {
                   const isSelected = selectedModelId === model.id;
                   return (
@@ -2258,17 +2193,18 @@ export default function Dashboard() {
                       key={model.id}
                       type="button"
                       onClick={() => handleModelChange(model.id)}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full border text-[9px] font-black uppercase tracking-wider whitespace-nowrap transition-all duration-300 flex-shrink-0 ${isSelected
+                      className={`flex items-center gap-1.5 px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full border text-[9px] sm:text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all duration-300 flex-shrink-0 ${isSelected
                           ? themeMode === "black"
                             ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
                             : "bg-emerald-50 border-emerald-500/30 text-emerald-700 shadow-sm"
                           : themeMode === "black"
                             ? "bg-neutral-900/40 border-neutral-800 text-neutral-400 hover:text-neutral-200"
-                            : "bg-white border-neutral-250 text-neutral-600 hover:text-neutral-900"
+                            : "bg-white border-neutral-200 text-neutral-600 hover:text-neutral-900"
                         }`}
                     >
                       <span>{model.icon}</span>
                       <span>{model.name.replace(" (Thinking)", "")}</span>
+                      <span className={`text-[8px] px-1 rounded font-black tracking-normal ml-0.5 ${isSelected ? (themeMode === "black" ? "bg-emerald-400/20 text-emerald-300" : "bg-emerald-100 text-emerald-850") : (themeMode === "black" ? "bg-white/5 text-neutral-500" : "bg-neutral-100 text-neutral-500")}`}>{model.badge}</span>
                     </button>
                   );
                 })}
@@ -2276,8 +2212,8 @@ export default function Dashboard() {
             </div>
 
             {/* Settings Row (Brain Trust + Board Size) */}
-            <div className="flex items-center justify-between border-t border-dashed pt-1.5 mt-0.5" style={{ borderColor: themeMode === "black" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)" }}>
-              <span className={`text-[8px] font-black uppercase tracking-wider ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
+            <div className="flex items-center justify-between md:justify-end gap-3 border-t border-dashed md:border-t-0 pt-1.5 md:pt-0 mt-0.5 md:mt-0 flex-shrink-0" style={{ borderColor: themeMode === "black" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)" }}>
+              <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider md:hidden ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
                 }`}>Cooperative Board:</span>
 
               <div className="flex items-center gap-1.5">
@@ -2285,7 +2221,7 @@ export default function Dashboard() {
                   type="button"
                   onClick={() => handleBrainTrustToggle(!isBrainTrust)}
                   disabled={isLoading || isFileParsing}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border text-[9px] font-black uppercase tracking-wider transition-all duration-300 ${isBrainTrust
+                  className={`flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all duration-300 ${isBrainTrust
                       ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
                       : themeMode === "black"
                         ? "bg-neutral-900/40 border-neutral-800 text-neutral-500"
@@ -2299,7 +2235,7 @@ export default function Dashboard() {
                   <select
                     value={boardSize}
                     onChange={(e) => setBoardSize(Number(e.target.value))}
-                    className={`px-1.5 py-0.5 text-[8px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${themeMode === "black"
+                    className={`px-1.5 py-0.5 text-[8px] sm:text-[10px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${themeMode === "black"
                         ? "bg-neutral-950 border-neutral-800 text-neutral-400"
                         : "bg-white border-neutral-200 text-neutral-600 shadow-sm"
                       }`}

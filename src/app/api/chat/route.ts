@@ -588,20 +588,40 @@ Apply the following highly advanced analysis steps:
         // Enqueue activeChatId as metadata line so the frontend knows what chatId was resolved
         controller.enqueue(encoder.encode(`__CHAT_ID__:${activeChatId}\n`));
 
-        // Helper for Brain Trust non-streaming calls
+        // Helper for Brain Trust non-streaming calls with high-fidelity fallback logic
         const fetchSyncOpenRouter = async (model: string, msgs: any[]) => {
-          const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
-              "Content-Type": "application/json",
-              "HTTP-Referer": "https://kachamorich.vercel.app",
-            },
-            body: JSON.stringify({ model, messages: msgs, stream: false }),
-          });
-          if (!res.ok) throw new Error("Brain trust step failed");
-          const data = await res.json();
-          return data.choices[0]?.message?.content || "";
+          const modelsToTry = [
+            model,
+            model.endsWith(":free") ? model.replace(":free", "") : `${model}:free`,
+            "google/gemma-2-9b-it:free",
+            "google/gemini-2.5-flash",
+            "deepseek/deepseek-chat"
+          ];
+          
+          let lastError = null;
+          for (const currentModel of modelsToTry) {
+            try {
+              console.log(`[Sync OpenRouter] Trying model: "${currentModel}"`);
+              const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
+                  "Content-Type": "application/json",
+                  "HTTP-Referer": "https://kachamorich.vercel.app",
+                },
+                body: JSON.stringify({ model: currentModel, messages: msgs, stream: false }),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                const content = data.choices[0]?.message?.content || "";
+                if (content) return content;
+              }
+            } catch (err) {
+              lastError = err;
+              console.error(`[Sync OpenRouter] Model "${currentModel}" failed:`, err);
+            }
+          }
+          throw lastError || new Error("All sync fallback models failed");
         };
 
         try {
@@ -699,16 +719,34 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
               }
             ];
 
-            const synthRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://kachamorich.vercel.app",
-              },
-              body: JSON.stringify({ model: synthModel, messages: synthMessages, stream: true, max_tokens: 4000 }),
-            });
-            if (!synthRes.ok) throw new Error("Synthesis failed");
+            let selectedSynthModel = synthModel;
+            const synthFallbacks = [
+              synthModel,
+              synthModel.endsWith(":free") ? synthModel.replace(":free", "") : `${synthModel}:free`,
+              "google/gemini-2.5-flash",
+              "deepseek/deepseek-chat"
+            ];
+            let synthRes: any;
+            for (let sIdx = 0; sIdx < synthFallbacks.length; sIdx++) {
+              selectedSynthModel = synthFallbacks[sIdx];
+              try {
+                console.log(`[API Chat] Dispatching Brain Trust Synthesis stream request to model: "${selectedSynthModel}"`);
+                synthRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://kachamorich.vercel.app",
+                  },
+                  body: JSON.stringify({ model: selectedSynthModel, messages: synthMessages, stream: true, max_tokens: 4000 }),
+                });
+                if (synthRes.ok) break;
+                if (sIdx === synthFallbacks.length - 1) throw new Error("All synthesis models failed");
+              } catch (err) {
+                console.error(`[API Chat] Synthesis model "${selectedSynthModel}" failed:`, err);
+                if (sIdx === synthFallbacks.length - 1) throw err;
+              }
+            }
 
             const reader = synthRes.body?.getReader();
             const decoder = new TextDecoder();
@@ -754,24 +792,29 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
               }
             }
           } else {
-            // NORMAL SINGLE-MODEL PIPELINE
-            let selectedModel = hasImage ? (primaryModel || "google/gemini-2.5-flash") : primaryModel;
-            const fallbackModels = hasImage
-              ? [
-                primaryModel,
-                "google/gemini-2.5-flash",
-                "google/gemini-2.5-flash:free",
-                "google/gemini-flash-1.5",
-                "google/gemini-flash-1.5:free",
-                "meta-llama/llama-3.2-11b-vision-instruct:free"
-              ]
-              : [
-                primaryModel,
-                "google/gemma-2-9b-it:free",
-                "deepseek/deepseek-chat:free",
-                "meta-llama/llama-3.3-70b-instruct:free",
-                "qwen/qwen-2.5-coder-32b-instruct:free"
-              ];
+             // NORMAL SINGLE-MODEL PIPELINE
+             let selectedModel = hasImage ? (primaryModel || "google/gemini-2.5-flash") : primaryModel;
+             const fallbackModels = hasImage
+               ? [
+                 primaryModel,
+                 "google/gemini-2.5-flash",
+                 "google/gemini-2.5-flash:free",
+                 "google/gemini-flash-1.5",
+                 "google/gemini-flash-1.5:free",
+                 "meta-llama/llama-3.2-11b-vision-instruct:free"
+               ]
+               : [
+                 primaryModel,
+                 "google/gemma-2-9b-it:free",
+                 "deepseek/deepseek-chat:free",
+                 "meta-llama/llama-3.3-70b-instruct:free",
+                 "qwen/qwen-2.5-coder-32b-instruct:free",
+                 // Ultra-stable paid model fallbacks (fraction-of-a-penny cost)
+                 "google/gemini-2.5-flash",
+                 "deepseek/deepseek-chat",
+                 "meta-llama/llama-3.3-70b-instruct",
+                 "qwen/qwen-2.5-coder-32b-instruct"
+               ];
 
             let response: any;
             for (let i = 0; i < fallbackModels.length; i++) {
