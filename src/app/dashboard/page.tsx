@@ -3125,7 +3125,7 @@ export default function Dashboard() {
         </div>
       </div>
     )}
-    {/* 5. Custom Agent Builder Glassmorphic Modal */}
+    {/* 5. Custom Agent Builder — Professional Glassmorphic Modal */}
     {customAgentModalOpen && (
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
         {/* Backdrop */}
@@ -3138,15 +3138,24 @@ export default function Dashboard() {
             : "bg-white/95 border-neutral-200 text-neutral-900 shadow-2xl"
         }`}>
           {/* Modal Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-neutral-800/10 dark:border-white/5 mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-emerald-400 text-lg">✨</span>
-              <h3 className="font-extrabold text-sm sm:text-base tracking-tight">Create Custom AI Agent</h3>
+          <div className={`flex items-center justify-between pb-3 border-b mb-4 ${
+            themeMode === "black" ? "border-white/5" : "border-neutral-200"
+          }`}>
+            <div className="flex items-center gap-2.5">
+              <div className={`p-1.5 rounded-lg ${themeMode === "black" ? "bg-emerald-500/10" : "bg-emerald-50"}`}>
+                <Plus size={14} className="text-emerald-500" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-sm sm:text-base tracking-tight">Create Custom Agent</h3>
+                <p className={`text-[10px] mt-0.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Build your own specialist AI advisor</p>
+              </div>
             </div>
             <button
               type="button"
               onClick={() => setCustomAgentModalOpen(false)}
-              className="p-1 rounded-lg hover:bg-neutral-800/10 dark:hover:bg-white/5 text-neutral-500 hover:text-neutral-200 transition duration-150"
+              className={`p-1.5 rounded-lg transition duration-150 ${
+                themeMode === "black" ? "hover:bg-white/5 text-neutral-500 hover:text-neutral-200" : "hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700"
+              }`}
             >
               <X size={16} />
             </button>
@@ -3156,67 +3165,67 @@ export default function Dashboard() {
           <form onSubmit={handleCreateCustomAgent} className="space-y-4 text-xs sm:text-sm font-medium">
             {/* Agent Name */}
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-1.5 font-bold">Agent English Name</label>
+              <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Name</label>
               <input
                 type="text"
                 required
-                placeholder="e.g. Growth Hacker"
+                placeholder="e.g. Growth Hacker, Content Strategist, Sales Coach..."
                 value={newAgentName}
                 onChange={(e) => setNewAgentName(e.target.value)}
                 className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${
                   themeMode === "black"
-                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white"
-                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900"
+                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
                 }`}
               />
             </div>
 
-            {/* Bangla Name */}
+            {/* Display Name */}
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-1.5 font-bold">Agent Bangla Name (বাংলা নাম)</label>
+              <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Display Name</label>
               <input
                 type="text"
                 required
-                placeholder="e.g. গ্রোথ হ্যাকার"
+                placeholder="Name shown in agent selector (any language)"
                 value={newAgentBanglaName}
                 onChange={(e) => setNewAgentBanglaName(e.target.value)}
                 className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${
                   themeMode === "black"
-                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white"
-                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900"
+                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
                 }`}
               />
             </div>
 
-            {/* Description */}
+            {/* Short Description */}
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-1.5 font-bold">Bangla Description (বিবরণ)</label>
+              <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Short Description</label>
               <input
                 type="text"
                 required
-                placeholder="e.g. কাস্টমার অ্যাকুইজিশন ও ফানেল অপ্টিমাইজেশন স্পেশালিস্ট"
+                placeholder="e.g. Customer acquisition & funnel optimization specialist"
                 value={newAgentBanglaDesc}
                 onChange={(e) => setNewAgentBanglaDesc(e.target.value)}
                 className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${
                   themeMode === "black"
-                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white"
-                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900"
+                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
                 }`}
               />
             </div>
 
-            {/* Icon Selector (Emoji Quick Selectors) */}
+            {/* Icon Selector */}
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-1.5 font-bold">Select Agent Icon Emoji</label>
+              <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Icon</label>
               <div className="flex flex-wrap gap-2 mb-2">
-                {["🚀", "💰", "📈", "📣", "🎨", "💻", "🧠", "🛡️", "🤝", "🔥", "🌶️"].map((emoji) => (
+                {["🚀", "💰", "📈", "📣", "🎨", "💻", "🧠", "🛡️", "🤝", "🔥", "🌶️", "⚡", "🎯", "📊", "🔬"].map((emoji) => (
                   <button
                     key={emoji}
                     type="button"
                     onClick={() => setNewAgentIcon(emoji)}
                     className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition duration-150 ${
                       newAgentIcon === emoji
-                        ? "border-emerald-500 bg-emerald-500/10 scale-110"
+                        ? "border-emerald-500 bg-emerald-500/10 scale-110 shadow-sm shadow-emerald-500/20"
                         : themeMode === "black"
                           ? "border-white/5 bg-neutral-900 hover:bg-neutral-800"
                           : "border-neutral-200 bg-white hover:bg-neutral-50"
@@ -3228,19 +3237,22 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Custom System instructions */}
+            {/* System Instructions */}
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-1.5 font-bold">Custom System Instructions (এজেন্টের মূল কাজ ও আচরণ)</label>
+              <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>System Instructions</label>
+              <p className={`text-[10px] mb-2 leading-relaxed ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
+                Define how this agent should behave, its expertise, frameworks, and response style.
+              </p>
               <textarea
                 required
                 rows={4}
-                placeholder="Act as a Growth Hacking specialist. You focus on data-driven marketing, customer acquisition cost reduction, AARRR framework optimization, and viral loops..."
+                placeholder="Act as a Growth Hacking specialist. You focus on data-driven marketing, customer acquisition cost reduction, AARRR framework optimization, and viral loop engineering..."
                 value={newAgentInstructions}
                 onChange={(e) => setNewAgentInstructions(e.target.value)}
-                className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 resize-none font-mono ${
+                className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 resize-none leading-relaxed ${
                   themeMode === "black"
-                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white"
-                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900"
+                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
                 }`}
               />
             </div>
@@ -3248,9 +3260,10 @@ export default function Dashboard() {
             {/* Save Button */}
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-emerald-500/15 hover:shadow-emerald-500/35 hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2 mt-4"
+              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-emerald-500/15 hover:shadow-emerald-500/35 hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2 mt-2"
             >
-              <span>💾 Save Custom Agent</span>
+              <Plus size={14} />
+              <span>Create Agent</span>
             </button>
           </form>
         </div>
