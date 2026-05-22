@@ -194,7 +194,9 @@ import {
   Square,
   Sun,
   Moon,
-  Download
+  Download,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import Link from "next/link";
 import { parseAnyFile } from "@/lib/fileParser";
@@ -807,6 +809,7 @@ export default function Dashboard() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSidebarFolded, setIsSidebarFolded] = useState(false);
   const [isSyncing, setIsSyncing] = useState(true);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("daily-innovation-idea-agent");
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
@@ -877,6 +880,7 @@ export default function Dashboard() {
       const savedAgent = localStorage.getItem("kacha_selected_agent");
       const savedModel = localStorage.getItem("kacha_selected_model");
       const savedBrainTrust = localStorage.getItem("kacha_is_braintrust");
+      const savedSidebarFolded = localStorage.getItem("kacha_sidebar_folded");
       const savedTheme = localStorage.getItem("kacha_selected_theme") as "black" | "light";
       const savedCustomAgents = localStorage.getItem("kacha_custom_agents");
 
@@ -892,6 +896,7 @@ export default function Dashboard() {
       if (savedAgent) setSelectedAgentId(savedAgent);
       if (savedModel) setSelectedModelId(savedModel);
       if (savedBrainTrust) setIsBrainTrust(savedBrainTrust === "true");
+      if (savedSidebarFolded) setIsSidebarFolded(savedSidebarFolded === "true");
 
       if (savedTheme) {
         setThemeMode(savedTheme);
@@ -926,6 +931,12 @@ export default function Dashboard() {
     const nextTheme = themeMode === "black" ? "light" : "black";
     setThemeMode(nextTheme);
     localStorage.setItem("kacha_selected_theme", nextTheme);
+  };
+
+  const handleSidebarFoldToggle = () => {
+    const nextVal = !isSidebarFolded;
+    setIsSidebarFolded(nextVal);
+    localStorage.setItem("kacha_sidebar_folded", String(nextVal));
   };
 
   const handleToneChange = (toneId: string) => {
@@ -1829,13 +1840,16 @@ export default function Dashboard() {
           }`}
         style={{ height: "var(--viewport-height, 100%)" }}
       >
-        {/* 1. Sidebar - Collapsible on Mobile */}
         <aside
-          className={`fixed inset-y-0 left-0 z-40 w-72 flex-shrink-0 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 transition-colors duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
-            } ${themeMode === "black"
-              ? "bg-[#050505] border-r border-white/5"
-              : "bg-[#FFFFFF] border-r border-neutral-200"
-            }`}
+          className={`fixed inset-y-0 left-0 z-40 flex-shrink-0 transform transition-all duration-300 ease-in-out ${
+            (sidebarOpen || (!isSidebarFolded && !sidebarOpen))
+              ? "w-72 opacity-100 lg:static lg:translate-x-0"
+              : "w-0 lg:w-0 overflow-hidden opacity-0 -translate-x-full lg:-translate-x-full lg:static pointer-events-none"
+          } ${sidebarOpen ? "translate-x-0" : (!isSidebarFolded ? "max-lg:-translate-x-full" : "-translate-x-full")} ${
+            themeMode === "black"
+              ? `bg-[#050505] ${isSidebarFolded ? "border-r-0" : "border-r border-white/5"}`
+              : `bg-[#FFFFFF] ${isSidebarFolded ? "border-r-0" : "border-r border-neutral-200"}`
+          }`}
         >
           <div className="flex flex-col h-full">
             {/* Sidebar Top Nav Brand */}
@@ -1849,13 +1863,27 @@ export default function Dashboard() {
                     {aiName}
                   </span>
                 </Link>
-                <button
-                  className={`lg:hidden p-1 transition-colors ${themeMode === "black" ? "text-neutral-400 hover:text-neutral-100" : "text-neutral-600 hover:text-neutral-900"
+                <div className="flex items-center gap-1">
+                  <button
+                    className={`lg:hidden p-1 transition-colors ${themeMode === "black" ? "text-neutral-400 hover:text-neutral-100" : "text-neutral-600 hover:text-neutral-900"
+                      }`}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <X size={20} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`hidden lg:flex items-center justify-center p-1.5 rounded-xl border transition-all duration-300 group/toggle ${
+                      themeMode === "black"
+                        ? "border-white/5 bg-white/[0.02] hover:bg-white/[0.06] text-neutral-400 hover:text-white"
+                        : "border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800"
                     }`}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <X size={20} />
-                </button>
+                    onClick={handleSidebarFoldToggle}
+                    title="Hide Sidebar"
+                  >
+                    <ChevronLeft size={16} className="transition-transform duration-300 ease-out group-hover/toggle:-translate-x-0.5" />
+                  </button>
+                </div>
               </div>
               <span className={`text-[10px] font-medium leading-normal ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
                 }`}>
@@ -2002,6 +2030,20 @@ export default function Dashboard() {
               >
                 <Menu size={20} />
               </button>
+              {isSidebarFolded && (
+                <button
+                  type="button"
+                  className={`hidden lg:flex items-center justify-center p-2 rounded-xl border transition-all duration-300 group/toggle animate-fade-in ${
+                    themeMode === "black"
+                      ? "border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400 hover:text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                      : "border-emerald-200 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-600 hover:text-emerald-700"
+                  }`}
+                  onClick={handleSidebarFoldToggle}
+                  title="Show Sidebar"
+                >
+                  <ChevronRight size={16} className="transition-transform duration-300 ease-out group-hover/toggle:translate-x-0.5" />
+                </button>
+              )}
               <div className="flex items-center gap-2.5">
                 {isListening ? (
                   <div className="flex items-end h-5 px-2.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 select-none">

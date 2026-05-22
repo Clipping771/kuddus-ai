@@ -483,7 +483,8 @@ Apply the following highly advanced analysis steps:
     }
 
     // 5b. Format history for LLM messages array (System prompt must be at position 0)
-    const formattedMessages: any[] = [
+    const toneReminder = tonePrompt ? ` CRITICAL TONE OVERRIDE: ${tonePrompt}` : "";
+      const formattedMessages: any[] = [
       {
         role: "system",
         content: agentSystemPrompt,
@@ -541,10 +542,10 @@ Apply the following highly advanced analysis steps:
           if (Array.isArray(msgContent)) {
             const textObj = msgContent.find((item: any) => item.type === "text");
             if (textObj) {
-              textObj.text = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}". Do NOT fall back to your general persona. Keep your responses direct and professional.]\n\n${textObj.text}`;
+              textObj.text = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}".${toneReminder ? toneReminder : " Keep your responses direct and professional."}]\n\n${textObj.text}`;
             }
           } else {
-            msgContent = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}". Do NOT fall back to your general persona. Keep your responses direct and professional.]\n\n${msgContent}`;
+            msgContent = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}".${toneReminder ? toneReminder : " Keep your responses direct and professional."}]\n\n${msgContent}`;
           }
         }
 
@@ -560,10 +561,10 @@ Apply the following highly advanced analysis steps:
         if (Array.isArray(msgContent)) {
           const textObj = msgContent.find((item: any) => item.type === "text");
           if (textObj) {
-            textObj.text = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}". Do NOT fall back to your general persona.]\n\n${textObj.text}`;
+            textObj.text = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}".${toneReminder ? toneReminder : " Do NOT fall back to your general persona."}]\n\n${textObj.text}`;
           }
         } else {
-          msgContent = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}". Do NOT fall back to your general persona.]\n\n${msgContent}`;
+          msgContent = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}".${toneReminder ? toneReminder : " Do NOT fall back to your general persona."}]\n\n${msgContent}`;
         }
       }
       formattedMessages.push({
