@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import Groq from "groq-sdk";
 
 export const dynamic = "force-dynamic";
 
@@ -206,7 +207,48 @@ Example Output:
   }
 ]`;
 
-    // 4.5 second hard timeout for OpenRouter API call to guarantee 0-lag UX
+    const userMessage = `Generate 4 brand new dynamic, structured case suggestions for "${agentName}". Random salt: ${Math.random() * 100000}. Ensure these business ideas are completely unique and cover different angles.`;
+
+    const parseAndReturn = (rawContent: string) => {
+      let cleanJSON = rawContent.trim();
+      if (cleanJSON.startsWith("```")) {
+        cleanJSON = cleanJSON.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
+      }
+      const parsedArray = JSON.parse(cleanJSON);
+      if (Array.isArray(parsedArray) && parsedArray.length > 0) {
+        return NextResponse.json({ suggestions: parsedArray });
+      }
+      return null;
+    };
+
+    // Tier 1: Try Groq first — blazing fast, no rate limit issues
+    if (process.env.GROQ_API_KEY) {
+      try {
+        console.log("[Prompts Generate] Trying Groq llama-3.3-70b-versatile...");
+        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+        const completion = await groq.chat.completions.create({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage }
+          ],
+          temperature: 0.9,
+          max_tokens: 700,
+        });
+        const rawContent = completion.choices[0]?.message?.content?.trim() || "";
+        if (rawContent) {
+          const result = parseAndReturn(rawContent);
+          if (result) {
+            console.log("[Prompts Generate] ✅ Groq succeeded.");
+            return result;
+          }
+        }
+      } catch (groqErr: any) {
+        console.warn("[Prompts Generate] Groq failed, falling back to OpenRouter:", groqErr.message || groqErr);
+      }
+    }
+
+    // Tier 2: OpenRouter fallback with 4.5s timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4500);
 
@@ -219,13 +261,13 @@ Example Output:
       },
       signal: controller.signal,
       body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free", // Extremely fast, highly responsive, superb JSON parser
+        model: "meta-llama/llama-3.3-70b-instruct:free",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Generate 4 brand new dynamic, structured case suggestions for "${agentName}". Random salt: ${Math.random() * 100000}. Ensure these business ideas are completely unique and cover different angles.` }
+          { role: "user", content: userMessage }
         ],
-        temperature: 0.9, // Higher temperature for rich diversity and variety
-        max_tokens: 600,
+        temperature: 0.9,
+        max_tokens: 700,
       }),
     });
 
@@ -238,16 +280,8 @@ Example Output:
     const data = await response.json();
     const rawContent = data.choices[0]?.message?.content?.trim() || "";
 
-    // Clean any potential markdown wrapping
-    let cleanJSON = rawContent;
-    if (cleanJSON.startsWith("```")) {
-      cleanJSON = cleanJSON.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
-    }
-
-    const parsedArray = JSON.parse(cleanJSON);
-    if (Array.isArray(parsedArray) && parsedArray.length > 0) {
-      return NextResponse.json({ suggestions: parsedArray });
-    }
+    const result = parseAndReturn(rawContent);
+    if (result) return result;
   } catch (error) {
     console.warn("AI generation failed, timed out, or rate-limited. Returning dynamically shuffled static fallbacks instantly:", error);
   }

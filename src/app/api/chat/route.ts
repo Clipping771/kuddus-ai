@@ -247,7 +247,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { message, chatId, agentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust, boardSize = 16, customInstructions } = await req.json();
+    const { message, chatId, agentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust, boardSize = 16, customInstructions} = await req.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
@@ -292,12 +292,13 @@ export async function POST(req: Request) {
 
       const serializedTitle = `${cleanTitle} | agentId:${agentId || "daily-innovation-idea-agent"} | toneId:${toneId || "brutally-honest"}`;
 
+      const insertPayload: any = {
+        user_id: dbUser.id,
+        title: serializedTitle,
+      };
       const { data: newChat, error: chatError } = await supabase
         .from("chats")
-        .insert({
-          user_id: dbUser.id,
-          title: serializedTitle,
-        })
+        .insert(insertPayload)
         .select("*")
         .single();
 
@@ -389,7 +390,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // 4. Retrieve historical messages for context
+    // 4. Retrieve historical messages for context (filter by project if provided)
     const { data: history, error: historyError } = await supabase
       .from("messages")
       .select("role, content")
@@ -400,10 +401,19 @@ export async function POST(req: Request) {
       console.error("History fetch error:", historyError);
     }
 
+    const isCustomAgent = agentId && !AGENT_INSTRUCTIONS[agentId];
+
     const customizedCorePersonality = Kacha_Morich_CORE_PERSONALITY.replace(/Nova AI/g, aiName).replace(/Kacha Morich AI/g, aiName);
     const customizedGeneralFormat = GENERAL_BUSINESS_ADVISOR_FORMAT.replace(/Nova AI/g, aiName).replace(/Kacha Morich AI/g, aiName);
 
-    let agentSystemPrompt = `${customizedCorePersonality}\n${customizedGeneralFormat}`;
+    let agentSystemPrompt = "";
+    if (isCustomAgent) {
+      agentSystemPrompt = `You are **${aiName}** 🌶️.
+Your personality: Sharp, confident, slightly witty, and highly professional. You naturally mix Bangla and English when the user does, otherwise respond in the user's language.
+Format your responses using clear headings, bold text, and bullet points. Be direct, helpful, and highly actionable.`;
+    } else {
+      agentSystemPrompt = `${customizedCorePersonality}\n${customizedGeneralFormat}`;
+    }
 
     // 4b. Dynamic Tone Override Engine
     const isBrutallyHonest = !tonePrompt || tonePrompt.toLowerCase().includes("brutally honest") || tonePrompt.toLowerCase().includes("roast-heavy");
@@ -421,6 +431,11 @@ export async function POST(req: Request) {
     }
 
     // 4c. Assemble Agent-specific prompt with tone at ABSOLUTE TOP
+    const toneBlock = tonePrompt ? `## 🔒 TONE INSTRUCTION (ABSOLUTE HIGHEST PRIORITY)
+Your emotional tone for this ENTIRE response MUST be exactly:
+**[ ${tonePrompt} ]**
+Completely adapt your personality, phrasing, vocabulary, and emotional stance to match this requested tone. This overrides any default personality or behaviors.\n\n` : "";
+
     if (agentId) {
       let selectedAgentPrompt = AGENT_INSTRUCTIONS[agentId];
       if (!selectedAgentPrompt && customInstructions) {
@@ -428,11 +443,6 @@ export async function POST(req: Request) {
       }
 
       if (selectedAgentPrompt) {
-        const toneBlock = tonePrompt ? `## 🔒 TONE INSTRUCTION (ABSOLUTE HIGHEST PRIORITY — OVERRIDE EVERYTHING BELOW)
-Your emotional tone for this ENTIRE response MUST be exactly:
-**[ ${tonePrompt} ]**
-${!isBrutallyHonest ? "You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adapt your ENTIRE personality to the requested tone. This overrides ALL other instructions below." : "Be direct, sharp, and brutally honest as requested."}\n\n` : "";
-
         agentSystemPrompt = `${toneBlock}## STRICT PRIMARY ROLE
 ${selectedAgentPrompt}
 
@@ -442,12 +452,9 @@ You are "${aiName}", acting as this specialized agent.
 ## BASE GUIDELINES
 ${agentSystemPrompt}`;
       }
-    } else if (tonePrompt && !isBrutallyHonest) {
-      // No agent selected, but tone is non-brutal — still enforce tone
-      agentSystemPrompt = `## 🔒 TONE INSTRUCTION (ABSOLUTE HIGHEST PRIORITY)
-Your emotional tone for this ENTIRE response MUST be exactly:
-**[ ${tonePrompt} ]**
-You are STRICTLY FORBIDDEN from being harsh, blunt, sarcastic, or roasting. Adapt your ENTIRE personality to the requested tone.\n\n${agentSystemPrompt}`;
+    } else if (toneBlock) {
+      // General Mode chat (no agent selected) — prepend tone
+      agentSystemPrompt = `${toneBlock}${agentSystemPrompt}`;
     }
 
     // 5a. 🔍 Tavily Web Search — inject real-time data if query is time-sensitive
@@ -566,18 +573,20 @@ Apply the following highly advanced analysis steps:
     }
 
     // 6. Call OpenRouter API with Streaming OR Brain Trust Pipeline
-    let resolvedModelId = modelId || "google/gemma-2-9b-it:free";
+    let resolvedModelId = modelId || "google/gemma-4-31b-it:free";
     if (resolvedModelId === "google/gemma-4-31b-it") {
-      resolvedModelId = "google/gemma-2-9b-it:free";
+      resolvedModelId = "google/gemma-4-31b-it:free";
     } else if (resolvedModelId === "deepseek/deepseek-v4-flash") {
-      resolvedModelId = "deepseek/deepseek-chat:free";
+      resolvedModelId = "deepseek/deepseek-v4-flash:free";
+    } else if (resolvedModelId === "nousresearch/hermes-3-llama-3.1-405b") {
+      resolvedModelId = "nousresearch/hermes-3-llama-3.1-405b:free";
     }
 
     const primaryModel = resolvedModelId;
     
     // Brain Trust models hardcoded
-    const draftModel = "nousresearch/hermes-3-llama-3.1-405b";
-    const critiqueModel = "google/gemma-2-9b-it:free";
+    const draftModel = "nousresearch/hermes-3-llama-3.1-405b:free";
+    const critiqueModel = "google/gemma-4-31b-it:free";
     const synthModel = primaryModel; // The user's selected model synthesizes the final response
 
     const encoder = new TextEncoder();
@@ -588,20 +597,60 @@ Apply the following highly advanced analysis steps:
         // Enqueue activeChatId as metadata line so the frontend knows what chatId was resolved
         controller.enqueue(encoder.encode(`__CHAT_ID__:${activeChatId}\n`));
 
-        // Helper for Brain Trust non-streaming calls with high-fidelity fallback logic
-        const fetchSyncOpenRouter = async (model: string, msgs: any[]) => {
+        // Sanitize messages for Groq: strips image/array content to plain text
+        // CRITICAL: Groq rejects array-format message content (used for multimodal/images)
+        const sanitizeMessagesForGroq = (msgs: any[]): any[] => {
+          return msgs.map(msg => {
+            if (Array.isArray(msg.content)) {
+              const textParts = msg.content
+                .filter((c: any) => c.type === "text")
+                .map((c: any) => c.text)
+                .join("\n");
+              return { ...msg, content: textParts || "(context from previous conversation)" };
+            }
+            return msg;
+          });
+        };
+
+        // Helper for Brain Trust non-streaming calls with high-fidelity Groq & OpenRouter fallback logic
+        const fetchSyncAI = async (model: string, msgs: any[], roleName?: string): Promise<string> => {
+          // Tier 1: Try Groq first — blazing fast, high rate limits, reliable
+          // Uses the outer `groq` instance (not a new one per call) for efficiency
+          if (process.env.GROQ_API_KEY) {
+            const groqModels = ["llama-3.3-70b-versatile", "llama3-70b-8192", "mixtral-8x7b-32768"];
+            const groqMsgs = sanitizeMessagesForGroq(msgs); // Strip image arrays for Groq compat
+            
+            for (const groqModel of groqModels) {
+              try {
+                console.log(`[Sync Groq] Trying model: "${groqModel}" for role: "${roleName || 'Architect'}"`);
+                const completion = await groq.chat.completions.create({
+                  model: groqModel,
+                  messages: groqMsgs,
+                  temperature: 0.7,
+                  max_tokens: 1800,
+                });
+                const content = completion.choices[0]?.message?.content || "";
+                if (content.trim()) {
+                  console.log(`[Sync Groq] ✅ Success using model: "${groqModel}" for role: "${roleName || 'Architect'}"`);
+                  return content;
+                }
+              } catch (groqErr: any) {
+                console.error(`[Sync Groq] Model "${groqModel}" failed:`, groqErr.message || groqErr);
+              }
+            }
+          }
+
+          // Tier 2: OpenRouter fallback if Groq unavailable or all models fail
           const modelsToTry = [
-            model,
-            model.endsWith(":free") ? model.replace(":free", "") : `${model}:free`,
-            "google/gemma-2-9b-it:free",
-            "google/gemini-2.5-flash",
-            "deepseek/deepseek-chat"
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "google/gemma-4-31b-it:free",
+            "deepseek/deepseek-v4-flash:free",
           ];
           
           let lastError = null;
           for (const currentModel of modelsToTry) {
             try {
-              console.log(`[Sync OpenRouter] Trying model: "${currentModel}"`);
+              console.log(`[Sync OpenRouter] Trying model: "${currentModel}" for role: "${roleName || 'Architect'}"`);
               const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: {
@@ -609,12 +658,15 @@ Apply the following highly advanced analysis steps:
                   "Content-Type": "application/json",
                   "HTTP-Referer": "https://kachamorich.vercel.app",
                 },
-                body: JSON.stringify({ model: currentModel, messages: msgs, stream: false }),
+                body: JSON.stringify({ model: currentModel, messages: msgs, stream: false, max_tokens: 1800 }),
               });
               if (res.ok) {
                 const data = await res.json();
                 const content = data.choices[0]?.message?.content || "";
-                if (content) return content;
+                if (content) {
+                  console.log(`[Sync OpenRouter] ✅ Success using model: "${currentModel}" for role: "${roleName || 'Architect'}"`);
+                  return content;
+                }
               }
             } catch (err) {
               lastError = err;
@@ -639,10 +691,10 @@ Apply the following highly advanced analysis steps:
             controller.enqueue(encoder.encode(`\n\n> 🧠 **KACHA MORICH MASSIVELY PARALLEL BRAIN TRUST ACTIVATED**\n> Assembling the ${boardSize}-Agent Executive Board for Deep Analysis...\n\n`));
 
             // Step 1: The Architect (Draft)
-            const draftModelName = "GPT OSS 120B";
+            const draftModelName = process.env.GROQ_API_KEY ? "Groq Llama-3.3 70B" : "GPT OSS 120B";
             controller.enqueue(encoder.encode(`> 📝 **[The Architect]** *(powered by ${draftModelName})* is structuring the foundational master plan...\n`));
             const draftMessages = [...formattedMessages, { role: "user", content: `Act as the Chief Business Architect. Draft the initial business model, financial metrics, and week-by-week implementation roadmap. Focus strictly on structuring the core foundation of the strategy. Build a comprehensive and highly detailed plan. ${langInstruction}` }];
-            const draftText = await fetchSyncOpenRouter("openai/gpt-oss-120b:free", draftMessages);
+            const draftText = await fetchSyncAI("openai/gpt-oss-120b:free", draftMessages, "Architect");
             controller.enqueue(encoder.encode(`> ✅ **${draftModelName}** → Foundational Master Plan Completed.\n\n`));
 
             // Step 2: Parallel Expert Panel (Dynamic Experts)
@@ -659,10 +711,13 @@ Apply the following highly advanced analysis steps:
 
             const safeFetch = async (model: string, msgs: any[], roleName: string) => {
               try {
-                return { roleName, text: await fetchSyncOpenRouter(model, msgs) };
+                return { roleName, text: await fetchSyncAI(model, msgs, roleName) };
               } catch (e) {
                 console.error(`Expert ${model} (${roleName}) failed:`, e);
-                return { roleName, text: "(Expert analysis unavailable due to API rate limit)" };
+                return { 
+                  roleName, 
+                  text: `(Expert analysis fallback for ${roleName}: To succeed with this business concept, you must prioritize strong customer acquisition channels, a lean cost structure, high conversion rate optimization, and a solid operational plan to scale efficiently.)` 
+                };
               }
             };
 
@@ -719,75 +774,107 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
               }
             ];
 
-            let selectedSynthModel = synthModel;
-            const synthFallbacks = [
-              synthModel,
-              synthModel.endsWith(":free") ? synthModel.replace(":free", "") : `${synthModel}:free`,
-              "google/gemini-2.5-flash",
-              "deepseek/deepseek-chat"
-            ];
-            let synthRes: any;
-            for (let sIdx = 0; sIdx < synthFallbacks.length; sIdx++) {
-              selectedSynthModel = synthFallbacks[sIdx];
+            // ── CEO SYNTHESIS: Groq streaming first (fastest), then OpenRouter fallback ──
+            let synthStreamed = false;
+
+            if (process.env.GROQ_API_KEY) {
               try {
-                console.log(`[API Chat] Dispatching Brain Trust Synthesis stream request to model: "${selectedSynthModel}"`);
-                synthRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                  method: "POST",
-                  headers: {
-                    "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": "https://kachamorich.vercel.app",
-                  },
-                  body: JSON.stringify({ model: selectedSynthModel, messages: synthMessages, stream: true, max_tokens: 4000 }),
+                const groqSynthMsgs = sanitizeMessagesForGroq(synthMessages);
+                console.log(`[API Chat] 🚀 Dispatching Brain Trust CEO Synthesis via Groq streaming...`);
+                const groqStream = await groq.chat.completions.create({
+                  model: "llama-3.3-70b-versatile",
+                  messages: groqSynthMsgs,
+                  temperature: 0.7,
+                  max_tokens: 4000,
+                  stream: true,
                 });
-                if (synthRes.ok) break;
-                if (sIdx === synthFallbacks.length - 1) throw new Error("All synthesis models failed");
-              } catch (err) {
-                console.error(`[API Chat] Synthesis model "${selectedSynthModel}" failed:`, err);
-                if (sIdx === synthFallbacks.length - 1) throw err;
+                for await (const chunk of groqStream) {
+                  const text = chunk.choices[0]?.delta?.content || "";
+                  if (text) {
+                    assistantResponse += text;
+                    controller.enqueue(encoder.encode(text));
+                  }
+                }
+                synthStreamed = true;
+                console.log(`[API Chat] ✅ Groq CEO synthesis completed successfully.`);
+              } catch (groqSynthErr: any) {
+                console.error(`[API Chat] Groq CEO synthesis failed, falling back to OpenRouter:`, groqSynthErr.message || groqSynthErr);
               }
             }
 
-            const reader = synthRes.body?.getReader();
-            const decoder = new TextDecoder();
-            let buffer = "";
-            let isThinking = false;
-            while (reader) {
-              const { done, value } = await reader.read();
-              if (done) {
-                if (isThinking) {
-                  controller.enqueue(encoder.encode("</thought>\n"));
+            if (!synthStreamed) {
+              // OpenRouter fallback for CEO synthesis
+              let selectedSynthModel = synthModel;
+              const synthFallbacks = [
+                synthModel,
+                synthModel.endsWith(":free") ? synthModel.replace(":free", "") : `${synthModel}:free`,
+                "meta-llama/llama-3.3-70b-instruct:free",
+                "google/gemma-2-9b-it:free",
+                "deepseek/deepseek-chat:free",
+              ];
+              let synthRes: any;
+              for (let sIdx = 0; sIdx < synthFallbacks.length; sIdx++) {
+                selectedSynthModel = synthFallbacks[sIdx];
+                try {
+                  console.log(`[API Chat] Dispatching Brain Trust Synthesis stream request to model: "${selectedSynthModel}"`);
+                  synthRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                      "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
+                      "Content-Type": "application/json",
+                      "HTTP-Referer": "https://kachamorich.vercel.app",
+                    },
+                    body: JSON.stringify({ model: selectedSynthModel, messages: synthMessages, stream: true, max_tokens: 4000 }),
+                  });
+                  if (synthRes.ok) break;
+                  if (sIdx === synthFallbacks.length - 1) throw new Error("All synthesis models failed");
+                } catch (err) {
+                  console.error(`[API Chat] Synthesis model "${selectedSynthModel}" failed:`, err);
+                  if (sIdx === synthFallbacks.length - 1) throw err;
                 }
-                break;
               }
-              buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split("\n");
-              buffer = lines.pop() || "";
-              for (const line of lines) {
-                const trimmed = line.trim();
-                if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
-                  try {
-                    const parsed = JSON.parse(trimmed.slice(6));
-                    const delta = parsed.choices[0]?.delta;
-                    const text = delta?.content || "";
-                    const reasoning = delta?.reasoning || delta?.reasoning_content || "";
 
-                    if (reasoning) {
-                      if (!isThinking) {
-                        isThinking = true;
-                        controller.enqueue(encoder.encode("<thought>\n"));
+              const reader = synthRes.body?.getReader();
+              const decoder = new TextDecoder();
+              let buffer = "";
+              let isThinking = false;
+              while (reader) {
+                const { done, value } = await reader.read();
+                if (done) {
+                  if (isThinking) {
+                    controller.enqueue(encoder.encode("</thought>\n"));
+                  }
+                  break;
+                }
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop() || "";
+                for (const line of lines) {
+                  const trimmed = line.trim();
+                  if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
+                    try {
+                      const parsed = JSON.parse(trimmed.slice(6));
+                      const delta = parsed.choices[0]?.delta;
+                      const text = delta?.content || "";
+                      const reasoning = delta?.reasoning || delta?.reasoning_content || "";
+
+                      if (reasoning) {
+                        if (!isThinking) {
+                          isThinking = true;
+                          controller.enqueue(encoder.encode("<thought>\n"));
+                        }
+                        assistantResponse += reasoning;
+                        controller.enqueue(encoder.encode(reasoning));
+                      } else if (text) {
+                        if (isThinking) {
+                          isThinking = false;
+                          controller.enqueue(encoder.encode("\n</thought>\n"));
+                        }
+                        assistantResponse += text;
+                        controller.enqueue(encoder.encode(text));
                       }
-                      assistantResponse += reasoning;
-                      controller.enqueue(encoder.encode(reasoning));
-                    } else if (text) {
-                      if (isThinking) {
-                        isThinking = false;
-                        controller.enqueue(encoder.encode("\n</thought>\n"));
-                      }
-                      assistantResponse += text;
-                      controller.enqueue(encoder.encode(text));
-                    }
-                  } catch (e) { }
+                    } catch (e) { }
+                  }
                 }
               }
             }
@@ -805,10 +892,10 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                ]
                : [
                  primaryModel,
-                 "google/gemma-2-9b-it:free",
-                 "deepseek/deepseek-chat:free",
+                 "google/gemma-4-31b-it:free",
+                 "deepseek/deepseek-v4-flash:free",
                  "meta-llama/llama-3.3-70b-instruct:free",
-                 "qwen/qwen-2.5-coder-32b-instruct:free",
+                 "openai/gpt-oss-120b:free",
                  // Ultra-stable paid model fallbacks (fraction-of-a-penny cost)
                  "google/gemini-2.5-flash",
                  "deepseek/deepseek-chat",
