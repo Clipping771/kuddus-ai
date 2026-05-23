@@ -876,7 +876,6 @@ export default function Dashboard() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [newPdfAgentName, setNewPdfAgentName] = useState("");
-  const [isGeneratingPdfName, setIsGeneratingPdfName] = useState(false);
 
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentBanglaName, setNewAgentBanglaName] = useState("");
@@ -1178,32 +1177,18 @@ export default function Dashboard() {
     }
   };
 
-  const handlePdfFileSelect = async (file: File) => {
+  const handlePdfFileSelect = (file: File) => {
     setPdfFile(file);
-    // Auto-generate agent name from the PDF filename/topic
-    setIsGeneratingPdfName(true);
-    try {
-      // Derive a clean topic hint from the filename
-      const rawName = file.name.replace(/\.pdf$/i, "").replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
-      const res = await fetch("/api/agents/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idea: rawName }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.name) {
-          setNewPdfAgentName(data.name);
-        }
-      }
-    } catch (err) {
-      console.error("Auto name generation failed:", err);
-      // Fallback: use cleaned filename
-      const fallback = file.name.replace(/\.pdf$/i, "").replace(/[-_]/g, " ").trim();
-      setNewPdfAgentName(fallback);
-    } finally {
-      setIsGeneratingPdfName(false);
-    }
+    // Instantly derive a clean agent name from the filename — no LLM call needed
+    const cleanName = file.name
+      .replace(/\.pdf$/i, "")
+      .replace(/[-_]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+    setNewPdfAgentName(cleanName);
   };
 
   const handleUploadPdfAgent = async (e: React.FormEvent) => {
@@ -1250,7 +1235,6 @@ export default function Dashboard() {
 
         setPdfFile(null);
         setNewPdfAgentName("");
-        setIsGeneratingPdfName(false);
         setPdfAgentModalOpen(false);
 
         if (messages.length > 0) {
@@ -3952,33 +3936,28 @@ export default function Dashboard() {
               <div>
                 <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
                   Agent Name
-                  {isGeneratingPdfName && <span className="ml-2 text-indigo-400 normal-case font-normal tracking-normal">✨ Auto-generating...</span>}
                 </label>
                 <div className="relative">
                   <input
                     type="text"
                     required
-                    placeholder={isGeneratingPdfName ? "Generating name from PDF..." : "e.g. Rich Dad Financial Advisor"}
+                    placeholder="e.g. Rich Dad Financial Advisor"
                     value={newPdfAgentName}
                     onChange={(e) => setNewPdfAgentName(e.target.value)}
-                    disabled={isGeneratingPdfName}
-                    className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${isGeneratingPdfName ? "opacity-60 cursor-wait" : ""} ${themeMode === "black"
+                    className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
                       ? "bg-neutral-900/50 border-white/10 focus:border-indigo-500 text-white placeholder-neutral-600"
                       : "bg-neutral-50 border-neutral-200 focus:border-indigo-500 text-neutral-900 placeholder-neutral-400"
                       }`}
                   />
-                  {isGeneratingPdfName && (
-                    <Loader2 size={13} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-indigo-400" />
-                  )}
                 </div>
                 <p className={`text-[10px] mt-1.5 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
-                  Auto-generated from your PDF — you can edit it anytime.
+                  Auto-filled from your PDF filename — you can edit it anytime.
                 </p>
               </div>
 
               <button
                 type="submit"
-                disabled={isUploadingPdf || isGeneratingPdfName || !pdfFile || !newPdfAgentName.trim()}
+                disabled={isUploadingPdf || !pdfFile || !newPdfAgentName.trim()}
                 className="w-full py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-indigo-500/15 hover:shadow-indigo-500/35 hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2 mt-2"
               >
                 {isUploadingPdf ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}

@@ -104,35 +104,35 @@ export async function POST(req: Request) {
       apiKey: process.env.GROQ_API_KEY || "gsk_placeholder_compile_key_12345",
     });
 
-    // Truncate to ~20k chars (~5k tokens) — safe for Groq free tier TPD limits
-    // The first 20k chars contain the most important content (intro, key concepts)
-    const truncatedText = pdfText.substring(0, 20000);
+    // Truncate to ~12k chars (~3k tokens) — enough to capture core content
+    // while keeping the LLM call fast and within free-tier limits
+    const truncatedText = pdfText.substring(0, 12000);
 
-    const systemPromptMsg = `You are a world-class AI persona architect. 
-I am providing you with the extracted text from a book or document.
-Your task is to:
-1. Identify the core topic, main themes, and crucial insights from this text.
-2. Generate an extremely detailed and highly professional "System Prompt" for a new AI Agent.
-3. This new AI Agent must become an absolute Subject Matter Expert on the themes of this document. It must act, speak, and advise entirely based on the profound understanding of this document's core topic.
-4. DO NOT write an introductory or concluding message. RETURN ONLY the final System Prompt string. Make it powerful, structured, and ready to be fed directly into an LLM.
+    const systemPromptMsg = `You are an expert AI prompt engineer. Based on the document text below, write a concise but powerful system prompt for an AI agent that is a subject matter expert on this document's topic.
+
+The system prompt must include:
+- The agent's identity and expertise area (1-2 sentences)
+- 5-8 key knowledge areas from the document
+- How to answer questions: structured, cite document concepts, be specific
+- Tone: professional, direct, expert
+
+Keep it under 400 words. Return ONLY the system prompt text, no preamble.
 
 Document Text:
 ====================
 ${truncatedText}
-====================
-
-Output the System Prompt below:`;
+====================`;
 
     let generatedInstructions = truncatedText; // Fallback to truncated text
 
-    // Try Groq first
+    // Try Groq first — use llama-3.1-8b-instant (fastest model, perfect for this task)
     let groqSuccess = false;
     try {
       const completion = await groq.chat.completions.create({
-        model: "llama-3.3-70b-versatile",
+        model: "llama-3.1-8b-instant",
         messages: [{ role: "user", content: systemPromptMsg }],
         temperature: 0.3,
-        max_tokens: 3000,
+        max_tokens: 1000,
       });
       const generatedContent = completion.choices[0]?.message?.content?.trim();
       if (generatedContent) {
@@ -149,8 +149,6 @@ Output the System Prompt below:`;
         "meta-llama/llama-3.3-70b-instruct:free",
         "deepseek/deepseek-v4-flash:free",
         "google/gemma-4-31b-it:free",
-        "openai/gpt-oss-20b:free",
-        "openrouter/free",
       ];
       try {
         const { response: res } = await openrouterFetchWithFallback(
@@ -158,7 +156,7 @@ Output the System Prompt below:`;
           {
             messages: [{ role: "user", content: systemPromptMsg }],
             temperature: 0.3,
-            max_tokens: 3000,
+            max_tokens: 1000,
           }
         );
         const data = await res.json();
