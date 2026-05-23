@@ -880,8 +880,8 @@ export default function Dashboard() {
   const [isGeneratingPdfName, setIsGeneratingPdfName] = useState(false);
 
   // API key notification banner
-  const [apiBanner, setApiBanner] = useState<BannerType | null>(null);
-  const [apiBannerMessage, setApiBannerMessage] = useState<string>("");
+  const [apiBanner, setApiBanner] = useState<BannerType | null>("api_key_exhausted"); // TEST: remove null to always show
+  const [apiBannerMessage, setApiBannerMessage] = useState<string>("Test: This is what the banner looks like. Dismiss to hide.");
 
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentBanglaName, setNewAgentBanglaName] = useState("");
