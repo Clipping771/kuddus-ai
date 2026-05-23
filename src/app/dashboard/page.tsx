@@ -1222,20 +1222,42 @@ export default function Dashboard() {
     if (!pdfFile || !newPdfAgentName.trim()) return;
 
     setIsUploadingPdf(true);
-    const formData = new FormData();
-    formData.append("file", pdfFile);
-    formData.append("name", newPdfAgentName.trim());
-    formData.append("description", "A custom AI agent trained entirely on your uploaded document. It acts as a specialized subject matter expert.");
 
     try {
+      // Step 1: Extract text CLIENT-SIDE using pdf.js (avoids Vercel 10s timeout)
+      let pdfText = "";
+      try {
+        pdfText = await parseAnyFile(pdfFile);
+      } catch (parseErr) {
+        console.error("Client-side PDF parse error:", parseErr);
+        alert("Failed to read this PDF. Please make sure it's a valid, text-based PDF.");
+        setIsUploadingPdf(false);
+        return;
+      }
+
+      // Strip image base64 data if any (not needed for agent creation)
+      pdfText = pdfText.replace(/\[IMAGE_BASE64:[^\]]+\]/g, "").trim();
+
+      if (!pdfText || pdfText.length < 50) {
+        alert("Could not extract text from this PDF. It may be a scanned image. Please upload a text-based PDF.");
+        setIsUploadingPdf(false);
+        return;
+      }
+
+      // Step 2: Send extracted text as JSON — server only does LLM call (fast)
       const res = await fetch("/api/agents", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newPdfAgentName.trim(),
+          description: "A custom AI agent trained entirely on your uploaded document. It acts as a specialized subject matter expert.",
+          pdfText: pdfText.substring(0, 12000), // cap at 12k chars
+        }),
       });
 
       if (!res.ok) {
         const errData = await res.json();
-        alert(errData.error || "Failed to upload PDF");
+        alert(errData.error || "Failed to create agent");
         setIsUploadingPdf(false);
         return;
       }
@@ -1270,7 +1292,7 @@ export default function Dashboard() {
       }
     } catch (err) {
       console.error("PDF upload error:", err);
-      alert("An unexpected error occurred during upload.");
+      alert("An unexpected error occurred. Please try again.");
     } finally {
       setIsUploadingPdf(false);
     }

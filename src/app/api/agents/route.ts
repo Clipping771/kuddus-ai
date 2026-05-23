@@ -61,51 +61,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found in db" }, { status: 404 });
     }
 
-    // 2. Parse FormData
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
-    const name = formData.get("name") as string;
-    const description = formData.get("description") as string;
+    // 2. Parse JSON body — text extraction is done client-side now
+    const { name, description, pdfText } = await req.json();
 
-    if (!file || !name) {
-      return NextResponse.json({ error: "File and Agent Name are required" }, { status: 400 });
+    if (!name || !pdfText) {
+      return NextResponse.json({ error: "Name and PDF text are required" }, { status: 400 });
     }
 
-    // 3. Extract text from PDF
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    let pdfText = "";
-    try {
-      // Import the lib file directly — pdf-parse's index.js has a bug where it reads a test
-      // file at module load time when module.parent is undefined (Next.js webpack behavior).
-      const pdfParse: (buf: Buffer) => Promise<{ text: string }> = require("pdf-parse/lib/pdf-parse.js");
-      const pdfData = await pdfParse(buffer);
-      pdfText = pdfData.text;
-    } catch (parseError) {
-      console.error("PDF Parsing Error:", parseError);
-      return NextResponse.json({ error: "Failed to parse PDF file. Please ensure it is a valid, text-based PDF." }, { status: 400 });
-    }
-
-    if (!pdfText.trim()) {
-      // Scanned/image-based PDF — OCR not available
-      console.log("[Agents] PDF text empty. This appears to be a scanned/image-based PDF.");
-      return NextResponse.json({
-        error: "This PDF appears to be a scanned image with no extractable text. Please upload a text-based PDF instead. OCR for scanned PDFs is currently not supported."
-      }, { status: 400 });
-    }
-
-    if (!pdfText.trim()) {
-      return NextResponse.json({ error: "Could not extract any text from this PDF, even with OCR." }, { status: 400 });
-    }
-
-    // 4. Send to AI to generate Expert System Prompt
+    // 3. Generate Expert System Prompt via LLM
     const groq = new Groq({
       apiKey: process.env.GROQ_API_KEY || "gsk_placeholder_compile_key_12345",
     });
 
-    // Truncate to ~12k chars (~3k tokens) — enough to capture core content
-    // while keeping the LLM call fast and within free-tier limits
     const truncatedText = pdfText.substring(0, 12000);
 
     const systemPromptMsg = `You are an expert AI prompt engineer. Based on the document text below, write a concise but powerful system prompt for an AI agent that is a subject matter expert on this document's topic.
@@ -123,9 +90,9 @@ Document Text:
 ${truncatedText}
 ====================`;
 
-    let generatedInstructions = truncatedText; // Fallback to truncated text
+    let generatedInstructions = truncatedText; // Fallback
 
-    // Try Groq first — use llama-3.1-8b-instant (fastest model, perfect for this task)
+    // Try Groq first — llama-3.1-8b-instant is fastest
     let groqSuccess = false;
     try {
       const completion = await groq.chat.completions.create({
@@ -138,48 +105,49 @@ ${truncatedText}
       if (generatedContent) {
         generatedInstructions = generatedContent;
         groqSuccess = true;
+        console.log("[Agents] Groq success");
       }
     } catch (groqError: any) {
       console.error("Groq Persona Generation Error:", groqError?.message || groqError);
     }
 
-    // Fallback to OpenRouter free models if Groq failed
+    // Fallback to OpenRouter
     if (!groqSuccess) {
-      const freeModels = [
-        "meta-llama/llama-3.3-70b-instruct:free",
-        "deepseek/deepseek-v4-flash:free",
-        "google/gemma-4-31b-it:free",
-      ];
       try {
         const { response: res } = await openrouterFetchWithFallback(
-          freeModels,
+          [
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "deepseek/deepseek-v4-flash:free",
+            "google/gemma-4-31b-it:free",
+          ],
           {
             messages: [{ role: "user", content: systemPromptMsg }],
             temperature: 0.3,
             max_tokens: 1000,
-          }
+          },
+          dbUser.id
         );
         const data = await res.json();
         const content = data.choices?.[0]?.message?.content?.trim();
         if (content) {
           generatedInstructions = content;
-          console.log(`[Agents] OpenRouter success`);
+          console.log("[Agents] OpenRouter success");
         }
       } catch (orErr: any) {
-        console.warn(`[Agents] OpenRouter fallback failed:`, orErr?.message);
-        // generatedInstructions stays as truncatedText fallback
+        console.warn("[Agents] OpenRouter fallback failed:", orErr?.message);
+        // Falls back to raw truncated text — agent still gets created
       }
     }
 
-    // 5. Insert into Supabase
+    // 4. Insert into Supabase
     const { data: newAgent, error: insertError } = await supabase
       .from("custom_agents")
       .insert({
         user_id: dbUser.id,
-        name: name,
+        name,
         description: description || "Custom PDF Agent",
         instructions: generatedInstructions,
-        icon: "FileText"
+        icon: "FileText",
       })
       .select("*")
       .single();
