@@ -478,22 +478,21 @@ Format your responses using clear headings, bold text, and bullet points. Be dir
     const isBrutallyHonest = !tonePrompt || tonePrompt.toLowerCase().includes("brutally honest") || tonePrompt.toLowerCase().includes("roast-heavy");
 
     if (!isBrutallyHonest && tonePrompt) {
-      // Strip ALL aggressive/sharp language from the core personality for non-brutal tones
-      let softPrompt = agentSystemPrompt
+      // Strip aggressive/sharp language from the core personality for non-brutal tones
+      agentSystemPrompt = agentSystemPrompt
         .replace(/no-nonsense/gi, "supportive")
         .replace(/cut through bullshit/gi, "provide clear guidance")
         .replace(/Sharp like morich 🌶️, confident, bold, and practical\./gi, "Warm, supportive, and practical.")
         .replace(/Extremely sharp, confident, slightly witty, no-nonsense/gi, "Warm, friendly, professional")
         .replace(/Never give generic advice\. Always push for sharpness and execution\./gi, "Always give thoughtful, well-structured advice.");
-
-      agentSystemPrompt = softPrompt;
     }
 
-    // 4c. Assemble Agent-specific prompt with tone at ABSOLUTE TOP
-    const toneBlock = tonePrompt ? `## 🔒 TONE INSTRUCTION (ABSOLUTE HIGHEST PRIORITY)
-Your emotional tone for this ENTIRE response MUST be exactly:
-**[ ${tonePrompt} ]**
-Completely adapt your personality, phrasing, vocabulary, and emotional stance to match this requested tone. This overrides any default personality or behaviors.\n\n` : "";
+    // 4c. Tone block — always at the VERY TOP of the final system prompt
+    // This ensures tone overrides everything, including agent instructions
+    const toneBlock = tonePrompt ? `## 🔒 TONE OVERRIDE (HIGHEST PRIORITY — FOLLOW EXACTLY)
+Your tone for this ENTIRE conversation MUST be: **${tonePrompt}**
+Adapt your personality, word choice, energy, and style to match this tone precisely.
+This overrides all other personality defaults below.\n\n---\n\n` : "";
 
     if (agentId) {
       let selectedAgentPrompt = AGENT_INSTRUCTIONS[agentId];
@@ -502,17 +501,19 @@ Completely adapt your personality, phrasing, vocabulary, and emotional stance to
       }
 
       if (selectedAgentPrompt) {
-        agentSystemPrompt = `${toneBlock}## STRICT PRIMARY ROLE
+        // toneBlock goes FIRST — before agent role, before everything
+        agentSystemPrompt = `${toneBlock}## YOUR SPECIALIST ROLE
 ${selectedAgentPrompt}
 
-## PERSONALITY & CORE IDENTITY
+## IDENTITY
 You are "${aiName}", acting as this specialized agent.
 
 ## BASE GUIDELINES
 ${agentSystemPrompt}`;
+      } else {
+        agentSystemPrompt = `${toneBlock}${agentSystemPrompt}`;
       }
-    } else if (toneBlock) {
-      // General Mode chat (no agent selected) — prepend tone
+    } else {
       agentSystemPrompt = `${toneBlock}${agentSystemPrompt}`;
     }
 
