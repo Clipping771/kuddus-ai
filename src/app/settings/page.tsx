@@ -15,6 +15,54 @@ interface ApiKey {
 
 type Tab = "openrouter" | "groq";
 
+// ── Moved outside component to prevent remount on every keystroke ──
+const AddModal = ({
+    show, onClose, value, onValue, label, onLabel, onAdd, adding,
+    placeholder, prefix, hint,
+}: {
+    show: boolean; onClose: () => void; value: string; onValue: (v: string) => void;
+    label: string; onLabel: (v: string) => void; onAdd: () => void; adding: boolean;
+    placeholder: string; prefix: string; hint: string;
+}) => {
+    if (!show) return null;
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-neutral-900 border border-white/10 rounded-2xl p-6 max-w-md w-full">
+                <h2 className="text-lg font-bold mb-5">Add New API Key</h2>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold mb-1.5 text-neutral-400 uppercase tracking-wider">Label (optional)</label>
+                        <input
+                            type="text"
+                            value={label}
+                            onChange={e => onLabel(e.target.value)}
+                            placeholder="e.g. Account 1"
+                            className="w-full px-4 py-2.5 rounded-xl bg-black border border-white/10 focus:border-white/30 outline-none text-sm transition-colors"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold mb-1.5 text-neutral-400 uppercase tracking-wider">API Key <span className="text-red-400">*</span></label>
+                        <input
+                            type="text"
+                            value={value}
+                            onChange={e => onValue(e.target.value)}
+                            placeholder={placeholder}
+                            className="w-full px-4 py-2.5 rounded-xl bg-black border border-white/10 focus:border-white/30 outline-none font-mono text-sm transition-colors"
+                        />
+                        <p className="text-[11px] text-neutral-500 mt-1.5">Must start with <code className="text-amber-400">{prefix}</code> — {hint}</p>
+                    </div>
+                </div>
+                <div className="flex gap-3 mt-6">
+                    <button onClick={onClose} disabled={adding} className="flex-1 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 font-bold text-sm transition-all">Cancel</button>
+                    <button onClick={onAdd} disabled={adding || !value.trim()} className="flex-1 py-2.5 rounded-xl bg-white hover:bg-neutral-100 disabled:bg-neutral-700 disabled:cursor-not-allowed text-black font-bold text-sm transition-all">
+                        {adding ? "Adding..." : "Add Key"}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function SettingsPage() {
     const { user } = useUser();
     const [activeTab, setActiveTab] = useState<Tab>("openrouter");
@@ -172,43 +220,6 @@ export default function SettingsPage() {
             </div>
         </div>
     );
-
-    const AddModal = ({
-        show, onClose, value, onValue, label, onLabel, onAdd, adding,
-        placeholder, prefix, hint,
-    }: {
-        show: boolean; onClose: () => void; value: string; onValue: (v: string) => void;
-        label: string; onLabel: (v: string) => void; onAdd: () => void; adding: boolean;
-        placeholder: string; prefix: string; hint: string;
-    }) => {
-        if (!show) return null;
-        return (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <div className="bg-neutral-900 border border-white/10 rounded-2xl p-6 max-w-md w-full">
-                    <h2 className="text-lg font-bold mb-5">Add New API Key</h2>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-bold mb-1.5 text-neutral-400 uppercase tracking-wider">Label (optional)</label>
-                            <input type="text" value={label} onChange={e => onLabel(e.target.value)}
-                                placeholder="e.g. Account 1" className="w-full px-4 py-2.5 rounded-xl bg-black border border-white/10 focus:border-white/30 outline-none text-sm transition-colors" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold mb-1.5 text-neutral-400 uppercase tracking-wider">API Key <span className="text-red-400">*</span></label>
-                            <input type="text" value={value} onChange={e => onValue(e.target.value)}
-                                placeholder={placeholder} className="w-full px-4 py-2.5 rounded-xl bg-black border border-white/10 focus:border-white/30 outline-none font-mono text-sm transition-colors" />
-                            <p className="text-[11px] text-neutral-500 mt-1.5">Must start with <code className="text-amber-400">{prefix}</code> — {hint}</p>
-                        </div>
-                    </div>
-                    <div className="flex gap-3 mt-6">
-                        <button onClick={onClose} disabled={adding} className="flex-1 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 font-bold text-sm transition-all">Cancel</button>
-                        <button onClick={onAdd} disabled={adding || !value.trim()} className="flex-1 py-2.5 rounded-xl bg-white hover:bg-neutral-100 disabled:bg-neutral-700 disabled:cursor-not-allowed text-black font-bold text-sm transition-all">
-                            {adding ? "Adding..." : "Add Key"}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    };
 
     return (
         <div className="min-h-screen bg-[#080808] text-white">
