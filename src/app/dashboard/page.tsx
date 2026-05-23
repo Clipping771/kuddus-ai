@@ -844,6 +844,8 @@ export default function Dashboard() {
   const [selectedToneId, setSelectedToneId] = useState<string>("brutally-honest");
   const [toneDropdownOpen, setToneDropdownOpen] = useState(false);
 
+  const [controlBarVisible, setControlBarVisible] = useState(true);
+
   const [selectedModelId, setSelectedModelId] = useState<string>("google/gemma-4-31b-it");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
 
@@ -2615,1461 +2617,1490 @@ export default function Dashboard() {
               >
                 <Key size={16} />
               </Link>
+
+              {/* Toggle control bar visibility */}
+              <button
+                type="button"
+                onClick={() => setControlBarVisible(v => !v)}
+                title={controlBarVisible ? "Hide controls" : "Show controls"}
+                className={`p-2 rounded-lg transition duration-200 ${themeMode === "black"
+                  ? controlBarVisible
+                    ? "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
+                    : "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900"
+                  : controlBarVisible
+                    ? "text-emerald-600 bg-emerald-50 hover:bg-emerald-100"
+                    : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
+                  }`}
+              >
+                <ChevronDown size={16} className={`transition-transform duration-300 ${controlBarVisible ? "" : "rotate-180"}`} />
+              </button>
+
               <UserButton />
             </div>
           </header>
 
           {/* Premium Sub-Header AI Engine Control Bar (Horizontal Pill Scroller) */}
-          <div className={`px-4 sm:px-6 py-2 border-b flex flex-col md:flex-row md:items-center justify-between gap-3 transition-colors duration-300 z-20 ${themeMode === "black" ? "border-white/5 bg-[#050505]/95" : "border-neutral-200 bg-white/95 shadow-sm"
-            }`}>
-            {/* Models Dropdown */}
-            <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-3 flex-1 min-w-0">
-              <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider whitespace-nowrap ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
-                }`}>Select AI Brain Model:</span>
+          <div className={`transition-all duration-300 ease-in-out overflow-hidden ${controlBarVisible ? "max-h-40 opacity-100" : "max-h-0 opacity-0 pointer-events-none"}`}>
+            <div className={`px-4 sm:px-6 py-2 border-b flex flex-col md:flex-row md:items-center justify-between gap-3 transition-colors duration-300 z-20 ${themeMode === "black" ? "border-white/5 bg-[#050505]/95" : "border-neutral-200 bg-white/95 shadow-sm"
+              }`}>
+              {/* Models Dropdown */}
+              <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-3 flex-1 min-w-0">
+                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider whitespace-nowrap ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
+                  }`}>Select AI Brain Model:</span>
 
-              <div className="relative flex-1 max-w-xs">
-                <button
-                  type="button"
-                  onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                  className={`w-full flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl border transition duration-300 font-bold shadow-sm text-xs ${themeMode === "black"
-                    ? "border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 text-neutral-300 hover:text-white hover:border-neutral-200/30"
-                    : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
-                    }`}
-                >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    {(() => {
-                      const activeModel = modelsList.find((m) => m.id === selectedModelId) || modelsList[0];
-                      return (
-                        <>
-                          <span className="text-sm flex-shrink-0">{activeModel?.icon || "✨"}</span>
-                          <span className="truncate font-extrabold">{activeModel?.name?.replace(" (Thinking)", "") || selectedModelId.split("/")[1]}</span>
-                          <span className={`text-[7px] px-1.5 py-0.5 rounded font-black tracking-normal flex-shrink-0 ${activeModel?.isFree
-                            ? (themeMode === "black" ? "bg-emerald-400/20 text-emerald-300" : "bg-emerald-100 text-emerald-700")
-                            : (themeMode === "black" ? "bg-amber-400/20 text-amber-300" : "bg-amber-100 text-amber-700")
-                            }`}>
-                            {activeModel?.badge || "Model"}
-                          </span>
-                        </>
-                      );
-                    })()}
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {modelsLoading && <span className="w-3 h-3 border border-neutral-500 border-t-transparent rounded-full animate-spin" />}
-                    <ChevronDown size={14} className={`text-neutral-500 transition duration-300 ${modelDropdownOpen ? "rotate-180 text-neutral-200" : ""}`} />
-                  </div>
-                </button>
-
-                {/* Model Dropdown List */}
-                {modelDropdownOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => { setModelDropdownOpen(false); setModelsSearch(""); }} />
-                    <div className={`absolute left-0 mt-2 rounded-xl border shadow-2xl z-50 overflow-hidden ${themeMode === "black"
-                      ? "border-neutral-800 bg-[#090909]/98 backdrop-blur-md"
-                      : "border-neutral-200 bg-white shadow-xl"
-                      }`} style={{ width: "340px" }}>
-
-                      {/* Header */}
-                      <div className={`px-3 py-2 border-b flex items-center justify-between ${themeMode === "black" ? "border-neutral-800" : "border-neutral-100"}`}>
-                        <span className={`text-[9px] font-black tracking-widest uppercase ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
-                          {modelsLoading ? "Loading models..." : `${modelsList.filter(m => !showFreeOnly || m.isFree).filter(m => !modelsSearch || m.name.toLowerCase().includes(modelsSearch.toLowerCase()) || m.id.toLowerCase().includes(modelsSearch.toLowerCase())).length} Models`}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setShowFreeOnly(!showFreeOnly)}
-                          className={`text-[8px] px-2 py-0.5 rounded-full font-black transition-all ${showFreeOnly
-                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                            : (themeMode === "black" ? "bg-white/5 text-neutral-500 border border-white/10" : "bg-neutral-100 text-neutral-500 border border-neutral-200")
-                            }`}
-                        >
-                          {showFreeOnly ? "✅ FREE ONLY" : "ALL MODELS"}
-                        </button>
-                      </div>
-
-                      {/* Search */}
-                      <div className={`px-3 py-2 border-b ${themeMode === "black" ? "border-neutral-800" : "border-neutral-100"}`}>
-                        <input
-                          type="text"
-                          value={modelsSearch}
-                          onChange={e => setModelsSearch(e.target.value)}
-                          placeholder="Search models..."
-                          autoFocus
-                          className={`w-full text-xs px-3 py-1.5 rounded-lg border outline-none font-medium ${themeMode === "black"
-                            ? "bg-neutral-900 border-neutral-700 text-neutral-200 placeholder-neutral-600"
-                            : "bg-neutral-50 border-neutral-200 text-neutral-800 placeholder-neutral-400"
-                            }`}
-                        />
-                      </div>
-
-                      {/* Model List */}
-                      <div className="max-h-[320px] overflow-y-auto p-1.5 space-y-0.5">
-                        {modelsList
-                          .filter(m => !showFreeOnly || m.isFree)
-                          .filter(m => !modelsSearch || m.name.toLowerCase().includes(modelsSearch.toLowerCase()) || m.id.toLowerCase().includes(modelsSearch.toLowerCase()))
-                          .map((model) => {
-                            const isSelected = selectedModelId === model.id;
-                            return (
-                              <button
-                                key={model.id}
-                                type="button"
-                                onClick={() => {
-                                  handleModelChange(model.id);
-                                  setModelDropdownOpen(false);
-                                  setModelsSearch("");
-                                }}
-                                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition duration-150 text-left ${isSelected
-                                  ? themeMode === "black"
-                                    ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-400"
-                                    : "bg-emerald-50 border border-emerald-200 text-emerald-700"
-                                  : themeMode === "black"
-                                    ? "text-neutral-400 hover:bg-white/5 hover:text-white"
-                                    : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
-                                  }`}
-                              >
-                                <span className="text-base flex-shrink-0">{model.icon}</span>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-[11px] font-extrabold uppercase tracking-wide truncate">{model.name.replace(" (Thinking)", "")}</span>
-                                    <span className={`text-[7px] px-1.5 py-0.5 rounded font-black flex-shrink-0 ${model.isFree
-                                      ? (isSelected ? "bg-emerald-400/30 text-emerald-200" : (themeMode === "black" ? "bg-emerald-500/10 text-emerald-500" : "bg-emerald-100 text-emerald-700"))
-                                      : (themeMode === "black" ? "bg-amber-500/10 text-amber-500" : "bg-amber-100 text-amber-700")
-                                      }`}>
-                                      {model.badge}
-                                    </span>
-                                  </div>
-                                  <div className={`text-[9px] truncate mt-0.5 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
-                                    {model.id}
-                                  </div>
-                                </div>
-                                {isSelected && <Check size={13} className={themeMode === "black" ? "text-emerald-400 flex-shrink-0" : "text-emerald-600 flex-shrink-0"} />}
-                              </button>
-                            );
-                          })}
-                        {modelsList.filter(m => !showFreeOnly || m.isFree).filter(m => !modelsSearch || m.name.toLowerCase().includes(modelsSearch.toLowerCase()) || m.id.toLowerCase().includes(modelsSearch.toLowerCase())).length === 0 && (
-                          <div className={`text-center py-6 text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
-                            No models found for &quot;{modelsSearch}&quot;
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Settings Row (Brain Trust + Board Size) */}
-            <div className="flex items-center justify-between md:justify-end gap-3 border-t border-dashed md:border-t-0 pt-1.5 md:pt-0 mt-0.5 md:mt-0 flex-shrink-0" style={{ borderColor: themeMode === "black" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)" }}>
-              <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider md:hidden ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
-                }`}>Cooperative Board:</span>
-
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleBrainTrustToggle(!isBrainTrust)}
-                  disabled={isLoading || isFileParsing}
-                  className={`flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all duration-300 ${isBrainTrust
-                    ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
-                    : themeMode === "black"
-                      ? "bg-neutral-900/40 border-neutral-800 text-neutral-500"
-                      : "bg-white border-neutral-200 text-neutral-500 shadow-sm"
-                    }`}
-                >
-                  <span>🧠 Board: {isBrainTrust ? "ON" : "OFF"}</span>
-                  <div className={`w-1.5 h-1.5 rounded-full ${isBrainTrust ? "bg-red-500 animate-pulse" : "bg-neutral-700"}`} />
-                </button>
-                {isBrainTrust && (
-                  <select
-                    value={boardSize}
-                    onChange={(e) => setBoardSize(Number(e.target.value))}
-                    className={`px-1.5 py-0.5 text-[8px] sm:text-[10px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${themeMode === "black"
-                      ? "bg-neutral-950 border-neutral-800 text-neutral-400"
-                      : "bg-white border-neutral-200 text-neutral-600 shadow-sm"
+                <div className="relative flex-1 max-w-xs">
+                  <button
+                    type="button"
+                    onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                    className={`w-full flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl border transition duration-300 font-bold shadow-sm text-xs ${themeMode === "black"
+                      ? "border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 text-neutral-300 hover:text-white hover:border-neutral-200/30"
+                      : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
                       }`}
                   >
-                    <option value={3}>3 Ag</option>
-                    <option value={5}>5 Ag</option>
-                    <option value={9}>9 Ag</option>
-                    <option value={16}>16 Ag</option>
-                  </select>
-                )}
-              </div>
-            </div>
-          </div>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {(() => {
+                        const activeModel = modelsList.find((m) => m.id === selectedModelId) || modelsList[0];
+                        return (
+                          <>
+                            <span className="text-sm flex-shrink-0">{activeModel?.icon || "✨"}</span>
+                            <span className="truncate font-extrabold">{activeModel?.name?.replace(" (Thinking)", "") || selectedModelId.split("/")[1]}</span>
+                            <span className={`text-[7px] px-1.5 py-0.5 rounded font-black tracking-normal flex-shrink-0 ${activeModel?.isFree
+                              ? (themeMode === "black" ? "bg-emerald-400/20 text-emerald-300" : "bg-emerald-100 text-emerald-700")
+                              : (themeMode === "black" ? "bg-amber-400/20 text-amber-300" : "bg-amber-100 text-amber-700")
+                              }`}>
+                              {activeModel?.badge || "Model"}
+                            </span>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {modelsLoading && <span className="w-3 h-3 border border-neutral-500 border-t-transparent rounded-full animate-spin" />}
+                      <ChevronDown size={14} className={`text-neutral-500 transition duration-300 ${modelDropdownOpen ? "rotate-180 text-neutral-200" : ""}`} />
+                    </div>
+                  </button>
 
-          {/* Scrollable Conversation area */}
-          <div
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8 space-y-6 relative"
-          >
-            {/* Custom Pull-to-Refresh Indicator */}
-            {pullDistance > 0 && (
-              <div
-                className="w-full flex items-center justify-center overflow-hidden transition-all duration-75 pointer-events-none sticky top-0 z-50"
-                style={{
-                  height: `${pullDistance}px`,
-                  opacity: Math.min(1, pullDistance / 50)
-                }}
-              >
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${themeMode === "black"
-                  ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
-                  : "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm"
-                  }`}>
-                  {isPullRefreshing ? (
-                    <span className="flex items-center gap-2">
-                      <span className="w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                      Refreshing...
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <span
-                        className="text-xs transition-transform duration-75"
-                        style={{ transform: `rotate(${pullDistance * 4.5}deg)` }}
-                      >
-                        🌶️
-                      </span>
-                      <span>{pullDistance > 65 ? "Release to Refresh" : "Pull to Refresh"}</span>
-                    </span>
+                  {/* Model Dropdown List */}
+                  {modelDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => { setModelDropdownOpen(false); setModelsSearch(""); }} />
+                      <div className={`absolute left-0 mt-2 rounded-xl border shadow-2xl z-50 overflow-hidden ${themeMode === "black"
+                        ? "border-neutral-800 bg-[#090909]/98 backdrop-blur-md"
+                        : "border-neutral-200 bg-white shadow-xl"
+                        }`} style={{ width: "340px" }}>
+
+                        {/* Header */}
+                        <div className={`px-3 py-2 border-b flex items-center justify-between ${themeMode === "black" ? "border-neutral-800" : "border-neutral-100"}`}>
+                          <span className={`text-[9px] font-black tracking-widest uppercase ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
+                            {modelsLoading ? "Loading models..." : `${modelsList.filter(m => !showFreeOnly || m.isFree).filter(m => !modelsSearch || m.name.toLowerCase().includes(modelsSearch.toLowerCase()) || m.id.toLowerCase().includes(modelsSearch.toLowerCase())).length} Models`}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowFreeOnly(!showFreeOnly)}
+                            className={`text-[8px] px-2 py-0.5 rounded-full font-black transition-all ${showFreeOnly
+                              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                              : (themeMode === "black" ? "bg-white/5 text-neutral-500 border border-white/10" : "bg-neutral-100 text-neutral-500 border border-neutral-200")
+                              }`}
+                          >
+                            {showFreeOnly ? "✅ FREE ONLY" : "ALL MODELS"}
+                          </button>
+                        </div>
+
+                        {/* Search */}
+                        <div className={`px-3 py-2 border-b ${themeMode === "black" ? "border-neutral-800" : "border-neutral-100"}`}>
+                          <input
+                            type="text"
+                            value={modelsSearch}
+                            onChange={e => setModelsSearch(e.target.value)}
+                            placeholder="Search models..."
+                            autoFocus
+                            className={`w-full text-xs px-3 py-1.5 rounded-lg border outline-none font-medium ${themeMode === "black"
+                              ? "bg-neutral-900 border-neutral-700 text-neutral-200 placeholder-neutral-600"
+                              : "bg-neutral-50 border-neutral-200 text-neutral-800 placeholder-neutral-400"
+                              }`}
+                          />
+                        </div>
+
+                        {/* Model List */}
+                        <div className="max-h-[320px] overflow-y-auto p-1.5 space-y-0.5">
+                          {modelsList
+                            .filter(m => !showFreeOnly || m.isFree)
+                            .filter(m => !modelsSearch || m.name.toLowerCase().includes(modelsSearch.toLowerCase()) || m.id.toLowerCase().includes(modelsSearch.toLowerCase()))
+                            .map((model) => {
+                              const isSelected = selectedModelId === model.id;
+                              return (
+                                <button
+                                  key={model.id}
+                                  type="button"
+                                  onClick={() => {
+                                    handleModelChange(model.id);
+                                    setModelDropdownOpen(false);
+                                    setModelsSearch("");
+                                  }}
+                                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition duration-150 text-left ${isSelected
+                                    ? themeMode === "black"
+                                      ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-400"
+                                      : "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                                    : themeMode === "black"
+                                      ? "text-neutral-400 hover:bg-white/5 hover:text-white"
+                                      : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
+                                    }`}
+                                >
+                                  <span className="text-base flex-shrink-0">{model.icon}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="text-[11px] font-extrabold uppercase tracking-wide truncate">{model.name.replace(" (Thinking)", "")}</span>
+                                      <span className={`text-[7px] px-1.5 py-0.5 rounded font-black flex-shrink-0 ${model.isFree
+                                        ? (isSelected ? "bg-emerald-400/30 text-emerald-200" : (themeMode === "black" ? "bg-emerald-500/10 text-emerald-500" : "bg-emerald-100 text-emerald-700"))
+                                        : (themeMode === "black" ? "bg-amber-500/10 text-amber-500" : "bg-amber-100 text-amber-700")
+                                        }`}>
+                                        {model.badge}
+                                      </span>
+                                    </div>
+                                    <div className={`text-[9px] truncate mt-0.5 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
+                                      {model.id}
+                                    </div>
+                                  </div>
+                                  {isSelected && <Check size={13} className={themeMode === "black" ? "text-emerald-400 flex-shrink-0" : "text-emerald-600 flex-shrink-0"} />}
+                                </button>
+                              );
+                            })}
+                          {modelsList.filter(m => !showFreeOnly || m.isFree).filter(m => !modelsSearch || m.name.toLowerCase().includes(modelsSearch.toLowerCase()) || m.id.toLowerCase().includes(modelsSearch.toLowerCase())).length === 0 && (
+                            <div className={`text-center py-6 text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
+                              No models found for &quot;{modelsSearch}&quot;
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
-            )}
-            {messages.length === 0 ? (
-              /* Welcome / Onboarding Screen */
-              <div className="max-w-2xl mx-auto pt-8 pb-12 flex flex-col items-center justify-center text-center relative">
-                <div className="relative group mb-8">
-                  {/* Dynamic concentric glowing halos */}
-                  <div className="absolute -inset-4 rounded-full opacity-40 blur-2xl group-hover:opacity-60 transition duration-1000 animate-pulse" style={{ background: `radial-gradient(circle, ${aiColor}88, transparent)` }}></div>
-                  <div className="absolute -inset-1 rounded-full opacity-70 blur-lg group-hover:opacity-95 transition duration-1000 animate-pulse" style={{ background: `radial-gradient(circle, ${aiColor}55, transparent)` }}></div>
-                  <div className={`relative p-2.5 rounded-full border shadow-[0_8px_32px_rgba(0,0,0,0.3)] flex items-center justify-center transition-colors duration-300 ${themeMode === "black" ? "bg-white/[0.02] border-white/[0.08]" : "bg-black/[0.01] border-neutral-200/50 shadow-[0_8px_32px_rgba(0,0,0,0.02)]"
-                    }`}>
-                    <AIAvatar size={80} className={`border ${themeMode === "black" ? "border-white/[0.08]" : "border-neutral-200"}`} />
-                  </div>
-                </div>
 
-                <h2 className={`text-2xl sm:text-3xl font-extrabold mt-4 tracking-tight transition-colors duration-300 ${themeMode === "black"
-                  ? "bg-clip-text text-transparent bg-gradient-to-b from-white via-neutral-100 to-neutral-400"
-                  : "text-neutral-900"
-                  }`}>
-                  {aiName}:{" "}
-                  <span className={`font-semibold transition-colors duration-300 ${themeMode === "black" ? "text-emerald-400" : "text-emerald-600"}`}>
-                    {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.banglaName || "Specialist"}
-                  </span>
-                </h2>
-                <p className={`mt-4 leading-relaxed max-w-xl text-xs sm:text-sm font-medium transition-colors duration-300 ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"
-                  }`}>
-                  {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.banglaDesc || "কুদ্দুস আলীর ২০+ বছরের বাস্তব বিজনেস অভিজ্ঞতার আলোকে যেকোনো আইডিয়া যাচাই করুন।"}
-                </p>
+              {/* Settings Row (Brain Trust + Board Size) */}
+              <div className="flex items-center justify-between md:justify-end gap-3 border-t border-dashed md:border-t-0 pt-1.5 md:pt-0 mt-0.5 md:mt-0 flex-shrink-0" style={{ borderColor: themeMode === "black" ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.06)" }}>
+                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider md:hidden ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
+                  }`}>Cooperative Board:</span>
 
-                {/* Warning box */}
-                <div className={`mt-6 w-full p-4 rounded-xl border text-xs flex items-center gap-2.5 justify-center shadow-sm transition duration-300 ${themeMode === "black"
-                  ? "border-amber-500/25 bg-amber-500/5 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.04)]"
-                  : "border-amber-200 bg-amber-500/10 text-amber-955 shadow-[0_0_15px_rgba(245,158,11,0.05)] font-semibold"
-                  }`}>
-                  <Sparkles size={14} className={`flex-shrink-0 animate-pulse ${themeMode === "black" ? "text-neutral-200" : "text-amber-700"}`} />
-                  <span>● <strong>Operational Advisor Warning:</strong> Please specify your <strong>target country and primary market</strong> first for accurate feedback.</span>
-                </div>
-
-                {/* Prompt Suggestions Grid */}
-                <div className="mt-10 w-full text-left">
-                  <div className={`flex items-center gap-2.5 mb-4 border-b pb-3 ${themeMode === "black" ? "border-neutral-900" : "border-neutral-200"
-                    }`}>
-                    <span className={`text-xs font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-200" : "text-neutral-850"
-                      }`}>
-                      Select a Case / Consultation Prompt
-                    </span>
-
-                    <div className="relative flex items-center justify-center">
-                      {/* Concentric glowing ping wave */}
-                      {!isGeneratingPrompts && (
-                        <span className="absolute inline-flex h-6 w-6 rounded-full bg-amber-500/40 animate-ping pointer-events-none"></span>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={handleGeneratePrompts}
-                        disabled={isGeneratingPrompts}
-                        title="Generate New AI Consultation Cases"
-                        className={`relative z-10 p-2 rounded-full border transition-all duration-300 hover:scale-115 active:scale-90 ${isGeneratingPrompts
-                          ? "opacity-50 cursor-not-allowed"
-                          : themeMode === "black"
-                            ? "bg-amber-500/20 border-amber-500 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.35)] hover:shadow-[0_0_22px_rgba(245,158,11,0.6)] hover:border-amber-400"
-                            : "bg-amber-500/15 border-amber-500/50 text-amber-700 shadow-[0_0_12px_rgba(245,158,11,0.2)] hover:shadow-[0_0_18px_rgba(245,158,11,0.45)] hover:border-amber-600"
-                          }`}
-                      >
-                        {isGeneratingPrompts ? (
-                          <Loader2 size={13} className="animate-spin text-amber-500" />
-                        ) : (
-                          <Sparkles size={13} className="text-amber-500" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {isGeneratingPrompts && (allAgents.find(a => a.id === selectedAgentId)?.isCustom) && !customSuggestions[selectedAgentId] ? (
-                      [1, 2, 3, 4].map(i => (
-                        <div key={i} className={`p-5 rounded-2xl border animate-pulse ${themeMode === "black" ? "border-neutral-800 bg-[#0c0c0c]/80" : "border-neutral-200 bg-white"}`}>
-                          <div className={`h-3 w-20 rounded mb-3 ${themeMode === "black" ? "bg-neutral-800" : "bg-neutral-200"}`}></div>
-                          <div className={`h-4 w-3/4 rounded mb-2 ${themeMode === "black" ? "bg-neutral-800" : "bg-neutral-200"}`}></div>
-                          <div className={`h-3 w-full rounded mb-1 ${themeMode === "black" ? "bg-neutral-800" : "bg-neutral-200"}`}></div>
-                          <div className={`h-3 w-2/3 rounded ${themeMode === "black" ? "bg-neutral-800" : "bg-neutral-200"}`}></div>
-                        </div>
-                      ))
-                    ) : (customSuggestions[selectedAgentId] || ((allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.suggestions || [])).map((suggestText, sIdx) => {
-                      const isObj = typeof suggestText === "object" && suggestText !== null;
-                      const cardTitle = isObj ? (suggestText as any).title : "Consultation Scenario";
-                      const cardPrompt = isObj ? (suggestText as any).prompt : String(suggestText);
-                      const cardTag = isObj ? (suggestText as any).tag : "Strategy";
-                      const cardLevel = isObj ? (suggestText as any).level : "Intermediate";
-
-                      const levelColors: Record<string, string> = {
-                        "Beginner": "bg-green-500/10 text-green-400 border-green-500/20",
-                        "Intermediate": "bg-blue-500/10 text-blue-400 border-blue-500/20",
-                        "Advanced": "bg-purple-500/10 text-purple-400 border-purple-500/20",
-                        "Expert": "bg-rose-500/10 text-rose-400 border-rose-500/20",
-                      };
-
-                      return (
-                        <button
-                          key={sIdx}
-                          onClick={() => handleQuickSuggest(cardPrompt)}
-                          className={`relative p-5 text-left rounded-2xl border transition-all duration-300 text-xs leading-relaxed hover:scale-[1.01] hover:-translate-y-0.5 active:scale-[0.99] flex flex-col justify-between gap-4 group overflow-hidden ${themeMode === "black"
-                            ? "border-neutral-800 bg-[#0c0c0c]/80 hover:border-amber-500/40 text-neutral-300 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
-                            : "border-neutral-250 hover:border-amber-500/35 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:shadow-lg"
-                            }`}
-                        >
-                          <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-amber-500/10 transition-all duration-500"></div>
-
-                          <div className="flex items-center justify-between w-full relative z-10">
-                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wide ${themeMode === "black" ? "bg-neutral-950 border-neutral-850 text-neutral-400" : "bg-neutral-50 border-neutral-200 text-neutral-550"
-                              }`}>
-                              🏷️ {cardTag}
-                            </span>
-                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wider ${levelColors[cardLevel] || "bg-blue-500/10 text-blue-400 border-blue-500/20"}`}>
-                              {cardLevel}
-                            </span>
-                          </div>
-
-                          <div className="relative z-10 space-y-1.5 flex-1">
-                            <h4 className={`text-[12px] font-black tracking-wide ${themeMode === "black" ? "text-neutral-100 group-hover:text-amber-400" : "text-neutral-950 group-hover:text-amber-850"
-                              } transition-colors duration-300`}>
-                              {cardTitle}
-                            </h4>
-                            <p className={`text-[11px] leading-relaxed line-clamp-3 ${themeMode === "black" ? "text-neutral-400 group-hover:text-neutral-300" : "text-neutral-500 group-hover:text-neutral-755"
-                              } transition-colors duration-350`}>
-                              &ldquo;{cardPrompt}&rdquo;
-                            </p>
-                          </div>
-
-                          <div className={`text-[9px] font-black tracking-widest uppercase flex items-center gap-1.5 transition-all duration-300 group-hover:text-amber-400 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"
-                            }`}>
-                            <span>Activate Case</span>
-                            <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Add Custom Suggestion Prompt Widget */}
-                  <div className={`mt-5 p-3 rounded-xl border flex items-center gap-2 ${themeMode === "black"
-                    ? "bg-neutral-950/40 border-neutral-900"
-                    : "bg-[#F8FAFC] border-neutral-200"
-                    }`}>
-                    <input
-                      type="text"
-                      placeholder="Type and add a custom case prompt to this list dynamically..."
-                      value={customPromptText}
-                      onChange={(e) => setCustomPromptText(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddCustomPrompt();
-                        }
-                      }}
-                      className={`flex-1 text-xs bg-transparent border-0 outline-none focus:ring-0 px-2 ${themeMode === "black" ? "text-neutral-200 placeholder-neutral-700" : "text-neutral-800 placeholder-neutral-400"
-                        }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddCustomPrompt}
-                      disabled={!customPromptText.trim()}
-                      className={`text-[10px] font-extrabold px-3 py-2 rounded-lg border transition-all duration-300 uppercase tracking-wider ${themeMode === "black"
-                        ? "bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:text-neutral-100 disabled:opacity-40"
-                        : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50 hover:text-neutral-800 disabled:opacity-40"
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleBrainTrustToggle(!isBrainTrust)}
+                    disabled={isLoading || isFileParsing}
+                    className={`flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all duration-300 ${isBrainTrust
+                      ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                      : themeMode === "black"
+                        ? "bg-neutral-900/40 border-neutral-800 text-neutral-500"
+                        : "bg-white border-neutral-200 text-neutral-500 shadow-sm"
+                      }`}
+                  >
+                    <span>🧠 Board: {isBrainTrust ? "ON" : "OFF"}</span>
+                    <div className={`w-1.5 h-1.5 rounded-full ${isBrainTrust ? "bg-red-500 animate-pulse" : "bg-neutral-700"}`} />
+                  </button>
+                  {isBrainTrust && (
+                    <select
+                      value={boardSize}
+                      onChange={(e) => setBoardSize(Number(e.target.value))}
+                      className={`px-1.5 py-0.5 text-[8px] sm:text-[10px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${themeMode === "black"
+                        ? "bg-neutral-950 border-neutral-800 text-neutral-400"
+                        : "bg-white border-neutral-200 text-neutral-600 shadow-sm"
                         }`}
                     >
-                      ➕ Add Case
-                    </button>
-                  </div>
+                      <option value={3}>3 Ag</option>
+                      <option value={5}>5 Ag</option>
+                      <option value={9}>9 Ag</option>
+                      <option value={16}>16 Ag</option>
+                    </select>
+                  )}
                 </div>
               </div>
-            ) : (
-              /* Historical & Streamed Messages */
-              <div className="max-w-3xl mx-auto w-full space-y-8 pb-12 overflow-x-hidden">
-                {messages.map((msg, index) => {
-                  // If it is AI's response
-                  if (msg.role === "assistant") {
-                    return (
-                      <div key={index} className="flex gap-2 sm:gap-4 items-start animate-fade-in">
-                        <AIAvatar size={36} className={`flex-shrink-0 border ${themeMode === "black" ? "border-white/10" : "border-neutral-200"}`} />
-                        <div className="flex flex-col gap-1.5 flex-1 min-w-0 overflow-hidden group/msg relative">
-                          <span className="text-xs font-black tracking-wider flex items-center gap-1.5" style={{ color: aiColor }}>
-                            {aiName.toUpperCase()}
-                          </span>
-                          <div className={`border rounded-2xl rounded-tl-none px-4 sm:px-6 py-4 sm:py-5 leading-relaxed text-sm shadow-md backdrop-blur-md prose prose-sm max-w-full w-full overflow-hidden relative transition-colors duration-300 ${themeMode === "black"
-                            ? "bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border-white/5 text-neutral-200 prose-invert"
-                            : "bg-gradient-to-br from-[#FFFFFF] to-[#F8FAFC] border-neutral-200/80 text-neutral-800 shadow-md prose-neutral"
-                            }`}>
-                            {msg.content ? (() => {
-                              const { thought, content: finalContent } = parseThoughtAndContent(msg.content);
-                              const isMessageLast = index === messages.length - 1;
-                              const showSpinner = isMessageLast && isLoading && !finalContent;
+            </div>
+          </div>{/* end control bar inner */}
+      </div>{/* end control bar wrapper */}
 
-                              // If streaming has finished but finalContent is empty, fallback to show thoughts so it is not blank
-                              const contentToRender = finalContent || ((!isLoading || !isMessageLast) ? thought : "");
+      {/* Scrollable Conversation area */}
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8 space-y-6 relative"
+      >
+        {/* Custom Pull-to-Refresh Indicator */}
+        {pullDistance > 0 && (
+          <div
+            className="w-full flex items-center justify-center overflow-hidden transition-all duration-75 pointer-events-none sticky top-0 z-50"
+            style={{
+              height: `${pullDistance}px`,
+              opacity: Math.min(1, pullDistance / 50)
+            }}
+          >
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${themeMode === "black"
+              ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+              : "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm"
+              }`}>
+              {isPullRefreshing ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                  Refreshing...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <span
+                    className="text-xs transition-transform duration-75"
+                    style={{ transform: `rotate(${pullDistance * 4.5}deg)` }}
+                  >
+                    🌶️
+                  </span>
+                  <span>{pullDistance > 65 ? "Release to Refresh" : "Pull to Refresh"}</span>
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        {messages.length === 0 ? (
+          /* Welcome / Onboarding Screen */
+          <div className="max-w-2xl mx-auto pt-8 pb-12 flex flex-col items-center justify-center text-center relative">
+            <div className="relative group mb-8">
+              {/* Dynamic concentric glowing halos */}
+              <div className="absolute -inset-4 rounded-full opacity-40 blur-2xl group-hover:opacity-60 transition duration-1000 animate-pulse" style={{ background: `radial-gradient(circle, ${aiColor}88, transparent)` }}></div>
+              <div className="absolute -inset-1 rounded-full opacity-70 blur-lg group-hover:opacity-95 transition duration-1000 animate-pulse" style={{ background: `radial-gradient(circle, ${aiColor}55, transparent)` }}></div>
+              <div className={`relative p-2.5 rounded-full border shadow-[0_8px_32px_rgba(0,0,0,0.3)] flex items-center justify-center transition-colors duration-300 ${themeMode === "black" ? "bg-white/[0.02] border-white/[0.08]" : "bg-black/[0.01] border-neutral-200/50 shadow-[0_8px_32px_rgba(0,0,0,0.02)]"
+                }`}>
+                <AIAvatar size={80} className={`border ${themeMode === "black" ? "border-white/[0.08]" : "border-neutral-200"}`} />
+              </div>
+            </div>
 
+            <h2 className={`text-2xl sm:text-3xl font-extrabold mt-4 tracking-tight transition-colors duration-300 ${themeMode === "black"
+              ? "bg-clip-text text-transparent bg-gradient-to-b from-white via-neutral-100 to-neutral-400"
+              : "text-neutral-900"
+              }`}>
+              {aiName}:{" "}
+              <span className={`font-semibold transition-colors duration-300 ${themeMode === "black" ? "text-emerald-400" : "text-emerald-600"}`}>
+                {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.banglaName || "Specialist"}
+              </span>
+            </h2>
+            <p className={`mt-4 leading-relaxed max-w-xl text-xs sm:text-sm font-medium transition-colors duration-300 ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"
+              }`}>
+              {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.banglaDesc || "কুদ্দুস আলীর ২০+ বছরের বাস্তব বিজনেস অভিজ্ঞতার আলোকে যেকোনো আইডিয়া যাচাই করুন।"}
+            </p>
+
+            {/* Warning box */}
+            <div className={`mt-6 w-full p-4 rounded-xl border text-xs flex items-center gap-2.5 justify-center shadow-sm transition duration-300 ${themeMode === "black"
+              ? "border-amber-500/25 bg-amber-500/5 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.04)]"
+              : "border-amber-200 bg-amber-500/10 text-amber-955 shadow-[0_0_15px_rgba(245,158,11,0.05)] font-semibold"
+              }`}>
+              <Sparkles size={14} className={`flex-shrink-0 animate-pulse ${themeMode === "black" ? "text-neutral-200" : "text-amber-700"}`} />
+              <span>● <strong>Operational Advisor Warning:</strong> Please specify your <strong>target country and primary market</strong> first for accurate feedback.</span>
+            </div>
+
+            {/* Prompt Suggestions Grid */}
+            <div className="mt-10 w-full text-left">
+              <div className={`flex items-center gap-2.5 mb-4 border-b pb-3 ${themeMode === "black" ? "border-neutral-900" : "border-neutral-200"
+                }`}>
+                <span className={`text-xs font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-200" : "text-neutral-850"
+                  }`}>
+                  Select a Case / Consultation Prompt
+                </span>
+
+                <div className="relative flex items-center justify-center">
+                  {/* Concentric glowing ping wave */}
+                  {!isGeneratingPrompts && (
+                    <span className="absolute inline-flex h-6 w-6 rounded-full bg-amber-500/40 animate-ping pointer-events-none"></span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleGeneratePrompts}
+                    disabled={isGeneratingPrompts}
+                    title="Generate New AI Consultation Cases"
+                    className={`relative z-10 p-2 rounded-full border transition-all duration-300 hover:scale-115 active:scale-90 ${isGeneratingPrompts
+                      ? "opacity-50 cursor-not-allowed"
+                      : themeMode === "black"
+                        ? "bg-amber-500/20 border-amber-500 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.35)] hover:shadow-[0_0_22px_rgba(245,158,11,0.6)] hover:border-amber-400"
+                        : "bg-amber-500/15 border-amber-500/50 text-amber-700 shadow-[0_0_12px_rgba(245,158,11,0.2)] hover:shadow-[0_0_18px_rgba(245,158,11,0.45)] hover:border-amber-600"
+                      }`}
+                  >
+                    {isGeneratingPrompts ? (
+                      <Loader2 size={13} className="animate-spin text-amber-500" />
+                    ) : (
+                      <Sparkles size={13} className="text-amber-500" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {isGeneratingPrompts && (allAgents.find(a => a.id === selectedAgentId)?.isCustom) && !customSuggestions[selectedAgentId] ? (
+                  [1, 2, 3, 4].map(i => (
+                    <div key={i} className={`p-5 rounded-2xl border animate-pulse ${themeMode === "black" ? "border-neutral-800 bg-[#0c0c0c]/80" : "border-neutral-200 bg-white"}`}>
+                      <div className={`h-3 w-20 rounded mb-3 ${themeMode === "black" ? "bg-neutral-800" : "bg-neutral-200"}`}></div>
+                      <div className={`h-4 w-3/4 rounded mb-2 ${themeMode === "black" ? "bg-neutral-800" : "bg-neutral-200"}`}></div>
+                      <div className={`h-3 w-full rounded mb-1 ${themeMode === "black" ? "bg-neutral-800" : "bg-neutral-200"}`}></div>
+                      <div className={`h-3 w-2/3 rounded ${themeMode === "black" ? "bg-neutral-800" : "bg-neutral-200"}`}></div>
+                    </div>
+                  ))
+                ) : (customSuggestions[selectedAgentId] || ((allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.suggestions || [])).map((suggestText, sIdx) => {
+                  const isObj = typeof suggestText === "object" && suggestText !== null;
+                  const cardTitle = isObj ? (suggestText as any).title : "Consultation Scenario";
+                  const cardPrompt = isObj ? (suggestText as any).prompt : String(suggestText);
+                  const cardTag = isObj ? (suggestText as any).tag : "Strategy";
+                  const cardLevel = isObj ? (suggestText as any).level : "Intermediate";
+
+                  const levelColors: Record<string, string> = {
+                    "Beginner": "bg-green-500/10 text-green-400 border-green-500/20",
+                    "Intermediate": "bg-blue-500/10 text-blue-400 border-blue-500/20",
+                    "Advanced": "bg-purple-500/10 text-purple-400 border-purple-500/20",
+                    "Expert": "bg-rose-500/10 text-rose-400 border-rose-500/20",
+                  };
+
+                  return (
+                    <button
+                      key={sIdx}
+                      onClick={() => handleQuickSuggest(cardPrompt)}
+                      className={`relative p-5 text-left rounded-2xl border transition-all duration-300 text-xs leading-relaxed hover:scale-[1.01] hover:-translate-y-0.5 active:scale-[0.99] flex flex-col justify-between gap-4 group overflow-hidden ${themeMode === "black"
+                        ? "border-neutral-800 bg-[#0c0c0c]/80 hover:border-amber-500/40 text-neutral-300 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
+                        : "border-neutral-250 hover:border-amber-500/35 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:shadow-lg"
+                        }`}
+                    >
+                      <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-amber-500/10 transition-all duration-500"></div>
+
+                      <div className="flex items-center justify-between w-full relative z-10">
+                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wide ${themeMode === "black" ? "bg-neutral-950 border-neutral-850 text-neutral-400" : "bg-neutral-50 border-neutral-200 text-neutral-550"
+                          }`}>
+                          🏷️ {cardTag}
+                        </span>
+                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wider ${levelColors[cardLevel] || "bg-blue-500/10 text-blue-400 border-blue-500/20"}`}>
+                          {cardLevel}
+                        </span>
+                      </div>
+
+                      <div className="relative z-10 space-y-1.5 flex-1">
+                        <h4 className={`text-[12px] font-black tracking-wide ${themeMode === "black" ? "text-neutral-100 group-hover:text-amber-400" : "text-neutral-950 group-hover:text-amber-850"
+                          } transition-colors duration-300`}>
+                          {cardTitle}
+                        </h4>
+                        <p className={`text-[11px] leading-relaxed line-clamp-3 ${themeMode === "black" ? "text-neutral-400 group-hover:text-neutral-300" : "text-neutral-500 group-hover:text-neutral-755"
+                          } transition-colors duration-350`}>
+                          &ldquo;{cardPrompt}&rdquo;
+                        </p>
+                      </div>
+
+                      <div className={`text-[9px] font-black tracking-widest uppercase flex items-center gap-1.5 transition-all duration-300 group-hover:text-amber-400 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"
+                        }`}>
+                        <span>Activate Case</span>
+                        <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Add Custom Suggestion Prompt Widget */}
+              <div className={`mt-5 p-3 rounded-xl border flex items-center gap-2 ${themeMode === "black"
+                ? "bg-neutral-950/40 border-neutral-900"
+                : "bg-[#F8FAFC] border-neutral-200"
+                }`}>
+                <input
+                  type="text"
+                  placeholder="Type and add a custom case prompt to this list dynamically..."
+                  value={customPromptText}
+                  onChange={(e) => setCustomPromptText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddCustomPrompt();
+                    }
+                  }}
+                  className={`flex-1 text-xs bg-transparent border-0 outline-none focus:ring-0 px-2 ${themeMode === "black" ? "text-neutral-200 placeholder-neutral-700" : "text-neutral-800 placeholder-neutral-400"
+                    }`}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCustomPrompt}
+                  disabled={!customPromptText.trim()}
+                  className={`text-[10px] font-extrabold px-3 py-2 rounded-lg border transition-all duration-300 uppercase tracking-wider ${themeMode === "black"
+                    ? "bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:text-neutral-100 disabled:opacity-40"
+                    : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50 hover:text-neutral-800 disabled:opacity-40"
+                    }`}
+                >
+                  ➕ Add Case
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Historical & Streamed Messages */
+          <div className="max-w-3xl mx-auto w-full space-y-8 pb-12 overflow-x-hidden">
+            {messages.map((msg, index) => {
+              // If it is AI's response
+              if (msg.role === "assistant") {
+                return (
+                  <div key={index} className="flex gap-2 sm:gap-4 items-start animate-fade-in">
+                    <AIAvatar size={36} className={`flex-shrink-0 border ${themeMode === "black" ? "border-white/10" : "border-neutral-200"}`} />
+                    <div className="flex flex-col gap-1.5 flex-1 min-w-0 overflow-hidden group/msg relative">
+                      <span className="text-xs font-black tracking-wider flex items-center gap-1.5" style={{ color: aiColor }}>
+                        {aiName.toUpperCase()}
+                      </span>
+                      <div className={`border rounded-2xl rounded-tl-none px-4 sm:px-6 py-4 sm:py-5 leading-relaxed text-sm shadow-md backdrop-blur-md prose prose-sm max-w-full w-full overflow-hidden relative transition-colors duration-300 ${themeMode === "black"
+                        ? "bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border-white/5 text-neutral-200 prose-invert"
+                        : "bg-gradient-to-br from-[#FFFFFF] to-[#F8FAFC] border-neutral-200/80 text-neutral-800 shadow-md prose-neutral"
+                        }`}>
+                        {msg.content ? (() => {
+                          const { thought, content: finalContent } = parseThoughtAndContent(msg.content);
+                          const isMessageLast = index === messages.length - 1;
+                          const showSpinner = isMessageLast && isLoading && !finalContent;
+
+                          // If streaming has finished but finalContent is empty, fallback to show thoughts so it is not blank
+                          const contentToRender = finalContent || ((!isLoading || !isMessageLast) ? thought : "");
+
+                          return (
+                            <div className="w-full max-w-full overflow-hidden break-words [&_*]:max-w-full [&_pre]:overflow-x-auto [&_code]:break-all [&_p]:break-words [&_li]:break-words">
+                              {showSpinner ? (
+                                // Show a clean, premium spinner while generating, hiding raw internal thoughts
+                                <div className="flex items-center gap-2.5 py-2.5">
+                                  <Loader2 size={16} className="animate-spin text-amber-500" />
+                                  <span className={`text-xs font-black tracking-wider uppercase animate-pulse ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"
+                                    }`}>
+                                    Specialist is preparing response...
+                                  </span>
+                                </div>
+                              ) : (
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  components={{
+                                    blockquote({ node, children, ...props }) {
+                                      return (
+                                        <blockquote
+                                          className={`relative my-6 px-5 py-4 rounded-xl border-l-[3px] ${themeMode === "black"
+                                            ? "bg-[#0a0a0a]/80 border-amber-500 text-amber-300 shadow-[0_0_25px_rgba(245,158,11,0.15)] ring-1 ring-white/5"
+                                            : "bg-amber-500/5 border-amber-500 text-amber-900 shadow-md ring-1 ring-black/5"
+                                            } font-mono text-[11px] sm:text-xs tracking-wide leading-relaxed overflow-hidden backdrop-blur-md [&>p]:m-0 [&>p]:mb-1.5 last:[&>p]:mb-0`}
+                                          {...props}
+                                        >
+                                          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-amber-500/10 to-transparent pointer-events-none rounded-r-xl"></div>
+                                          <div className="absolute -left-[3px] top-1/4 w-[3px] h-1/2 bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.8)] animate-pulse rounded-r"></div>
+                                          <div className="relative z-10">
+                                            {children}
+                                          </div>
+                                        </blockquote>
+                                      );
+                                    },
+                                    code({ node, className, children, ...props }) {
+                                      const match = /language-(\w+)/.exec(className || "");
+                                      const lang = match ? match[1] : "";
+                                      const codeString = String(children).replace(/\n$/, "");
+
+                                      if (lang === "mermaid") {
+                                        return <MermaidDiagram chart={codeString} />;
+                                      }
+                                      if (lang === "pdf") {
+                                        return <PDFArtifactCard content={codeString} />;
+                                      }
+                                      if (lang === "word" || lang === "docx") {
+                                        return <WordArtifactCard content={codeString} />;
+                                      }
+                                      if (lang === "excel" || lang === "csv") {
+                                        return <ExcelArtifactCard content={codeString} />;
+                                      }
+
+                                      return (
+                                        <code className={className} {...props}>
+                                          {children}
+                                        </code>
+                                      );
+                                    }
+                                  }}
+                                >
+                                  {cleanArrows(contentToRender)}
+                                </ReactMarkdown>
+                              )}
+                            </div>
+                          );
+                        })() : (
+                          <div className="flex gap-1 items-center py-2">
+                            <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:-0.3s] ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
+                            <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:-0.15s] ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
+                            <span className={`w-2 h-2 rounded-full animate-bounce ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
+                          </div>
+                        )}
+                      </div>
+                      {msg.content && (
+                        <div className="flex justify-start items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(msg.content, `msg-${index}`)}
+                            className={`opacity-75 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded-md border flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 shadow-inner ${themeMode === "black"
+                              ? "bg-[#0F0F0F] border-white/5 text-neutral-400 hover:text-neutral-200"
+                              : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 shadow-sm"
+                              }`}
+                            title="Copy response"
+                          >
+                            {copiedId === `msg-${index}` ? (
+                              <>
+                                <Check size={11} className="text-emerald-400" />
+                                <span className="text-emerald-400 font-extrabold">COPIED</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={11} />
+                                <span>COPY RESPONSE</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              // User's message
+              const base64GlobalRegex = /\[IMAGE_BASE64:(data:image\/[^\]]+)\]/g;
+              const imageUrls: string[] = [];
+              if (msg.content) {
+                let match;
+                base64GlobalRegex.lastIndex = 0;
+                while ((match = base64GlobalRegex.exec(msg.content)) !== null) {
+                  imageUrls.push(match[1]);
+                }
+              }
+
+              // Beautifully clean raw message contents to hide internal developer/OCR debug tags from user screen
+              let cleanContent = "";
+              if (msg.content) {
+                const withoutBase64 = msg.content.replace(base64GlobalRegex, "").trim();
+
+                // Bulletproof case-insensitive match for the User Prompt tag
+                const promptMatch = withoutBase64.match(/User Prompt:\s*([\s\S]*)$/i);
+                if (promptMatch) {
+                  const extractedPrompt = promptMatch[1].trim();
+                  if (extractedPrompt === "Please analyze the extracted text above based on your specialized agent role." ||
+                    extractedPrompt === "Please analyze the extracted documents above based on your specialized agent role.") {
+                    const docMatches = withoutBase64.match(/\[ATTACHED DOCUMENT:\s*([^\]]+)\]/gi);
+                    const count = docMatches ? docMatches.length : 1;
+                    cleanContent = `📎 ${count} Document(s) analyzed`;
+                  } else {
+                    cleanContent = extractedPrompt;
+                  }
+                } else {
+                  // Fallback to strip other internal brackets if they exist
+                  cleanContent = withoutBase64;
+                }
+              }
+
+              // Parse attached documents dynamically to support direct client-side downloads!
+              const docMatches: { name: string; content: string }[] = [];
+              if (msg.content) {
+                const docRegex = /\[ATTACHED DOCUMENT:\s*([^\]]+)\]\s*\n\`\`\`([\s\S]*?)\`\`\`/gi;
+                let docM;
+                docRegex.lastIndex = 0;
+                while ((docM = docRegex.exec(msg.content)) !== null) {
+                  docMatches.push({
+                    name: docM[1],
+                    content: docM[2].trim()
+                  });
+                }
+              }
+
+              return (
+                <div key={index} className="flex gap-4 items-start justify-end animate-fade-in font-sans">
+                  <div className="flex flex-col gap-1.5 items-end max-w-[80%] group/msg relative">
+                    <span className={`text-[9px] font-black tracking-widest uppercase flex items-center gap-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-450"}`}>
+                      YOUR BUSINESS INQUIRY
+                      {themeMode === "black" && <span className="w-1 h-1 bg-emerald-400 rounded-full animate-ping" />}
+                    </span>
+                    <div className={`border rounded-2xl rounded-tr-none px-5 py-4 text-sm flex flex-col items-end relative transition-all duration-300 shadow-lg ${themeMode === "black"
+                      ? "bg-emerald-950/15 border-emerald-500/15 text-emerald-50/95"
+                      : "bg-amber-500/10 border-amber-500/20 text-neutral-800 shadow-md"
+                      }`}>
+                      {imageUrls.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3 max-w-full justify-end">
+                          {imageUrls.map((url, imgIdx) => (
+                            <div key={imgIdx} className={`relative rounded-xl overflow-hidden border group shadow-md max-w-[180px] sm:max-w-[220px] ${themeMode === "black" ? "border-white/10" : "border-neutral-200"
+                              }`}>
+                              <NextImage
+                                src={url}
+                                alt={`Uploaded visual context ${imgIdx + 1}`}
+                                width={220}
+                                height={160}
+                                className="max-h-40 max-w-full object-contain rounded-xl transition-transform duration-300 group-hover:scale-105"
+                              />
+                              {/* Glowing Hover Action Overlay with Download Icon */}
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2 z-10">
+                                <a
+                                  href={url}
+                                  download={`attached_image_${imgIdx + 1}.png`}
+                                  className="p-2 bg-emerald-500 hover:bg-emerald-400 text-black rounded-lg transition duration-250 shadow-lg transform scale-90 group-hover:scale-100 flex items-center justify-center"
+                                  title="Download Image"
+                                >
+                                  <Download size={14} />
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {cleanContent && (
+                        <span className="text-left w-full block whitespace-pre-wrap">{cleanContent}</span>
+                      )}
+
+                      {/* Render Attached Documents for Direct Download */}
+                      {docMatches.length > 0 && (
+                        <div className="mt-3 w-full border-t border-dashed border-neutral-700/30 pt-3 flex flex-col gap-2">
+                          <span className="text-[10px] font-extrabold text-neutral-400 tracking-widest uppercase block self-start">Embedded Documents</span>
+                          <div className="flex flex-wrap gap-2 self-start w-full">
+                            {docMatches.map((doc, docIdx) => {
+                              const downloadUri = `data:text/plain;charset=utf-8,${encodeURIComponent(doc.content)}`;
                               return (
-                                <div className="w-full max-w-full overflow-hidden break-words [&_*]:max-w-full [&_pre]:overflow-x-auto [&_code]:break-all [&_p]:break-words [&_li]:break-words">
-                                  {showSpinner ? (
-                                    // Show a clean, premium spinner while generating, hiding raw internal thoughts
-                                    <div className="flex items-center gap-2.5 py-2.5">
-                                      <Loader2 size={16} className="animate-spin text-amber-500" />
-                                      <span className={`text-xs font-black tracking-wider uppercase animate-pulse ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"
-                                        }`}>
-                                        Specialist is preparing response...
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <ReactMarkdown
-                                      remarkPlugins={[remarkGfm]}
-                                      components={{
-                                        blockquote({ node, children, ...props }) {
-                                          return (
-                                            <blockquote
-                                              className={`relative my-6 px-5 py-4 rounded-xl border-l-[3px] ${themeMode === "black"
-                                                ? "bg-[#0a0a0a]/80 border-amber-500 text-amber-300 shadow-[0_0_25px_rgba(245,158,11,0.15)] ring-1 ring-white/5"
-                                                : "bg-amber-500/5 border-amber-500 text-amber-900 shadow-md ring-1 ring-black/5"
-                                                } font-mono text-[11px] sm:text-xs tracking-wide leading-relaxed overflow-hidden backdrop-blur-md [&>p]:m-0 [&>p]:mb-1.5 last:[&>p]:mb-0`}
-                                              {...props}
-                                            >
-                                              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-amber-500/10 to-transparent pointer-events-none rounded-r-xl"></div>
-                                              <div className="absolute -left-[3px] top-1/4 w-[3px] h-1/2 bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.8)] animate-pulse rounded-r"></div>
-                                              <div className="relative z-10">
-                                                {children}
-                                              </div>
-                                            </blockquote>
-                                          );
-                                        },
-                                        code({ node, className, children, ...props }) {
-                                          const match = /language-(\w+)/.exec(className || "");
-                                          const lang = match ? match[1] : "";
-                                          const codeString = String(children).replace(/\n$/, "");
-
-                                          if (lang === "mermaid") {
-                                            return <MermaidDiagram chart={codeString} />;
-                                          }
-                                          if (lang === "pdf") {
-                                            return <PDFArtifactCard content={codeString} />;
-                                          }
-                                          if (lang === "word" || lang === "docx") {
-                                            return <WordArtifactCard content={codeString} />;
-                                          }
-                                          if (lang === "excel" || lang === "csv") {
-                                            return <ExcelArtifactCard content={codeString} />;
-                                          }
-
-                                          return (
-                                            <code className={className} {...props}>
-                                              {children}
-                                            </code>
-                                          );
-                                        }
-                                      }}
-                                    >
-                                      {cleanArrows(contentToRender)}
-                                    </ReactMarkdown>
-                                  )}
+                                <div key={docIdx} className={`p-2.5 rounded-xl border flex items-center gap-2 text-xs w-full max-w-[260px] justify-between ${themeMode === "black" ? "bg-neutral-950/40 border-white/5" : "bg-white border-neutral-250 shadow-sm"
+                                  }`}>
+                                  <div className="flex items-center gap-2 truncate">
+                                    <FileText size={14} className="text-emerald-400 flex-shrink-0 animate-pulse" />
+                                    <span className="truncate font-semibold text-neutral-300" title={doc.name}>{doc.name}</span>
+                                  </div>
+                                  <a
+                                    href={downloadUri}
+                                    download={doc.name.endsWith(".txt") ? doc.name : `${doc.name}.txt`}
+                                    className="p-1.5 bg-neutral-900 hover:bg-neutral-800 text-emerald-400 rounded-lg transition border border-white/5 flex items-center justify-center shadow-inner"
+                                    title={`Download parsed ${doc.name}`}
+                                  >
+                                    <Download size={11} />
+                                  </a>
                                 </div>
                               );
-                            })() : (
-                              <div className="flex gap-1 items-center py-2">
-                                <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:-0.3s] ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
-                                <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:-0.15s] ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
-                                <span className={`w-2 h-2 rounded-full animate-bounce ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
-                              </div>
-                            )}
+                            })}
                           </div>
-                          {msg.content && (
-                            <div className="flex justify-start items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => copyToClipboard(msg.content, `msg-${index}`)}
-                                className={`opacity-75 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded-md border flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 shadow-inner ${themeMode === "black"
-                                  ? "bg-[#0F0F0F] border-white/5 text-neutral-400 hover:text-neutral-200"
-                                  : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 shadow-sm"
-                                  }`}
-                                title="Copy response"
-                              >
-                                {copiedId === `msg-${index}` ? (
-                                  <>
-                                    <Check size={11} className="text-emerald-400" />
-                                    <span className="text-emerald-400 font-extrabold">COPIED</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy size={11} />
-                                    <span>COPY RESPONSE</span>
-                                  </>
-                                )}
-                              </button>
-                            </div>
+                        </div>
+                      )}
+                    </div>
+                    {cleanContent && (
+                      <div className="flex justify-end w-full">
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(cleanContent, `msg-${index}`)}
+                          className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-neutral-500 hover:text-neutral-300 flex items-center gap-1 text-[10px] font-bold"
+                          title="Copy input"
+                        >
+                          {copiedId === `msg-${index}` ? (
+                            <>
+                              <Check size={12} className="text-emerald-500" />
+                              <span className="text-emerald-500">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={12} />
+                              <span>Copy</span>
+                            </>
                           )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Typing indicator */}
+            {isLoading && messages[messages.length - 1]?.content !== "" && (
+              <TypingIndicator aiName={aiName} aiColor={aiColor} />
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
+
+      {/* Input Text Form Area */}
+      <div className={`p-3 pb-6 sm:p-4 md:p-6 border-t transition-colors duration-300 ${themeMode === "black"
+        ? "border-white/5 bg-gradient-to-t from-[#020202] to-black"
+        : "border-neutral-200 bg-gradient-to-t from-[#F8FAFC] to-[#F1F5F9]"
+        }`}>
+        <div className="max-w-3xl mx-auto relative">
+          {/* Stop Generation Button */}
+          {isLoading && (
+            <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-30">
+              <button
+                type="button"
+                onClick={stopGeneration}
+                className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0A0A0A]/95 hover:bg-neutral-900 border border-white/10 text-neutral-300 text-xs shadow-xl backdrop-blur-md transition-all active:scale-95 animate-fade-in font-bold whitespace-nowrap"
+              >
+                <Square size={10} fill="currentColor" className="text-red-500 animate-pulse" /> Stop generating
+              </button>
+            </div>
+          )}
+
+          {/* API Key Exhausted Banner */}
+          {apiBanner && (
+            <ApiKeyBanner
+              type={apiBanner}
+              message={apiBannerMessage || undefined}
+              onDismiss={() => { setApiBanner(null); setApiBannerMessage(""); }}
+            />
+          )}
+
+          <form
+            onSubmit={handleSubmit}
+            className={`w-full relative rounded-2xl border transition-all duration-300 overflow-hidden backdrop-blur-md ${themeMode === "black"
+              ? "border-white/[0.04] bg-[#0A0A0C]/80 shadow-[0_4px_30px_rgba(0,0,0,0.7)] focus-within:border-emerald-500/30 focus-within:shadow-[0_0_40px_rgba(16,185,129,0.08)]"
+              : "border-neutral-200 bg-white/90 shadow-[0_5px_30px_rgba(0,0,0,0.03)] focus-within:border-emerald-500/25 focus-within:shadow-[0_0_30px_rgba(16,185,129,0.04)]"
+              }`}
+          >
+            <textarea
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyDown={(e) => {
+                // Prevent accidental submission when pressing Enter to finalize Bengali/IME composition
+                if (e.nativeEvent.isComposing) return;
+
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
+              onPaste={async (e) => {
+                const items = e.clipboardData?.items;
+                if (!items) return;
+                for (let i = 0; i < items.length; i++) {
+                  if (items[i].type.indexOf("image") !== -1) {
+                    const blob = items[i].getAsFile();
+                    if (blob) {
+                      const file = new File([blob], `pasted_image_${Date.now()}.png`, { type: blob.type });
+                      setIsFileParsing(true);
+                      try {
+                        const parsedContent = await parseAnyFile(file);
+                        setAttachedFiles((prev) => [
+                          ...prev,
+                          {
+                            name: file.name,
+                            content: parsedContent,
+                            type: file.type || "image/png",
+                          },
+                        ]);
+                      } catch (err: any) {
+                        console.error("Paste image parsing error:", err);
+                        alert(`Could not parse pasted image: ${err.message || "Unknown error"}`);
+                      } finally {
+                        setIsFileParsing(false);
+                      }
+                      e.preventDefault(); // Stop default paste so the image doesn't try to paste as raw data
+                      return;
+                    }
+                  }
+                }
+              }}
+              placeholder={(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.placeholder || "Describe your startup idea and which country/market you are targeting..."}
+              className={`w-full bg-transparent border-0 ring-0 focus:ring-0 focus:outline-none text-sm px-5 py-4 resize-none h-[64px] min-h-[50px] max-h-[200px] ${themeMode === "black"
+                ? "placeholder-neutral-600 text-neutral-200"
+                : "placeholder-neutral-400 text-neutral-800 font-medium"
+                }`}
+              disabled={isLoading}
+              onFocus={(e) => {
+                const target = e.currentTarget;
+                if (typeof window !== "undefined" && (window as any).triggerKachaResize) {
+                  (window as any).triggerKachaResize();
+                }
+                setTimeout(() => {
+                  target.closest("form")?.scrollIntoView({ behavior: "auto", block: "nearest" });
+                  scrollToBottom();
+                }, 100);
+                setTimeout(() => {
+                  target.closest("form")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                  scrollToBottom();
+                  if (typeof window !== "undefined" && (window as any).triggerKachaResize) {
+                    (window as any).triggerKachaResize();
+                  }
+                }, 300);
+              }}
+            />
+
+            {/* Attached file preview or parsing indicator */}
+            {/* Attached files preview */}
+            {attachedFiles.length > 0 && (
+              <div className="mx-5 my-2 flex flex-wrap gap-2.5">
+                {attachedFiles.map((att, attIdx) => {
+                  const imageMatch = att.content.match(/\[IMAGE_BASE64:(data:image\/[^\]]+)\]/);
+                  const isImage = !!imageMatch;
+                  const imgSrc = imageMatch ? imageMatch[1] : "";
+
+                  if (isImage) {
+                    return (
+                      <div key={attIdx} className="relative group/thumb w-14 h-14 rounded-xl border overflow-hidden shadow-md animate-fade-in flex-shrink-0" style={{ borderColor: themeMode === "black" ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)" }}>
+                        <NextImage
+                          src={imgSrc}
+                          alt={att.name}
+                          width={56}
+                          height={56}
+                          className="w-full h-full object-cover"
+                        />
+                        {/* Hover Overlay with Delete button */}
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-all duration-200">
+                          <button
+                            type="button"
+                            onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx))}
+                            className="p-1 rounded-full bg-red-600/95 text-white hover:bg-red-700 hover:scale-110 transition duration-150"
+                            title="Remove image"
+                          >
+                            <X size={10} />
+                          </button>
                         </div>
                       </div>
                     );
                   }
 
-                  // User's message
-                  const base64GlobalRegex = /\[IMAGE_BASE64:(data:image\/[^\]]+)\]/g;
-                  const imageUrls: string[] = [];
-                  if (msg.content) {
-                    let match;
-                    base64GlobalRegex.lastIndex = 0;
-                    while ((match = base64GlobalRegex.exec(msg.content)) !== null) {
-                      imageUrls.push(match[1]);
-                    }
-                  }
-
-                  // Beautifully clean raw message contents to hide internal developer/OCR debug tags from user screen
-                  let cleanContent = "";
-                  if (msg.content) {
-                    const withoutBase64 = msg.content.replace(base64GlobalRegex, "").trim();
-
-                    // Bulletproof case-insensitive match for the User Prompt tag
-                    const promptMatch = withoutBase64.match(/User Prompt:\s*([\s\S]*)$/i);
-                    if (promptMatch) {
-                      const extractedPrompt = promptMatch[1].trim();
-                      if (extractedPrompt === "Please analyze the extracted text above based on your specialized agent role." ||
-                        extractedPrompt === "Please analyze the extracted documents above based on your specialized agent role.") {
-                        const docMatches = withoutBase64.match(/\[ATTACHED DOCUMENT:\s*([^\]]+)\]/gi);
-                        const count = docMatches ? docMatches.length : 1;
-                        cleanContent = `📎 ${count} Document(s) analyzed`;
-                      } else {
-                        cleanContent = extractedPrompt;
-                      }
-                    } else {
-                      // Fallback to strip other internal brackets if they exist
-                      cleanContent = withoutBase64;
-                    }
-                  }
-
-                  // Parse attached documents dynamically to support direct client-side downloads!
-                  const docMatches: { name: string; content: string }[] = [];
-                  if (msg.content) {
-                    const docRegex = /\[ATTACHED DOCUMENT:\s*([^\]]+)\]\s*\n\`\`\`([\s\S]*?)\`\`\`/gi;
-                    let docM;
-                    docRegex.lastIndex = 0;
-                    while ((docM = docRegex.exec(msg.content)) !== null) {
-                      docMatches.push({
-                        name: docM[1],
-                        content: docM[2].trim()
-                      });
-                    }
-                  }
-
                   return (
-                    <div key={index} className="flex gap-4 items-start justify-end animate-fade-in font-sans">
-                      <div className="flex flex-col gap-1.5 items-end max-w-[80%] group/msg relative">
-                        <span className={`text-[9px] font-black tracking-widest uppercase flex items-center gap-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-450"}`}>
-                          YOUR BUSINESS INQUIRY
-                          {themeMode === "black" && <span className="w-1 h-1 bg-emerald-400 rounded-full animate-ping" />}
-                        </span>
-                        <div className={`border rounded-2xl rounded-tr-none px-5 py-4 text-sm flex flex-col items-end relative transition-all duration-300 shadow-lg ${themeMode === "black"
-                          ? "bg-emerald-950/15 border-emerald-500/15 text-emerald-50/95"
-                          : "bg-amber-500/10 border-amber-500/20 text-neutral-800 shadow-md"
-                          }`}>
-                          {imageUrls.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mb-3 max-w-full justify-end">
-                              {imageUrls.map((url, imgIdx) => (
-                                <div key={imgIdx} className={`relative rounded-xl overflow-hidden border group shadow-md max-w-[180px] sm:max-w-[220px] ${themeMode === "black" ? "border-white/10" : "border-neutral-200"
-                                  }`}>
-                                  <NextImage
-                                    src={url}
-                                    alt={`Uploaded visual context ${imgIdx + 1}`}
-                                    width={220}
-                                    height={160}
-                                    className="max-h-40 max-w-full object-contain rounded-xl transition-transform duration-300 group-hover:scale-105"
-                                  />
-                                  {/* Glowing Hover Action Overlay with Download Icon */}
-                                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2 z-10">
-                                    <a
-                                      href={url}
-                                      download={`attached_image_${imgIdx + 1}.png`}
-                                      className="p-2 bg-emerald-500 hover:bg-emerald-400 text-black rounded-lg transition duration-250 shadow-lg transform scale-90 group-hover:scale-100 flex items-center justify-center"
-                                      title="Download Image"
-                                    >
-                                      <Download size={14} />
-                                    </a>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {cleanContent && (
-                            <span className="text-left w-full block whitespace-pre-wrap">{cleanContent}</span>
-                          )}
-
-                          {/* Render Attached Documents for Direct Download */}
-                          {docMatches.length > 0 && (
-                            <div className="mt-3 w-full border-t border-dashed border-neutral-700/30 pt-3 flex flex-col gap-2">
-                              <span className="text-[10px] font-extrabold text-neutral-400 tracking-widest uppercase block self-start">Embedded Documents</span>
-                              <div className="flex flex-wrap gap-2 self-start w-full">
-                                {docMatches.map((doc, docIdx) => {
-                                  const downloadUri = `data:text/plain;charset=utf-8,${encodeURIComponent(doc.content)}`;
-                                  return (
-                                    <div key={docIdx} className={`p-2.5 rounded-xl border flex items-center gap-2 text-xs w-full max-w-[260px] justify-between ${themeMode === "black" ? "bg-neutral-950/40 border-white/5" : "bg-white border-neutral-250 shadow-sm"
-                                      }`}>
-                                      <div className="flex items-center gap-2 truncate">
-                                        <FileText size={14} className="text-emerald-400 flex-shrink-0 animate-pulse" />
-                                        <span className="truncate font-semibold text-neutral-300" title={doc.name}>{doc.name}</span>
-                                      </div>
-                                      <a
-                                        href={downloadUri}
-                                        download={doc.name.endsWith(".txt") ? doc.name : `${doc.name}.txt`}
-                                        className="p-1.5 bg-neutral-900 hover:bg-neutral-800 text-emerald-400 rounded-lg transition border border-white/5 flex items-center justify-center shadow-inner"
-                                        title={`Download parsed ${doc.name}`}
-                                      >
-                                        <Download size={11} />
-                                      </a>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        {cleanContent && (
-                          <div className="flex justify-end w-full">
-                            <button
-                              type="button"
-                              onClick={() => copyToClipboard(cleanContent, `msg-${index}`)}
-                              className="opacity-70 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-neutral-500 hover:text-neutral-300 flex items-center gap-1 text-[10px] font-bold"
-                              title="Copy input"
-                            >
-                              {copiedId === `msg-${index}` ? (
-                                <>
-                                  <Check size={12} className="text-emerald-500" />
-                                  <span className="text-emerald-500">Copied</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy size={12} />
-                                  <span>Copy</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                    <div key={attIdx} className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-2 max-w-[200px] shadow-sm animate-fade-in ${themeMode === "black"
+                      ? "bg-gradient-to-r from-neutral-200/10 to-transparent border-neutral-200/15 text-white"
+                      : "bg-[#FAFAFA] border-neutral-200 text-neutral-850"
+                      }`}>
+                      <FileText size={13} className="text-emerald-400 flex-shrink-0" />
+                      <span className="truncate font-semibold flex-1">{att.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx))}
+                        className="p-0.5 text-neutral-400 hover:text-red-400 transition"
+                        title="Remove file"
+                      >
+                        <X size={12} />
+                      </button>
                     </div>
                   );
                 })}
-
-                {/* Typing indicator */}
-                {isLoading && messages[messages.length - 1]?.content !== "" && (
-                  <TypingIndicator aiName={aiName} aiColor={aiColor} />
-                )}
-
-                <div ref={messagesEndRef} />
               </div>
             )}
-          </div>
+            {isFileParsing && (
+              <div className={`mx-5 my-2 text-xs flex items-center gap-1.5 animate-pulse ${themeMode === "black" ? "text-neutral-500" : "text-neutral-450"
+                }`}>
+                <Loader2 size={12} className={`animate-spin ${themeMode === "black" ? "text-neutral-200" : "text-neutral-600"}`} />
+                <span>Parsing document data...</span>
+              </div>
+            )}
 
-          {/* Input Text Form Area */}
-          <div className={`p-3 pb-6 sm:p-4 md:p-6 border-t transition-colors duration-300 ${themeMode === "black"
-            ? "border-white/5 bg-gradient-to-t from-[#020202] to-black"
-            : "border-neutral-200 bg-gradient-to-t from-[#F8FAFC] to-[#F1F5F9]"
-            }`}>
-            <div className="max-w-3xl mx-auto relative">
-              {/* Stop Generation Button */}
-              {isLoading && (
-                <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-30">
+            <div className={`flex items-center justify-between px-5 pb-3 border-t pt-2.5 transition-colors duration-300 ${themeMode === "black"
+              ? "bg-[#0D0D0D] border-neutral-900"
+              : "bg-[#FAFAFA] border-neutral-150"
+              }`}>
+              {/* Media tools */}
+              <div className="flex items-center gap-2">
+                {/* Hidden File Input */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept=".txt,.md,.csv,.json,.pdf,.docx,.xlsx,.xls,.png,.jpg,.jpeg,.webp"
+                  className="hidden"
+                  multiple
+                />
+
+                {/* Paperclip Button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading || isFileParsing}
+                  title="Attach file (PDF, Word, Excel, Images, Text)"
+                  className={`p-2 rounded-xl border transition duration-300 ${themeMode === "black"
+                    ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20"
+                    : "border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800 hover:border-neutral-300"
+                    }`}
+                >
+                  <Paperclip size={15} />
+                </button>
+
+                {/* Camera Button */}
+                <button
+                  type="button"
+                  onClick={startCamera}
+                  disabled={isLoading || isFileParsing}
+                  title="Take Photo"
+                  className={`p-2 rounded-xl border transition duration-300 ${themeMode === "black"
+                    ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20"
+                    : "border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800 hover:border-neutral-300"
+                    }`}
+                >
+                  <Camera size={15} />
+                </button>
+
+                {/* Brain Trust Toggle */}
+                <div className="flex items-center gap-1.5 ml-2">
                   <button
                     type="button"
-                    onClick={stopGeneration}
-                    className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#0A0A0A]/95 hover:bg-neutral-900 border border-white/10 text-neutral-300 text-xs shadow-xl backdrop-blur-md transition-all active:scale-95 animate-fade-in font-bold whitespace-nowrap"
-                  >
-                    <Square size={10} fill="currentColor" className="text-red-500 animate-pulse" /> Stop generating
-                  </button>
-                </div>
-              )}
-
-              {/* API Key Exhausted Banner */}
-              {apiBanner && (
-                <ApiKeyBanner
-                  type={apiBanner}
-                  message={apiBannerMessage || undefined}
-                  onDismiss={() => { setApiBanner(null); setApiBannerMessage(""); }}
-                />
-              )}
-
-              <form
-                onSubmit={handleSubmit}
-                className={`w-full relative rounded-2xl border transition-all duration-300 overflow-hidden backdrop-blur-md ${themeMode === "black"
-                  ? "border-white/[0.04] bg-[#0A0A0C]/80 shadow-[0_4px_30px_rgba(0,0,0,0.7)] focus-within:border-emerald-500/30 focus-within:shadow-[0_0_40px_rgba(16,185,129,0.08)]"
-                  : "border-neutral-200 bg-white/90 shadow-[0_5px_30px_rgba(0,0,0,0.03)] focus-within:border-emerald-500/25 focus-within:shadow-[0_0_30px_rgba(16,185,129,0.04)]"
-                  }`}
-              >
-                <textarea
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyDown={(e) => {
-                    // Prevent accidental submission when pressing Enter to finalize Bengali/IME composition
-                    if (e.nativeEvent.isComposing) return;
-
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSubmit(e);
-                    }
-                  }}
-                  onPaste={async (e) => {
-                    const items = e.clipboardData?.items;
-                    if (!items) return;
-                    for (let i = 0; i < items.length; i++) {
-                      if (items[i].type.indexOf("image") !== -1) {
-                        const blob = items[i].getAsFile();
-                        if (blob) {
-                          const file = new File([blob], `pasted_image_${Date.now()}.png`, { type: blob.type });
-                          setIsFileParsing(true);
-                          try {
-                            const parsedContent = await parseAnyFile(file);
-                            setAttachedFiles((prev) => [
-                              ...prev,
-                              {
-                                name: file.name,
-                                content: parsedContent,
-                                type: file.type || "image/png",
-                              },
-                            ]);
-                          } catch (err: any) {
-                            console.error("Paste image parsing error:", err);
-                            alert(`Could not parse pasted image: ${err.message || "Unknown error"}`);
-                          } finally {
-                            setIsFileParsing(false);
-                          }
-                          e.preventDefault(); // Stop default paste so the image doesn't try to paste as raw data
-                          return;
-                        }
-                      }
-                    }
-                  }}
-                  placeholder={(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.placeholder || "Describe your startup idea and which country/market you are targeting..."}
-                  className={`w-full bg-transparent border-0 ring-0 focus:ring-0 focus:outline-none text-sm px-5 py-4 resize-none h-[64px] min-h-[50px] max-h-[200px] ${themeMode === "black"
-                    ? "placeholder-neutral-600 text-neutral-200"
-                    : "placeholder-neutral-400 text-neutral-800 font-medium"
-                    }`}
-                  disabled={isLoading}
-                  onFocus={(e) => {
-                    const target = e.currentTarget;
-                    if (typeof window !== "undefined" && (window as any).triggerKachaResize) {
-                      (window as any).triggerKachaResize();
-                    }
-                    setTimeout(() => {
-                      target.closest("form")?.scrollIntoView({ behavior: "auto", block: "nearest" });
-                      scrollToBottom();
-                    }, 100);
-                    setTimeout(() => {
-                      target.closest("form")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-                      scrollToBottom();
-                      if (typeof window !== "undefined" && (window as any).triggerKachaResize) {
-                        (window as any).triggerKachaResize();
-                      }
-                    }, 300);
-                  }}
-                />
-
-                {/* Attached file preview or parsing indicator */}
-                {/* Attached files preview */}
-                {attachedFiles.length > 0 && (
-                  <div className="mx-5 my-2 flex flex-wrap gap-2.5">
-                    {attachedFiles.map((att, attIdx) => {
-                      const imageMatch = att.content.match(/\[IMAGE_BASE64:(data:image\/[^\]]+)\]/);
-                      const isImage = !!imageMatch;
-                      const imgSrc = imageMatch ? imageMatch[1] : "";
-
-                      if (isImage) {
-                        return (
-                          <div key={attIdx} className="relative group/thumb w-14 h-14 rounded-xl border overflow-hidden shadow-md animate-fade-in flex-shrink-0" style={{ borderColor: themeMode === "black" ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)" }}>
-                            <NextImage
-                              src={imgSrc}
-                              alt={att.name}
-                              width={56}
-                              height={56}
-                              className="w-full h-full object-cover"
-                            />
-                            {/* Hover Overlay with Delete button */}
-                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-all duration-200">
-                              <button
-                                type="button"
-                                onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx))}
-                                className="p-1 rounded-full bg-red-600/95 text-white hover:bg-red-700 hover:scale-110 transition duration-150"
-                                title="Remove image"
-                              >
-                                <X size={10} />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div key={attIdx} className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-2 max-w-[200px] shadow-sm animate-fade-in ${themeMode === "black"
-                          ? "bg-gradient-to-r from-neutral-200/10 to-transparent border-neutral-200/15 text-white"
-                          : "bg-[#FAFAFA] border-neutral-200 text-neutral-850"
-                          }`}>
-                          <FileText size={13} className="text-emerald-400 flex-shrink-0" />
-                          <span className="truncate font-semibold flex-1">{att.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx))}
-                            className="p-0.5 text-neutral-400 hover:text-red-400 transition"
-                            title="Remove file"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {isFileParsing && (
-                  <div className={`mx-5 my-2 text-xs flex items-center gap-1.5 animate-pulse ${themeMode === "black" ? "text-neutral-500" : "text-neutral-450"
-                    }`}>
-                    <Loader2 size={12} className={`animate-spin ${themeMode === "black" ? "text-neutral-200" : "text-neutral-600"}`} />
-                    <span>Parsing document data...</span>
-                  </div>
-                )}
-
-                <div className={`flex items-center justify-between px-5 pb-3 border-t pt-2.5 transition-colors duration-300 ${themeMode === "black"
-                  ? "bg-[#0D0D0D] border-neutral-900"
-                  : "bg-[#FAFAFA] border-neutral-150"
-                  }`}>
-                  {/* Media tools */}
-                  <div className="flex items-center gap-2">
-                    {/* Hidden File Input */}
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileUpload}
-                      accept=".txt,.md,.csv,.json,.pdf,.docx,.xlsx,.xls,.png,.jpg,.jpeg,.webp"
-                      className="hidden"
-                      multiple
-                    />
-
-                    {/* Paperclip Button */}
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isLoading || isFileParsing}
-                      title="Attach file (PDF, Word, Excel, Images, Text)"
-                      className={`p-2 rounded-xl border transition duration-300 ${themeMode === "black"
-                        ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20"
-                        : "border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800 hover:border-neutral-300"
-                        }`}
-                    >
-                      <Paperclip size={15} />
-                    </button>
-
-                    {/* Camera Button */}
-                    <button
-                      type="button"
-                      onClick={startCamera}
-                      disabled={isLoading || isFileParsing}
-                      title="Take Photo"
-                      className={`p-2 rounded-xl border transition duration-300 ${themeMode === "black"
-                        ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20"
-                        : "border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800 hover:border-neutral-300"
-                        }`}
-                    >
-                      <Camera size={15} />
-                    </button>
-
-                    {/* Brain Trust Toggle */}
-                    <div className="flex items-center gap-1.5 ml-2">
-                      <button
-                        type="button"
-                        onClick={() => handleBrainTrustToggle(!isBrainTrust)}
-                        disabled={isLoading || isFileParsing}
-                        title="Executive Board: Massively Parallel Deep Analysis"
-                        className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${isBrainTrust
-                          ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
-                          : themeMode === "black"
-                            ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600"
-                            : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 shadow-sm"
-                          }`}
-                      >
-                        <span>🧠 {boardSize}-Agent Board</span>
-                        <div className={`w-2 h-2 rounded-full ${isBrainTrust ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)] animate-ping" : "bg-neutral-700"}`}></div>
-                      </button>
-                      {isBrainTrust && (
-                        <select
-                          value={boardSize}
-                          onChange={(e) => setBoardSize(Number(e.target.value))}
-                          className={`px-2 py-1 text-[9px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${themeMode === "black"
-                            ? "bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white"
-                            : "bg-white border-neutral-200 text-neutral-600 hover:text-black shadow-sm"
-                            }`}
-                        >
-                          <option value={3}>3 Agents</option>
-                          <option value={5}>5 Agents</option>
-                          <option value={9}>9 Agents</option>
-                          <option value={16}>16 Agents</option>
-                        </select>
-                      )}
-                    </div>
-
-                    {/* Mic Button */}
-                    <button
-                      type="button"
-                      onClick={toggleListening}
-                      title={isListening ? "Stop listening" : "Dictate (Speech to Text)"}
-                      className={`p-2 rounded-xl border transition duration-300 ${isListening
-                        ? "bg-red-500/10 border-red-500/30 text-red-500 animate-pulse"
-                        : themeMode === "black"
-                          ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-red-400 hover:border-red-500/20"
-                          : "border-neutral-200 bg-white text-neutral-500 hover:text-red-500 hover:border-red-200"
-                        }`}
-                    >
-                      {isListening ? <MicOff size={15} /> : <Mic size={15} />}
-                    </button>
-                  </div>
-
-                  <span className={`text-[10px] select-none hidden md:inline-flex items-center gap-1 ml-4 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"
-                    }`}>
-                    <CornerDownLeft size={10} /> Press Enter to send consultation
-                  </span>
-
-                  <button
-                    type="submit"
-                    disabled={isLoading || (!inputMessage.trim() && !attachedFile)}
-                    className={`ml-auto p-2.5 rounded-xl flex items-center justify-center transition duration-300 ${isLoading || (!inputMessage.trim() && !attachedFile)
-                      ? themeMode === "black"
-                        ? "bg-neutral-900 text-neutral-600 cursor-not-allowed border border-neutral-900/40"
-                        : "bg-neutral-100 text-neutral-450 cursor-not-allowed border border-neutral-200"
+                    onClick={() => handleBrainTrustToggle(!isBrainTrust)}
+                    disabled={isLoading || isFileParsing}
+                    title="Executive Board: Massively Parallel Deep Analysis"
+                    className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${isBrainTrust
+                      ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
                       : themeMode === "black"
-                        ? "bg-neutral-200 hover:bg-white hover:scale-105 active:scale-95 text-neutral-950 font-bold"
-                        : "bg-neutral-900 hover:bg-black hover:scale-105 active:scale-95 text-white font-bold"
+                        ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600"
+                        : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 shadow-sm"
                       }`}
                   >
-                    <Send size={15} />
+                    <span>🧠 {boardSize}-Agent Board</span>
+                    <div className={`w-2 h-2 rounded-full ${isBrainTrust ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)] animate-ping" : "bg-neutral-700"}`}></div>
                   </button>
+                  {isBrainTrust && (
+                    <select
+                      value={boardSize}
+                      onChange={(e) => setBoardSize(Number(e.target.value))}
+                      className={`px-2 py-1 text-[9px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${themeMode === "black"
+                        ? "bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white"
+                        : "bg-white border-neutral-200 text-neutral-600 hover:text-black shadow-sm"
+                        }`}
+                    >
+                      <option value={3}>3 Agents</option>
+                      <option value={5}>5 Agents</option>
+                      <option value={9}>9 Agents</option>
+                      <option value={16}>16 Agents</option>
+                    </select>
+                  )}
                 </div>
-              </form>
-            </div>
-          </div>
-        </main>
-      </div>
 
-      {/* Camera Modal Overlay */}
-      {isCameraOpen && (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ${themeMode === "black" ? "bg-black/90 backdrop-blur-md" : "bg-neutral-900/60 backdrop-blur-sm"
-          }`}>
-          <div className={`relative w-full max-w-lg border rounded-3xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ${themeMode === "black" ? "bg-[#0A0A0A] border-white/10" : "bg-white border-neutral-200"
-            }`}>
-            {/* Header */}
-            <div className={`flex items-center justify-between p-4 border-b ${themeMode === "black" ? "border-white/5" : "border-neutral-150"
-              }`}>
-              <span className={`font-bold text-sm tracking-wide ${themeMode === "black" ? "text-white" : "text-neutral-850"}`}>Capture Photo</span>
+                {/* Mic Button */}
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  title={isListening ? "Stop listening" : "Dictate (Speech to Text)"}
+                  className={`p-2 rounded-xl border transition duration-300 ${isListening
+                    ? "bg-red-500/10 border-red-500/30 text-red-500 animate-pulse"
+                    : themeMode === "black"
+                      ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-red-400 hover:border-red-500/20"
+                      : "border-neutral-200 bg-white text-neutral-500 hover:text-red-500 hover:border-red-200"
+                    }`}
+                >
+                  {isListening ? <MicOff size={15} /> : <Mic size={15} />}
+                </button>
+              </div>
+
+              <span className={`text-[10px] select-none hidden md:inline-flex items-center gap-1 ml-4 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"
+                }`}>
+                <CornerDownLeft size={10} /> Press Enter to send consultation
+              </span>
+
               <button
-                onClick={stopCamera}
-                className={`transition ${themeMode === "black" ? "text-neutral-400 hover:text-white" : "text-neutral-500 hover:text-neutral-800"}`}
+                type="submit"
+                disabled={isLoading || (!inputMessage.trim() && !attachedFile)}
+                className={`ml-auto p-2.5 rounded-xl flex items-center justify-center transition duration-300 ${isLoading || (!inputMessage.trim() && !attachedFile)
+                  ? themeMode === "black"
+                    ? "bg-neutral-900 text-neutral-600 cursor-not-allowed border border-neutral-900/40"
+                    : "bg-neutral-100 text-neutral-450 cursor-not-allowed border border-neutral-200"
+                  : themeMode === "black"
+                    ? "bg-neutral-200 hover:bg-white hover:scale-105 active:scale-95 text-neutral-950 font-bold"
+                    : "bg-neutral-900 hover:bg-black hover:scale-105 active:scale-95 text-white font-bold"
+                  }`}
               >
-                <XCircle size={20} />
+                <Send size={15} />
               </button>
             </div>
+          </form>
+        </div>
+      </div>
+    </main >
+      </div >
 
-            {/* Video Stream */}
-            <div className="relative bg-black flex-1 aspect-[4/3] sm:aspect-video flex items-center justify-center">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
+    {/* Camera Modal Overlay */ }
+  {
+    isCameraOpen && (
+      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 ${themeMode === "black" ? "bg-black/90 backdrop-blur-md" : "bg-neutral-900/60 backdrop-blur-sm"
+        }`}>
+        <div className={`relative w-full max-w-lg border rounded-3xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ${themeMode === "black" ? "bg-[#0A0A0A] border-white/10" : "bg-white border-neutral-200"
+          }`}>
+          {/* Header */}
+          <div className={`flex items-center justify-between p-4 border-b ${themeMode === "black" ? "border-white/5" : "border-neutral-150"
+            }`}>
+            <span className={`font-bold text-sm tracking-wide ${themeMode === "black" ? "text-white" : "text-neutral-850"}`}>Capture Photo</span>
+            <button
+              onClick={stopCamera}
+              className={`transition ${themeMode === "black" ? "text-neutral-400 hover:text-white" : "text-neutral-500 hover:text-neutral-800"}`}
+            >
+              <XCircle size={20} />
+            </button>
+          </div>
+
+          {/* Video Stream */}
+          <div className="relative bg-black flex-1 aspect-[4/3] sm:aspect-video flex items-center justify-center">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          {/* Hidden Canvas */}
+          <canvas ref={canvasRef} className="hidden" />
+
+          {/* Footer Controls */}
+          <div className={`p-4 flex items-center justify-center border-t ${themeMode === "black" ? "border-white/5 bg-[#050505]" : "border-neutral-150 bg-[#FAFAFA]"
+            }`}>
+            <button
+              onClick={capturePhoto}
+              className={`group relative flex items-center justify-center w-16 h-16 rounded-full border-4 transition duration-300 ${themeMode === "black"
+                ? "bg-white/10 border-white/20 hover:border-white"
+                : "bg-black/5 border-neutral-300 hover:border-neutral-800"
+                }`}
+            >
+              <div className={`w-12 h-12 rounded-full group-hover:scale-95 transition-transform duration-300 ${themeMode === "black" ? "bg-white" : "bg-neutral-800"
+                }`}></div>
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  {/* Settings / Manage Account Modal */ }
+  {
+    isSettingsModalOpen && (
+      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in ${themeMode === "black" ? "bg-black/90 backdrop-blur-md" : "bg-neutral-900/60 backdrop-blur-sm"
+        }`}>
+        <div className={`relative w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col p-6 space-y-6 transition-all duration-300 border ${themeMode === "black" ? "bg-[#0A0A0A] border-white/10" : "bg-white border-neutral-200"
+          }`}>
+          {/* Header */}
+          <div className={`flex items-center justify-between border-b pb-4 ${themeMode === "black" ? "border-white/5" : "border-neutral-150"
+            }`}>
+            <div className="flex items-center gap-2">
+              <Settings className="text-[#10b981]" size={20} />
+              <h2 className={`font-bold text-lg tracking-wide ${themeMode === "black" ? "text-white" : "text-neutral-850"}`}>Manage Account</h2>
+            </div>
+            <button
+              onClick={() => setIsSettingsModalOpen(false)}
+              className={`p-1 rounded-full transition ${themeMode === "black" ? "text-neutral-400 hover:text-white hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
+                }`}
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* User Account Info */}
+          <div className={`space-y-2 p-4 rounded-2xl border ${themeMode === "black" ? "bg-[#050505] border-neutral-900" : "bg-[#F8FAFC] border-neutral-200"
+            }`}>
+            <span className={`text-[10px] font-bold uppercase tracking-wider block ${themeMode === "black" ? "text-neutral-500" : "text-neutral-450"
+              }`}>Logged in as</span>
+            <div className="flex items-center gap-3">
+              <UserButton />
+              <div className="flex flex-col text-left">
+                <span className={`text-sm font-bold truncate ${themeMode === "black" ? "text-neutral-200" : "text-neutral-800"
+                  }`}>
+                  {user?.primaryEmailAddress?.emailAddress || "Advisory Member"}
+                </span>
+                <span className="text-[10px] text-[#10b981] font-bold tracking-wider">PREMIUM ADVISORY MEMBER</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Options / Action Controls */}
+          <div className="space-y-4">
+            {/* 1. Delete Attached File */}
+            <div className="flex flex-col space-y-2">
+              <span className={`text-xs font-bold ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>Current File Attachments ({attachedFiles.length})</span>
+              {attachedFiles.length > 0 ? (
+                <div className="space-y-2">
+                  {attachedFiles.map((att, attIdx) => (
+                    <div key={attIdx} className={`flex items-center justify-between p-3 rounded-2xl text-xs border ${themeMode === "black" ? "bg-red-500/5 border-red-500/10" : "bg-red-500/10 border-red-200"
+                      }`}>
+                      <div className="flex items-center gap-2 truncate">
+                        <FileText size={15} className="text-red-500 flex-shrink-0" />
+                        <span className={`truncate font-semibold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-805"}`}>{att.name}</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Remove file "${att.name}"?`)) {
+                            setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx));
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-bold transition duration-300"
+                      >
+                        Delete File
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className={`p-3 text-center rounded-2xl text-xs border ${themeMode === "black" ? "bg-neutral-900/30 border-neutral-900 text-neutral-500" : "bg-neutral-50 border-neutral-200 text-neutral-450"
+                  }`}>
+                  No file attached currently. You can attach a document using the clip icon in the chatbar.
+                </div>
+              )}
+            </div>
+
+            {/* 2. Delete All Conversations */}
+            <div className="flex flex-col space-y-2 pt-2">
+              <span className={`text-xs font-bold ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>Danger Zone</span>
+              <div className={`p-4 rounded-2xl border space-y-3 ${themeMode === "black" ? "bg-red-500/5 border-red-500/10" : "bg-red-500/5 border-red-200"
+                }`}>
+                <p className={`text-xs leading-relaxed ${themeMode === "black" ? "text-neutral-400" : "text-neutral-605"}`}>
+                  Permanently delete all your chat logs, consultation history, and any files embedded inside them. This cannot be undone.
+                </p>
+                {confirmDeleteAll ? (
+                  <div className="flex gap-2 w-full">
+                    <button
+                      type="button"
+                      onClick={handleDeleteAllChats}
+                      className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white border border-transparent rounded-xl font-bold text-xs text-center transition duration-300 flex items-center justify-center gap-2 shadow-lg shadow-red-950/20"
+                    >
+                      <Trash2 size={14} />
+                      Yes, Delete All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteAll(false)}
+                      className={`px-4 py-2.5 rounded-xl font-bold text-xs text-center transition duration-300 border ${themeMode === "black"
+                        ? "bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 border-white/5"
+                        : "bg-white hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 border-neutral-200 shadow-sm"
+                        }`}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteAll(true)}
+                    disabled={chats.length === 0}
+                    className={`w-full py-2.5 rounded-xl font-bold text-xs text-center transition duration-300 flex items-center justify-center gap-2 ${chats.length === 0
+                      ? themeMode === "black"
+                        ? "bg-neutral-950 text-neutral-700 border border-neutral-900 cursor-not-allowed"
+                        : "bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed"
+                      : "bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 hover:border-transparent"
+                      }`}
+                  >
+                    <Trash2 size={14} />
+                    Delete All Conversations
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  {/* 5. Custom Agent Builder — Professional Glassmorphic Modal */ }
+  {
+    customAgentModalOpen && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <div className="absolute inset-0 bg-black/75 backdrop-blur-md" onClick={() => setCustomAgentModalOpen(false)} />
+
+        {/* Modal Container */}
+        <div className={`relative max-w-md w-full max-h-[92vh] overflow-y-auto rounded-3xl p-5 sm:p-6 border shadow-2xl transition duration-300 transform scale-100 scrollbar-thin ${themeMode === "black"
+          ? "bg-[#0A0A0C]/95 border-white/10 text-neutral-100 shadow-[0_0_50px_rgba(16,185,129,0.05)]"
+          : "bg-white/95 border-neutral-200 text-neutral-900 shadow-2xl"
+          }`}>
+          {/* Modal Header */}
+          <div className={`flex items-center justify-between pb-3 border-b mb-4 ${themeMode === "black" ? "border-white/5" : "border-neutral-200"
+            }`}>
+            <div className="flex items-center gap-2.5">
+              <div className={`p-1.5 rounded-lg ${themeMode === "black" ? "bg-emerald-500/10" : "bg-emerald-50"}`}>
+                <Plus size={14} className="text-emerald-500" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-sm sm:text-base tracking-tight">Create Custom Agent</h3>
+                <p className={`text-[10px] mt-0.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Build your own specialist AI advisor</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCustomAgentModalOpen(false)}
+              className={`p-1.5 rounded-lg transition duration-150 ${themeMode === "black" ? "hover:bg-white/5 text-neutral-500 hover:text-neutral-200" : "hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700"
+                }`}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleCreateCustomAgent} className="space-y-4 text-xs sm:text-sm font-medium">
+            {/* Quick AI Assist Panel */}
+            <div className={`p-3 rounded-2xl border transition duration-200 ${themeMode === "black"
+              ? "bg-emerald-950/5 border-emerald-500/10"
+              : "bg-emerald-500/5 border-emerald-500/15"
+              }`}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Sparkles size={11} className="text-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500">Quick AI Assist (Optional)</span>
+              </div>
+              <p className={`text-[9px] mb-2 leading-relaxed ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
+                Type a basic concept (e.g. &quot;Startup Pitch Deck Roast Coach&quot;) to auto-generate all fields below at once, or use it to generate fields individually!
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Describe your agent concept..."
+                  value={agentConceptPrompt}
+                  onChange={(e) => setAgentConceptPrompt(e.target.value)}
+                  className={`flex-1 p-2 rounded-lg border outline-none text-xs ${themeMode === "black"
+                    ? "bg-black/40 border-white/5 text-white placeholder-neutral-600 focus:border-emerald-500"
+                    : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400 focus:border-emerald-500"
+                    }`}
+                />
+                <button
+                  type="button"
+                  onClick={handleGenerateAll}
+                  disabled={isGeneratingAll || !agentConceptPrompt.trim()}
+                  className="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-neutral-950 text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 whitespace-nowrap"
+                >
+                  {isGeneratingAll ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                  <span>Auto-Gen All</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Agent Name */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Name</label>
+                {agentConceptPrompt.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateField("name")}
+                    disabled={isGeneratingField === "name"}
+                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
+                  >
+                    {isGeneratingField === "name" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                    <span>AI Gen</span>
+                  </button>
+                )}
+              </div>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Growth Hacker, Content Strategist, Sales Coach..."
+                value={newAgentName}
+                onChange={(e) => setNewAgentName(e.target.value)}
+                className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
+                  ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                  : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
+                  }`}
               />
             </div>
 
-            {/* Hidden Canvas */}
-            <canvas ref={canvasRef} className="hidden" />
-
-            {/* Footer Controls */}
-            <div className={`p-4 flex items-center justify-center border-t ${themeMode === "black" ? "border-white/5 bg-[#050505]" : "border-neutral-150 bg-[#FAFAFA]"
-              }`}>
-              <button
-                onClick={capturePhoto}
-                className={`group relative flex items-center justify-center w-16 h-16 rounded-full border-4 transition duration-300 ${themeMode === "black"
-                  ? "bg-white/10 border-white/20 hover:border-white"
-                  : "bg-black/5 border-neutral-300 hover:border-neutral-800"
-                  }`}
-              >
-                <div className={`w-12 h-12 rounded-full group-hover:scale-95 transition-transform duration-300 ${themeMode === "black" ? "bg-white" : "bg-neutral-800"
-                  }`}></div>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Settings / Manage Account Modal */}
-      {isSettingsModalOpen && (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in ${themeMode === "black" ? "bg-black/90 backdrop-blur-md" : "bg-neutral-900/60 backdrop-blur-sm"
-          }`}>
-          <div className={`relative w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col p-6 space-y-6 transition-all duration-300 border ${themeMode === "black" ? "bg-[#0A0A0A] border-white/10" : "bg-white border-neutral-200"
-            }`}>
-            {/* Header */}
-            <div className={`flex items-center justify-between border-b pb-4 ${themeMode === "black" ? "border-white/5" : "border-neutral-150"
-              }`}>
-              <div className="flex items-center gap-2">
-                <Settings className="text-[#10b981]" size={20} />
-                <h2 className={`font-bold text-lg tracking-wide ${themeMode === "black" ? "text-white" : "text-neutral-850"}`}>Manage Account</h2>
-              </div>
-              <button
-                onClick={() => setIsSettingsModalOpen(false)}
-                className={`p-1 rounded-full transition ${themeMode === "black" ? "text-neutral-400 hover:text-white hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
-                  }`}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* User Account Info */}
-            <div className={`space-y-2 p-4 rounded-2xl border ${themeMode === "black" ? "bg-[#050505] border-neutral-900" : "bg-[#F8FAFC] border-neutral-200"
-              }`}>
-              <span className={`text-[10px] font-bold uppercase tracking-wider block ${themeMode === "black" ? "text-neutral-500" : "text-neutral-450"
-                }`}>Logged in as</span>
-              <div className="flex items-center gap-3">
-                <UserButton />
-                <div className="flex flex-col text-left">
-                  <span className={`text-sm font-bold truncate ${themeMode === "black" ? "text-neutral-200" : "text-neutral-800"
-                    }`}>
-                    {user?.primaryEmailAddress?.emailAddress || "Advisory Member"}
-                  </span>
-                  <span className="text-[10px] text-[#10b981] font-bold tracking-wider">PREMIUM ADVISORY MEMBER</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Options / Action Controls */}
-            <div className="space-y-4">
-              {/* 1. Delete Attached File */}
-              <div className="flex flex-col space-y-2">
-                <span className={`text-xs font-bold ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>Current File Attachments ({attachedFiles.length})</span>
-                {attachedFiles.length > 0 ? (
-                  <div className="space-y-2">
-                    {attachedFiles.map((att, attIdx) => (
-                      <div key={attIdx} className={`flex items-center justify-between p-3 rounded-2xl text-xs border ${themeMode === "black" ? "bg-red-500/5 border-red-500/10" : "bg-red-500/10 border-red-200"
-                        }`}>
-                        <div className="flex items-center gap-2 truncate">
-                          <FileText size={15} className="text-red-500 flex-shrink-0" />
-                          <span className={`truncate font-semibold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-805"}`}>{att.name}</span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            if (confirm(`Remove file "${att.name}"?`)) {
-                              setAttachedFiles((prev) => prev.filter((_, idx) => idx !== attIdx));
-                            }
-                          }}
-                          className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-bold transition duration-300"
-                        >
-                          Delete File
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className={`p-3 text-center rounded-2xl text-xs border ${themeMode === "black" ? "bg-neutral-900/30 border-neutral-900 text-neutral-500" : "bg-neutral-50 border-neutral-200 text-neutral-450"
-                    }`}>
-                    No file attached currently. You can attach a document using the clip icon in the chatbar.
-                  </div>
-                )}
-              </div>
-
-              {/* 2. Delete All Conversations */}
-              <div className="flex flex-col space-y-2 pt-2">
-                <span className={`text-xs font-bold ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>Danger Zone</span>
-                <div className={`p-4 rounded-2xl border space-y-3 ${themeMode === "black" ? "bg-red-500/5 border-red-500/10" : "bg-red-500/5 border-red-200"
-                  }`}>
-                  <p className={`text-xs leading-relaxed ${themeMode === "black" ? "text-neutral-400" : "text-neutral-605"}`}>
-                    Permanently delete all your chat logs, consultation history, and any files embedded inside them. This cannot be undone.
-                  </p>
-                  {confirmDeleteAll ? (
-                    <div className="flex gap-2 w-full">
-                      <button
-                        type="button"
-                        onClick={handleDeleteAllChats}
-                        className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white border border-transparent rounded-xl font-bold text-xs text-center transition duration-300 flex items-center justify-center gap-2 shadow-lg shadow-red-950/20"
-                      >
-                        <Trash2 size={14} />
-                        Yes, Delete All
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDeleteAll(false)}
-                        className={`px-4 py-2.5 rounded-xl font-bold text-xs text-center transition duration-300 border ${themeMode === "black"
-                          ? "bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 border-white/5"
-                          : "bg-white hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 border-neutral-200 shadow-sm"
-                          }`}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDeleteAll(true)}
-                      disabled={chats.length === 0}
-                      className={`w-full py-2.5 rounded-xl font-bold text-xs text-center transition duration-300 flex items-center justify-center gap-2 ${chats.length === 0
-                        ? themeMode === "black"
-                          ? "bg-neutral-950 text-neutral-700 border border-neutral-900 cursor-not-allowed"
-                          : "bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed"
-                        : "bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 hover:border-transparent"
-                        }`}
-                    >
-                      <Trash2 size={14} />
-                      Delete All Conversations
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* 5. Custom Agent Builder — Professional Glassmorphic Modal */}
-      {customAgentModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/75 backdrop-blur-md" onClick={() => setCustomAgentModalOpen(false)} />
-
-          {/* Modal Container */}
-          <div className={`relative max-w-md w-full max-h-[92vh] overflow-y-auto rounded-3xl p-5 sm:p-6 border shadow-2xl transition duration-300 transform scale-100 scrollbar-thin ${themeMode === "black"
-            ? "bg-[#0A0A0C]/95 border-white/10 text-neutral-100 shadow-[0_0_50px_rgba(16,185,129,0.05)]"
-            : "bg-white/95 border-neutral-200 text-neutral-900 shadow-2xl"
-            }`}>
-            {/* Modal Header */}
-            <div className={`flex items-center justify-between pb-3 border-b mb-4 ${themeMode === "black" ? "border-white/5" : "border-neutral-200"
-              }`}>
-              <div className="flex items-center gap-2.5">
-                <div className={`p-1.5 rounded-lg ${themeMode === "black" ? "bg-emerald-500/10" : "bg-emerald-50"}`}>
-                  <Plus size={14} className="text-emerald-500" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm sm:text-base tracking-tight">Create Custom Agent</h3>
-                  <p className={`text-[10px] mt-0.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Build your own specialist AI advisor</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCustomAgentModalOpen(false)}
-                className={`p-1.5 rounded-lg transition duration-150 ${themeMode === "black" ? "hover:bg-white/5 text-neutral-500 hover:text-neutral-200" : "hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700"
-                  }`}
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleCreateCustomAgent} className="space-y-4 text-xs sm:text-sm font-medium">
-              {/* Quick AI Assist Panel */}
-              <div className={`p-3 rounded-2xl border transition duration-200 ${themeMode === "black"
-                ? "bg-emerald-950/5 border-emerald-500/10"
-                : "bg-emerald-500/5 border-emerald-500/15"
-                }`}>
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <Sparkles size={11} className="text-emerald-500 animate-pulse" />
-                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500">Quick AI Assist (Optional)</span>
-                </div>
-                <p className={`text-[9px] mb-2 leading-relaxed ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
-                  Type a basic concept (e.g. &quot;Startup Pitch Deck Roast Coach&quot;) to auto-generate all fields below at once, or use it to generate fields individually!
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Describe your agent concept..."
-                    value={agentConceptPrompt}
-                    onChange={(e) => setAgentConceptPrompt(e.target.value)}
-                    className={`flex-1 p-2 rounded-lg border outline-none text-xs ${themeMode === "black"
-                      ? "bg-black/40 border-white/5 text-white placeholder-neutral-600 focus:border-emerald-500"
-                      : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400 focus:border-emerald-500"
-                      }`}
-                  />
+            {/* Display Name */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Display Name</label>
+                {agentConceptPrompt.trim() && (
                   <button
                     type="button"
-                    onClick={handleGenerateAll}
-                    disabled={isGeneratingAll || !agentConceptPrompt.trim()}
-                    className="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-neutral-950 text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 whitespace-nowrap"
+                    onClick={() => handleGenerateField("banglaName")}
+                    disabled={isGeneratingField === "banglaName"}
+                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
                   >
-                    {isGeneratingAll ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
-                    <span>Auto-Gen All</span>
+                    {isGeneratingField === "banglaName" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                    <span>AI Gen</span>
                   </button>
-                </div>
+                )}
               </div>
-
-              {/* Agent Name */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Name</label>
-                  {agentConceptPrompt.trim() && (
-                    <button
-                      type="button"
-                      onClick={() => handleGenerateField("name")}
-                      disabled={isGeneratingField === "name"}
-                      className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
-                    >
-                      {isGeneratingField === "name" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                      <span>AI Gen</span>
-                    </button>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Growth Hacker, Content Strategist, Sales Coach..."
-                  value={newAgentName}
-                  onChange={(e) => setNewAgentName(e.target.value)}
-                  className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
-                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
-                    }`}
-                />
-              </div>
-
-              {/* Display Name */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Display Name</label>
-                  {agentConceptPrompt.trim() && (
-                    <button
-                      type="button"
-                      onClick={() => handleGenerateField("banglaName")}
-                      disabled={isGeneratingField === "banglaName"}
-                      className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
-                    >
-                      {isGeneratingField === "banglaName" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                      <span>AI Gen</span>
-                    </button>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  required
-                  placeholder="Name shown in agent selector (any language)"
-                  value={newAgentBanglaName}
-                  onChange={(e) => setNewAgentBanglaName(e.target.value)}
-                  className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
-                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
-                    }`}
-                />
-              </div>
-
-              {/* Short Description */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Short Description</label>
-                  {agentConceptPrompt.trim() && (
-                    <button
-                      type="button"
-                      onClick={() => handleGenerateField("banglaDesc")}
-                      disabled={isGeneratingField === "banglaDesc"}
-                      className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
-                    >
-                      {isGeneratingField === "banglaDesc" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                      <span>AI Gen</span>
-                    </button>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Customer acquisition & funnel optimization specialist"
-                  value={newAgentBanglaDesc}
-                  onChange={(e) => setNewAgentBanglaDesc(e.target.value)}
-                  className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
-                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
-                    }`}
-                />
-              </div>
-
-              {/* Icon Selector */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Icon</label>
-                  {agentConceptPrompt.trim() && (
-                    <button
-                      type="button"
-                      onClick={() => handleGenerateField("icon")}
-                      disabled={isGeneratingField === "icon"}
-                      className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
-                    >
-                      {isGeneratingField === "icon" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                      <span>AI Gen</span>
-                    </button>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {["🚀", "💰", "📈", "📣", "🎨", "💻", "🧠", "🛡️", "🤝", "🔥", "🌶️", "⚡", "🎯", "📊", "🔬"].map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => setNewAgentIcon(emoji)}
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition duration-150 ${newAgentIcon === emoji
-                        ? "border-emerald-500 bg-emerald-500/10 scale-110 shadow-sm shadow-emerald-500/20"
-                        : themeMode === "black"
-                          ? "border-white/5 bg-neutral-900 hover:bg-neutral-800"
-                          : "border-neutral-200 bg-white hover:bg-neutral-50"
-                        }`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* System Instructions */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>System Instructions</label>
-                  {agentConceptPrompt.trim() && (
-                    <button
-                      type="button"
-                      onClick={() => handleGenerateField("instructions")}
-                      disabled={isGeneratingField === "instructions"}
-                      className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
-                    >
-                      {isGeneratingField === "instructions" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                      <span>AI Gen</span>
-                    </button>
-                  )}
-                </div>
-                <p className={`text-[10px] mb-2 leading-relaxed ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
-                  Define how this agent should behave, its expertise, frameworks, and response style.
-                </p>
-                <textarea
-                  required
-                  rows={4}
-                  placeholder="Act as a Growth Hacking specialist. You focus on data-driven marketing, customer acquisition cost reduction, AARRR framework optimization, and viral loop engineering..."
-                  value={newAgentInstructions}
-                  onChange={(e) => setNewAgentInstructions(e.target.value)}
-                  className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 resize-none leading-relaxed ${themeMode === "black"
-                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
-                    }`}
-                />
-              </div>
-
-              {/* Save Button */}
-              <button
-                type="submit"
-                className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-emerald-500/15 hover:shadow-emerald-500/35 hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2 mt-2"
-              >
-                <Plus size={14} />
-                <span>Create Agent</span>
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 6. Upload PDF Agent Modal */}
-      {pdfAgentModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/75 backdrop-blur-md" onClick={() => setPdfAgentModalOpen(false)} />
-          <div className={`relative max-w-md w-full max-h-[92vh] overflow-y-auto rounded-3xl p-5 sm:p-6 border shadow-2xl transition duration-300 transform scale-100 scrollbar-thin ${themeMode === "black"
-            ? "bg-[#0A0A0C]/95 border-white/10 text-neutral-100 shadow-[0_0_50px_rgba(79,70,229,0.05)]"
-            : "bg-white/95 border-neutral-200 text-neutral-900 shadow-2xl"
-            }`}>
-            <div className={`flex items-center justify-between pb-3 border-b mb-4 ${themeMode === "black" ? "border-white/5" : "border-neutral-200"}`}>
-              <div className="flex items-center gap-2.5">
-                <div className={`p-1.5 rounded-lg ${themeMode === "black" ? "bg-indigo-500/10" : "bg-indigo-50"}`}>
-                  <FileText size={14} className="text-indigo-500" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm sm:text-base tracking-tight">Upload PDF Agent</h3>
-                  <p className={`text-[10px] mt-0.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Extract expertise from a document</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPdfAgentModalOpen(false)}
-                className={`p-1.5 rounded-lg transition duration-150 ${themeMode === "black" ? "hover:bg-white/5 text-neutral-500 hover:text-neutral-200" : "hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700"}`}
-              >
-                <X size={16} />
-              </button>
+              <input
+                type="text"
+                required
+                placeholder="Name shown in agent selector (any language)"
+                value={newAgentBanglaName}
+                onChange={(e) => setNewAgentBanglaName(e.target.value)}
+                className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
+                  ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                  : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
+                  }`}
+              />
             </div>
 
-            <form onSubmit={handleUploadPdfAgent} className="space-y-4">
+            {/* Short Description */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Short Description</label>
+                {agentConceptPrompt.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateField("banglaDesc")}
+                    disabled={isGeneratingField === "banglaDesc"}
+                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
+                  >
+                    {isGeneratingField === "banglaDesc" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                    <span>AI Gen</span>
+                  </button>
+                )}
+              </div>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Customer acquisition & funnel optimization specialist"
+                value={newAgentBanglaDesc}
+                onChange={(e) => setNewAgentBanglaDesc(e.target.value)}
+                className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
+                  ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                  : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
+                  }`}
+              />
+            </div>
+
+            {/* Icon Selector */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Icon</label>
+                {agentConceptPrompt.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateField("icon")}
+                    disabled={isGeneratingField === "icon"}
+                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
+                  >
+                    {isGeneratingField === "icon" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                    <span>AI Gen</span>
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {["🚀", "💰", "📈", "📣", "🎨", "💻", "🧠", "🛡️", "🤝", "🔥", "🌶️", "⚡", "🎯", "📊", "🔬"].map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setNewAgentIcon(emoji)}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition duration-150 ${newAgentIcon === emoji
+                      ? "border-emerald-500 bg-emerald-500/10 scale-110 shadow-sm shadow-emerald-500/20"
+                      : themeMode === "black"
+                        ? "border-white/5 bg-neutral-900 hover:bg-neutral-800"
+                        : "border-neutral-200 bg-white hover:bg-neutral-50"
+                      }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* System Instructions */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>System Instructions</label>
+                {agentConceptPrompt.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateField("instructions")}
+                    disabled={isGeneratingField === "instructions"}
+                    className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
+                  >
+                    {isGeneratingField === "instructions" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
+                    <span>AI Gen</span>
+                  </button>
+                )}
+              </div>
+              <p className={`text-[10px] mb-2 leading-relaxed ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
+                Define how this agent should behave, its expertise, frameworks, and response style.
+              </p>
+              <textarea
+                required
+                rows={4}
+                placeholder="Act as a Growth Hacking specialist. You focus on data-driven marketing, customer acquisition cost reduction, AARRR framework optimization, and viral loop engineering..."
+                value={newAgentInstructions}
+                onChange={(e) => setNewAgentInstructions(e.target.value)}
+                className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 resize-none leading-relaxed ${themeMode === "black"
+                  ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                  : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
+                  }`}
+              />
+            </div>
+
+            {/* Save Button */}
+            <button
+              type="submit"
+              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-emerald-500/15 hover:shadow-emerald-500/35 hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2 mt-2"
+            >
+              <Plus size={14} />
+              <span>Create Agent</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
+  {/* 6. Upload PDF Agent Modal */ }
+  {
+    pdfAgentModalOpen && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/75 backdrop-blur-md" onClick={() => setPdfAgentModalOpen(false)} />
+        <div className={`relative max-w-md w-full max-h-[92vh] overflow-y-auto rounded-3xl p-5 sm:p-6 border shadow-2xl transition duration-300 transform scale-100 scrollbar-thin ${themeMode === "black"
+          ? "bg-[#0A0A0C]/95 border-white/10 text-neutral-100 shadow-[0_0_50px_rgba(79,70,229,0.05)]"
+          : "bg-white/95 border-neutral-200 text-neutral-900 shadow-2xl"
+          }`}>
+          <div className={`flex items-center justify-between pb-3 border-b mb-4 ${themeMode === "black" ? "border-white/5" : "border-neutral-200"}`}>
+            <div className="flex items-center gap-2.5">
+              <div className={`p-1.5 rounded-lg ${themeMode === "black" ? "bg-indigo-500/10" : "bg-indigo-50"}`}>
+                <FileText size={14} className="text-indigo-500" />
+              </div>
               <div>
-                <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>PDF Document</label>
+                <h3 className="font-extrabold text-sm sm:text-base tracking-tight">Upload PDF Agent</h3>
+                <p className={`text-[10px] mt-0.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Extract expertise from a document</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPdfAgentModalOpen(false)}
+              className={`p-1.5 rounded-lg transition duration-150 ${themeMode === "black" ? "hover:bg-white/5 text-neutral-500 hover:text-neutral-200" : "hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700"}`}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <form onSubmit={handleUploadPdfAgent} className="space-y-4">
+            <div>
+              <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>PDF Document</label>
+              <input
+                type="file"
+                required
+                accept=".pdf"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    handlePdfFileSelect(e.target.files[0]);
+                  }
+                }}
+                className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 ${themeMode === "black"
+                  ? "bg-neutral-900/50 border-white/10 focus:border-indigo-500 text-white"
+                  : "bg-neutral-50 border-neutral-200 focus:border-indigo-500 text-neutral-900"
+                  }`}
+              />
+              <p className={`text-[10px] mt-2 leading-relaxed ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
+                The AI will analyze the core topics of this PDF and automatically generate an expert persona based on its contents.
+              </p>
+            </div>
+
+            <div>
+              <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
+                Agent Name
+                {isGeneratingPdfName && <span className="ml-2 text-indigo-400 normal-case font-normal tracking-normal animate-pulse">✨ Generating...</span>}
+              </label>
+              <div className="relative">
                 <input
-                  type="file"
+                  type="text"
                   required
-                  accept=".pdf"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files.length > 0) {
-                      handlePdfFileSelect(e.target.files[0]);
-                    }
-                  }}
-                  className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 ${themeMode === "black"
-                    ? "bg-neutral-900/50 border-white/10 focus:border-indigo-500 text-white"
-                    : "bg-neutral-50 border-neutral-200 focus:border-indigo-500 text-neutral-900"
+                  placeholder="e.g. Rich Dad Financial Advisor"
+                  value={newPdfAgentName}
+                  onChange={(e) => setNewPdfAgentName(e.target.value)}
+                  className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
+                    ? "bg-neutral-900/50 border-white/10 focus:border-indigo-500 text-white placeholder-neutral-600"
+                    : "bg-neutral-50 border-neutral-200 focus:border-indigo-500 text-neutral-900 placeholder-neutral-400"
                     }`}
                 />
-                <p className={`text-[10px] mt-2 leading-relaxed ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
-                  The AI will analyze the core topics of this PDF and automatically generate an expert persona based on its contents.
-                </p>
+                {isGeneratingPdfName && (
+                  <Loader2 size={13} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-indigo-400" />
+                )}
               </div>
+              <p className={`text-[10px] mt-1.5 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
+                Auto-generated from your PDF — you can edit it anytime.
+              </p>
+            </div>
 
-              <div>
-                <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
-                  Agent Name
-                  {isGeneratingPdfName && <span className="ml-2 text-indigo-400 normal-case font-normal tracking-normal animate-pulse">✨ Generating...</span>}
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Rich Dad Financial Advisor"
-                    value={newPdfAgentName}
-                    onChange={(e) => setNewPdfAgentName(e.target.value)}
-                    className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
-                      ? "bg-neutral-900/50 border-white/10 focus:border-indigo-500 text-white placeholder-neutral-600"
-                      : "bg-neutral-50 border-neutral-200 focus:border-indigo-500 text-neutral-900 placeholder-neutral-400"
-                      }`}
-                  />
-                  {isGeneratingPdfName && (
-                    <Loader2 size={13} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-indigo-400" />
-                  )}
-                </div>
-                <p className={`text-[10px] mt-1.5 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
-                  Auto-generated from your PDF — you can edit it anytime.
-                </p>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isUploadingPdf || !pdfFile || !newPdfAgentName.trim()}
-                className="w-full py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-indigo-500/15 hover:shadow-indigo-500/35 hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2 mt-2"
-              >
-                {isUploadingPdf ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
-                <span>{isUploadingPdf ? "Analyzing & Generating..." : "Generate AI Agent"}</span>
-              </button>
-            </form>
-          </div>
+            <button
+              type="submit"
+              disabled={isUploadingPdf || !pdfFile || !newPdfAgentName.trim()}
+              className="w-full py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-indigo-500/15 hover:shadow-indigo-500/35 hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2 mt-2"
+            >
+              {isUploadingPdf ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+              <span>{isUploadingPdf ? "Analyzing & Generating..." : "Generate AI Agent"}</span>
+            </button>
+          </form>
         </div>
-      )}
+      </div>
+    )
+  }
     </>
   );
 }

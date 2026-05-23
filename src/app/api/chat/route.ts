@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabase";
-import Groq from "groq-sdk";
 import { needsWebSearch, performWebSearch, extractSearchQuery } from "@/lib/search";
 import { openrouterFetchWithFallback, ApiKeyExhaustedError } from "@/lib/openrouter";
+import { groqChatWithFallback, groqStreamWithFallback, getGroqKeys } from "@/lib/groq";
 
 const Kacha_Morich_CORE_PERSONALITY = `You are **Kacha Morich AI** 🌶️ — The Sharpest Enterprise-Grade Multi-Model Business Decision Engine in the world.
 
@@ -306,9 +306,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
     }
 
-    // Lazy initialize Groq inside POST to satisfy compile-time build traces
+    // Lazy initialize Groq inside POST — keys fetched dynamically from DB
     const groq = new Groq({
-      apiKey: process.env.GROQ_API_KEY || "gsk_placeholder_compile_key_12345",
+      apiKey: (await getGroqKeys(dbUser?.id))[0] || process.env.GROQ_API_KEY || "gsk_placeholder",
     });
 
     // 1. Fetch user from Supabase
@@ -697,25 +697,22 @@ Apply the following highly advanced analysis steps:
         let orPoolIndex = 0; // Round-robin index across the OR pool
         const fetchSyncAI = async (model: string, msgs: any[], roleName?: string): Promise<string> => {
           // Tier 1: Try Groq first — blazing fast, high rate limits, no daily quota
-          if (process.env.GROQ_API_KEY) {
-            const groqMsgs = sanitizeMessagesForGroq(msgs);
-            for (const groqModel of BRAIN_TRUST_GROQ_MODELS) {
-              try {
-                console.log(`[Sync Groq] Trying model: "${groqModel}" for role: "${roleName || 'Agent'}"`);
-                const completion = await groq.chat.completions.create({
-                  model: groqModel,
-                  messages: groqMsgs,
-                  temperature: 0.7,
-                  max_tokens: 1800,
-                });
-                const content = completion.choices[0]?.message?.content || "";
-                if (content.trim()) {
-                  console.log(`[Sync Groq] ✅ "${groqModel}" → "${roleName || 'Agent'}" OK`);
-                  return content;
-                }
-              } catch (groqErr: any) {
-                console.error(`[Sync Groq] "${groqModel}" failed:`, groqErr.message || groqErr);
+          // Tier 1: Try Groq with key rotation
+          const groqMsgs = sanitizeMessagesForGroq(msgs);
+          for (const groqModel of BRAIN_TRUST_GROQ_MODELS) {
+            try {
+              console.log(`[Sync Groq] Trying model: "${groqModel}" for role: "${roleName || 'Agent'}"`);
+              const completion = await groqChatWithFallback(
+                { model: groqModel, messages: groqMsgs, temperature: 0.7, max_tokens: 1800 },
+                dbUser?.id
+              );
+              const content = completion.choices[0]?.message?.content || "";
+              if (content.trim()) {
+                console.log(`[Sync Groq] ✅ "${groqModel}" → "${roleName || 'Agent'}" OK`);
+                return content;
               }
+            } catch (groqErr: any) {
+              console.error(`[Sync Groq] "${groqModel}" failed:`, groqErr.message || groqErr);
             }
           }
 
@@ -879,13 +876,16 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
               try {
                 const groqSynthMsgs = sanitizeMessagesForGroq(synthMessages);
                 console.log(`[API Chat] 🚀 Dispatching Brain Trust CEO Synthesis via Groq streaming...`);
-                const groqStream = await groq.chat.completions.create({
-                  model: "llama-3.3-70b-versatile",
-                  messages: groqSynthMsgs,
-                  temperature: 0.7,
-                  max_tokens: 4000,
-                  stream: true,
-                });
+                const groqStream = await groqStreamWithFallback(
+                  {
+                    model: "llama-3.3-70b-versatile",
+                    messages: groqSynthMsgs,
+                    temperature: 0.7,
+                    max_tokens: 4000,
+                    stream: true,
+                  },
+                  dbUser?.id
+                ) as AsyncIterable<Groq.Chat.ChatCompletionChunk>;
                 for await (const chunk of groqStream) {
                   const text = chunk.choices[0]?.delta?.content || "";
                   if (text) {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabase";
-import Groq from "groq-sdk";
+import { groqChatWithFallback } from "@/lib/groq";
 import { openrouterFetchWithFallback } from "@/lib/openrouter";
 
 export const dynamic = "force-dynamic";
@@ -69,11 +69,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Generate Expert System Prompt via LLM
-    const groq = new Groq({
-      apiKey: process.env.GROQ_API_KEY || "gsk_placeholder_compile_key_12345",
-    });
-
-    const truncatedText = pdfText.substring(0, 12000);
+    let generatedInstructions = pdfText.substring(0, 12000); // Fallback
 
     const systemPromptMsg = `You are an expert AI prompt engineer. Based on the document text below, write a concise but powerful system prompt for an AI agent that is a subject matter expert on this document's topic.
 
@@ -87,23 +83,24 @@ Keep it under 400 words. Return ONLY the system prompt text, no preamble.
 
 Document Text:
 ====================
-${truncatedText}
+${pdfText.substring(0, 12000)}
 ====================`;
 
-    let generatedInstructions = truncatedText; // Fallback
-
-    // Try Groq first — llama-3.1-8b-instant is fastest
+    // Try Groq first with key rotation
     let groqSuccess = false;
     try {
-      const completion = await groq.chat.completions.create({
-        model: "llama-3.1-8b-instant",
-        messages: [{ role: "user", content: systemPromptMsg }],
-        temperature: 0.3,
-        max_tokens: 1000,
-      });
-      const generatedContent = completion.choices[0]?.message?.content?.trim();
-      if (generatedContent) {
-        generatedInstructions = generatedContent;
+      const completion = await groqChatWithFallback(
+        {
+          model: "llama-3.1-8b-instant",
+          messages: [{ role: "user", content: systemPromptMsg }],
+          temperature: 0.3,
+          max_tokens: 1000,
+        },
+        dbUser.id
+      );
+      const content = completion.choices[0]?.message?.content?.trim();
+      if (content) {
+        generatedInstructions = content;
         groqSuccess = true;
         console.log("[Agents] Groq success");
       }
