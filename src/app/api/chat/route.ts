@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabase";
 import { needsWebSearch, performWebSearch, extractSearchQuery } from "@/lib/search";
 import { openrouterFetchWithFallback, ApiKeyExhaustedError } from "@/lib/openrouter";
+import Groq from "groq-sdk";
 import { groqChatWithFallback, groqStreamWithFallback, getGroqKeys } from "@/lib/groq";
 
 const Kacha_Morich_CORE_PERSONALITY = `You are **Kacha Morich AI** 🌶️ — The Sharpest Enterprise-Grade Multi-Model Business Decision Engine in the world.
@@ -307,9 +308,7 @@ export async function POST(req: Request) {
     }
 
     // Lazy initialize Groq inside POST — keys fetched dynamically from DB
-    const groq = new Groq({
-      apiKey: (await getGroqKeys(dbUser?.id))[0] || process.env.GROQ_API_KEY || "gsk_placeholder",
-    });
+    // (groqStreamWithFallback handles key rotation internally)
 
     // 1. Fetch user from Supabase
     let { data: dbUser, error: userError } = await supabase
