@@ -45,6 +45,31 @@ export async function GET() {
             }
         }
 
+        // ── 1b. Check Groq DB keys ─────────────────────────────────────────────
+        const { data: dbUserForGroq } = await supabase
+            .from("users").select("id").eq("clerk_id", clerkId).single();
+
+        if (dbUserForGroq) {
+            const { data: groqDbKeys } = await supabase
+                .from("groq_keys").select("api_key")
+                .eq("user_id", dbUserForGroq.id).eq("is_active", true);
+
+            const activeGroqKeys = (groqDbKeys || []).map(k => k.api_key);
+            if (activeGroqKeys.length > 0) {
+                result.groq.checked = true;
+                let anyGroqOk = false;
+                await Promise.all(activeGroqKeys.map(async (key) => {
+                    try {
+                        const r = await fetch("https://api.groq.com/openai/v1/models", {
+                            headers: { Authorization: `Bearer ${key}` },
+                        });
+                        if (r.ok) anyGroqOk = true;
+                    } catch { }
+                }));
+                if (anyGroqOk) result.groq.ok = true;
+            }
+        }
+
         // ── 2. Check OpenRouter DB keys ────────────────────────────────────────────
         const { data: dbUser } = await supabase
             .from("users")
