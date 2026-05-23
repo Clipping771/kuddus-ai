@@ -845,6 +845,7 @@ export default function Dashboard() {
   const [toneDropdownOpen, setToneDropdownOpen] = useState(false);
 
   const [controlBarVisible, setControlBarVisible] = useState(true);
+  const [headerVisible, setHeaderVisible] = useState(true);
 
   const [selectedModelId, setSelectedModelId] = useState<string>("google/gemma-4-31b-it");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
@@ -2341,303 +2342,333 @@ export default function Dashboard() {
               <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none opacity-80" />
             </div>
           )}
-          <header className={`h-16 px-4 sm:px-6 border-b backdrop-blur-xl flex items-center justify-between z-40 transition-colors duration-300 ${themeMode === "black"
-            ? "border-white/5 bg-[#050505]/80"
-            : "border-neutral-200 bg-[#FFFFFF]/80 shadow-sm"
-            }`}>
-            <div className="flex items-center gap-3">
-              <button
-                className={`lg:hidden p-1.5 rounded-lg transition duration-200 ${themeMode === "black" ? "text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100"
-                  }`}
-                onClick={() => setSidebarOpen(true)}
-              >
-                <Menu size={20} />
-              </button>
-              {isSidebarFolded && (
-                <button
-                  type="button"
-                  className={`hidden lg:flex items-center justify-center p-2 rounded-xl border transition-all duration-300 group/toggle animate-fade-in ${themeMode === "black"
-                    ? "border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400 hover:text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
-                    : "border-emerald-200 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-600 hover:text-emerald-700"
-                    }`}
-                  onClick={handleSidebarFoldToggle}
-                  title="Show Sidebar"
-                >
-                  <ChevronRight size={16} className="transition-transform duration-300 ease-out group-hover/toggle:translate-x-0.5" />
-                </button>
-              )}
-              <div className="flex items-center gap-2.5">
-                {isListening ? (
-                  <div className="flex items-end h-5 px-2.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 select-none">
-                    <span className="text-[9px] font-black tracking-wider mr-2 uppercase">🎙️ LISTENING TO YOUR VOICE QUERY</span>
-                    <span className="soundwave-bar bg-red-500"></span>
-                    <span className="soundwave-bar bg-red-500"></span>
-                    <span className="soundwave-bar bg-red-500"></span>
-                    <span className="soundwave-bar bg-red-500"></span>
-                    <span className="soundwave-bar bg-red-500"></span>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setToneDropdownOpen(!toneDropdownOpen)}
-                      className={`flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-1 rounded-xl transition-all font-extrabold shadow-sm border ${themeMode === "black"
-                        ? "bg-emerald-950/40 text-emerald-400 border-emerald-500/20 hover:bg-emerald-900/50"
-                        : "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 hover:bg-emerald-500/20"
-                        }`}
-                    >
-                      <span className="text-[11px] sm:text-xs font-black tracking-wider uppercase">
-                        {(() => {
-                          const activeTone = TONES_LIST.find((t) => t.id === selectedToneId);
-                          return (
-                            <>
-                              <span className="hidden sm:inline">{activeTone ? `${activeTone.icon} ${activeTone.name}` : "🌶️ BRUTALLY HONEST"}</span>
-                              <span className="sm:hidden">{activeTone ? activeTone.icon : "🌶️"}</span>
-                            </>
-                          );
-                        })()}
-                      </span>
-                      <ChevronDown size={12} className={`transition-transform duration-200 ${toneDropdownOpen ? "rotate-180" : ""}`} />
-                    </button>
 
-                    {toneDropdownOpen && (
-                      <div className={`absolute top-full left-0 mt-2 w-56 backdrop-blur-xl border rounded-2xl p-1 shadow-2xl z-50 transition-colors duration-300 ${themeMode === "black"
-                        ? "bg-[#0A0A0A]/95 border-white/10"
-                        : "bg-[#FFFFFF]/95 border-neutral-200"
-                        }`}>
-                        <div className="max-h-64 overflow-y-auto font-sans">
-                          {TONES_LIST.map((tone) => (
-                            <button
-                              key={tone.id}
-                              type="button"
-                              onClick={() => {
-                                handleToneChange(tone.id);
-                                setToneDropdownOpen(false);
-                              }}
-                              className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-semibold rounded-xl transition duration-200 ${selectedToneId === tone.id
-                                ? themeMode === "black"
-                                  ? "bg-emerald-500/10 text-emerald-400"
-                                  : "bg-emerald-500/10 text-emerald-700 font-black shadow-inner"
-                                : themeMode === "black"
-                                  ? "text-neutral-400 hover:bg-white/5 hover:text-white"
-                                  : "text-neutral-600 hover:bg-neutral-150 hover:text-neutral-900"
-                                }`}
-                            >
-                              <span className="text-base">{tone.icon}</span>
-                              <span>{tone.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+          {/* Floating show-header button — visible only when header is hidden */}
+          {!headerVisible && (
+            <button
+              type="button"
+              onClick={() => setHeaderVisible(true)}
+              className="absolute top-2 right-3 z-50 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold backdrop-blur-md transition-all duration-200 border border-white/10 bg-black/60 text-neutral-400 hover:text-white hover:border-white/20"
+              title="Show header"
+            >
+              <ChevronDown size={13} className="rotate-180" />
+              Show
+            </button>
+          )}
+
+          {/* Header wrapper — collapses smoothly */}
+          <div className={`transition-all duration-300 ease-in-out overflow-hidden ${headerVisible ? "max-h-20 opacity-100" : "max-h-0 opacity-0 pointer-events-none"}`}>
+            <header className={`h-16 px-4 sm:px-6 border-b backdrop-blur-xl flex items-center justify-between z-40 transition-colors duration-300 ${themeMode === "black"
+              ? "border-white/5 bg-[#050505]/80"
+              : "border-neutral-200 bg-[#FFFFFF]/80 shadow-sm"
+              }`}>
+              <div className="flex items-center gap-3">
+                <button
+                  className={`lg:hidden p-1.5 rounded-lg transition duration-200 ${themeMode === "black" ? "text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100"
+                    }`}
+                  onClick={() => setSidebarOpen(true)}
+                >
+                  <Menu size={20} />
+                </button>
+                {isSidebarFolded && (
+                  <button
+                    type="button"
+                    className={`hidden lg:flex items-center justify-center p-2 rounded-xl border transition-all duration-300 group/toggle animate-fade-in ${themeMode === "black"
+                      ? "border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400 hover:text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                      : "border-emerald-200 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-600 hover:text-emerald-700"
+                      }`}
+                    onClick={handleSidebarFoldToggle}
+                    title="Show Sidebar"
+                  >
+                    <ChevronRight size={16} className="transition-transform duration-300 ease-out group-hover/toggle:translate-x-0.5" />
+                  </button>
                 )}
-                <span className={`mobile-hide sm:block text-sm font-semibold truncate max-w-[200px] ml-2 ${themeMode === "black" ? "text-neutral-200" : "text-neutral-800"
-                  }`}>
-                  {activeChat ? parseChatTitle(activeChat.title).title : ""}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {/* Elite Agent Selector Dropdown */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setAgentDropdownOpen(!agentDropdownOpen)}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border transition duration-300 font-bold shadow-sm text-xs ${themeMode === "black"
-                    ? "border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 text-neutral-300 hover:text-white hover:border-neutral-200/30"
-                    : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
-                    }`}
-                >
-                  {(() => {
-                    const activeAgent = allAgents.find((a) => a.id === selectedAgentId) || allAgents[0];
-                    if (activeAgent) {
-                      if (activeAgent.isCustom) {
-                        const CustomIcon = resolveCustomIcon(activeAgent.icon);
-                        return <CustomIcon size={14} className={`${themeMode === "black" ? "text-neutral-200" : "text-neutral-700"} flex-shrink-0 animate-pulse`} />;
-                      }
-                      const AgentIcon = activeAgent.icon;
-                      return <AgentIcon size={14} className={`${themeMode === "black" ? "text-neutral-200" : "text-neutral-700"} flex-shrink-0 animate-pulse`} />;
-                    }
-                    return null;
-                  })()}
-                  <span className="truncate max-w-[120px] sm:max-w-[180px]">
-                    {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.name || "Select Agent"}
-                  </span>
-                  <ChevronDown size={13} className={`text-neutral-500 transition duration-300 ${agentDropdownOpen ? "rotate-180 text-neutral-200" : ""}`} />
-                </button>
+                <div className="flex items-center gap-2.5">
+                  {isListening ? (
+                    <div className="flex items-end h-5 px-2.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 select-none">
+                      <span className="text-[9px] font-black tracking-wider mr-2 uppercase">🎙️ LISTENING TO YOUR VOICE QUERY</span>
+                      <span className="soundwave-bar bg-red-500"></span>
+                      <span className="soundwave-bar bg-red-500"></span>
+                      <span className="soundwave-bar bg-red-500"></span>
+                      <span className="soundwave-bar bg-red-500"></span>
+                      <span className="soundwave-bar bg-red-500"></span>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setToneDropdownOpen(!toneDropdownOpen)}
+                        className={`flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-1 rounded-xl transition-all font-extrabold shadow-sm border ${themeMode === "black"
+                          ? "bg-emerald-950/40 text-emerald-400 border-emerald-500/20 hover:bg-emerald-900/50"
+                          : "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 hover:bg-emerald-500/20"
+                          }`}
+                      >
+                        <span className="text-[11px] sm:text-xs font-black tracking-wider uppercase">
+                          {(() => {
+                            const activeTone = TONES_LIST.find((t) => t.id === selectedToneId);
+                            return (
+                              <>
+                                <span className="hidden sm:inline">{activeTone ? `${activeTone.icon} ${activeTone.name}` : "🌶️ BRUTALLY HONEST"}</span>
+                                <span className="sm:hidden">{activeTone ? activeTone.icon : "🌶️"}</span>
+                              </>
+                            );
+                          })()}
+                        </span>
+                        <ChevronDown size={12} className={`transition-transform duration-200 ${toneDropdownOpen ? "rotate-180" : ""}`} />
+                      </button>
 
-                {/* Dynamic Glassmorphic Dropdown List */}
-                {agentDropdownOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setAgentDropdownOpen(false)} />
-                    <div className={`absolute right-0 mt-2.5 w-80 max-h-[420px] overflow-y-auto rounded-xl border p-2 shadow-2xl z-50 divide-y space-y-1 scrollbar-thin ${themeMode === "black"
-                      ? "border-neutral-800 bg-[#090909]/95 backdrop-blur-md divide-neutral-900"
-                      : "border-neutral-200 bg-white divide-neutral-100 shadow-xl"
-                      }`}>
-                      <div className={`px-3 py-1.5 text-[9px] font-black tracking-widest uppercase flex items-center justify-between ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
-                        }`}>
-                        <span>Select Specialist AI Agent</span>
-                      </div>
-
-                      <div className="pt-1.5 space-y-0.5 font-sans">
-                        {/* "+ Create Custom Agent" Button */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCustomAgentModalOpen(true);
-                            setAgentDropdownOpen(false);
-                          }}
-                          className={`w-[calc(100%-8px)] mx-1 flex items-center justify-center gap-2 p-2 rounded-lg border-dashed border transition duration-200 text-xs font-black uppercase tracking-wider mb-2 ${themeMode === "black"
-                            ? "border-emerald-500/25 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/40"
-                            : "border-emerald-200 bg-emerald-500/5 text-emerald-600 hover:bg-emerald-500/10"
-                            }`}
-                        >
-                          <Plus size={13} />
-                          <span>✨ Create Custom Agent</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setPdfAgentModalOpen(true);
-                            setAgentDropdownOpen(false);
-                          }}
-                          className={`w-[calc(100%-8px)] mx-1 flex items-center justify-center gap-2 p-2 rounded-lg border-dashed border transition duration-200 text-xs font-black uppercase tracking-wider mb-2 ${themeMode === "black"
-                            ? "border-indigo-500/25 bg-indigo-500/5 text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/40"
-                            : "border-indigo-200 bg-indigo-500/5 text-indigo-600 hover:bg-indigo-500/10"
-                            }`}
-                        >
-                          <FileText size={13} />
-                          <span>📄 Upload PDF Agent</span>
-                        </button>
-
-                        {allAgents.map((agent) => {
-                          const isSelected = selectedAgentId === agent.id;
-                          return (
-                            <div key={agent.id} className="relative group/agent flex items-center w-full">
+                      {toneDropdownOpen && (
+                        <div className={`absolute top-full left-0 mt-2 w-56 backdrop-blur-xl border rounded-2xl p-1 shadow-2xl z-50 transition-colors duration-300 ${themeMode === "black"
+                          ? "bg-[#0A0A0A]/95 border-white/10"
+                          : "bg-[#FFFFFF]/95 border-neutral-200"
+                          }`}>
+                          <div className="max-h-64 overflow-y-auto font-sans">
+                            {TONES_LIST.map((tone) => (
                               <button
+                                key={tone.id}
                                 type="button"
                                 onClick={() => {
-                                  handleAgentChange(agent.id);
-                                  setAgentDropdownOpen(false);
-                                  // Start a new chat if there are already messages in the current one
-                                  if (messages.length > 0) {
-                                    handleNewChat();
-                                  }
+                                  handleToneChange(tone.id);
+                                  setToneDropdownOpen(false);
                                 }}
-                                className={`w-full text-left flex items-start gap-3 p-2.5 rounded-lg transition duration-200 pr-10 ${isSelected
+                                className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-semibold rounded-xl transition duration-200 ${selectedToneId === tone.id
                                   ? themeMode === "black"
-                                    ? "bg-neutral-200/10 text-white border border-neutral-200/20"
-                                    : "bg-neutral-100 text-neutral-900 border border-neutral-200"
+                                    ? "bg-emerald-500/10 text-emerald-400"
+                                    : "bg-emerald-500/10 text-emerald-700 font-black shadow-inner"
                                   : themeMode === "black"
-                                    ? "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
-                                    : "border border-transparent hover:bg-[#F1F5F9] text-neutral-700 hover:text-neutral-900"
+                                    ? "text-neutral-400 hover:bg-white/5 hover:text-white"
+                                    : "text-neutral-600 hover:bg-neutral-150 hover:text-neutral-900"
                                   }`}
                               >
-                                {agent.isCustom ? (
-                                  (() => {
-                                    const CustomIcon = resolveCustomIcon(agent.icon);
-                                    return <CustomIcon size={16} className={`mt-0.5 flex-shrink-0 ${isSelected ? (themeMode === "black" ? "text-neutral-200" : "text-neutral-700") : "text-emerald-400"}`} />;
-                                  })()
-                                ) : (
-                                  (() => {
-                                    const AgentIcon = agent.icon;
-                                    return <AgentIcon size={16} className={`mt-0.5 flex-shrink-0 ${isSelected ? (themeMode === "black" ? "text-neutral-200" : "text-neutral-700") : "text-neutral-500"}`} />;
-                                  })()
-                                )}
-                                <div className="flex flex-col text-xs leading-normal">
-                                  <span className={`font-bold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-900"} flex items-center gap-1.5`}>
-                                    {agent.banglaName}
-                                    {agent.isCustom && (
-                                      <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Custom</span>
-                                    )}
-                                  </span>
-                                  <span className="text-[10px] text-neutral-500 leading-normal mt-0.5">
-                                    {agent.banglaDesc}
-                                  </span>
-                                </div>
+                                <span className="text-base">{tone.icon}</span>
+                                <span>{tone.name}</span>
                               </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <span className={`mobile-hide sm:block text-sm font-semibold truncate max-w-[200px] ml-2 ${themeMode === "black" ? "text-neutral-200" : "text-neutral-800"
+                    }`}>
+                    {activeChat ? parseChatTitle(activeChat.title).title : ""}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {/* Elite Agent Selector Dropdown */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setAgentDropdownOpen(!agentDropdownOpen)}
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border transition duration-300 font-bold shadow-sm text-xs ${themeMode === "black"
+                      ? "border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 text-neutral-300 hover:text-white hover:border-neutral-200/30"
+                      : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
+                      }`}
+                  >
+                    {(() => {
+                      const activeAgent = allAgents.find((a) => a.id === selectedAgentId) || allAgents[0];
+                      if (activeAgent) {
+                        if (activeAgent.isCustom) {
+                          const CustomIcon = resolveCustomIcon(activeAgent.icon);
+                          return <CustomIcon size={14} className={`${themeMode === "black" ? "text-neutral-200" : "text-neutral-700"} flex-shrink-0 animate-pulse`} />;
+                        }
+                        const AgentIcon = activeAgent.icon;
+                        return <AgentIcon size={14} className={`${themeMode === "black" ? "text-neutral-200" : "text-neutral-700"} flex-shrink-0 animate-pulse`} />;
+                      }
+                      return null;
+                    })()}
+                    <span className="truncate max-w-[120px] sm:max-w-[180px]">
+                      {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.name || "Select Agent"}
+                    </span>
+                    <ChevronDown size={13} className={`text-neutral-500 transition duration-300 ${agentDropdownOpen ? "rotate-180 text-neutral-200" : ""}`} />
+                  </button>
 
-                              {agent.isCustom && (
+                  {/* Dynamic Glassmorphic Dropdown List */}
+                  {agentDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setAgentDropdownOpen(false)} />
+                      <div className={`absolute right-0 mt-2.5 w-80 max-h-[420px] overflow-y-auto rounded-xl border p-2 shadow-2xl z-50 divide-y space-y-1 scrollbar-thin ${themeMode === "black"
+                        ? "border-neutral-800 bg-[#090909]/95 backdrop-blur-md divide-neutral-900"
+                        : "border-neutral-200 bg-white divide-neutral-100 shadow-xl"
+                        }`}>
+                        <div className={`px-3 py-1.5 text-[9px] font-black tracking-widest uppercase flex items-center justify-between ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
+                          }`}>
+                          <span>Select Specialist AI Agent</span>
+                        </div>
+
+                        <div className="pt-1.5 space-y-0.5 font-sans">
+                          {/* "+ Create Custom Agent" Button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCustomAgentModalOpen(true);
+                              setAgentDropdownOpen(false);
+                            }}
+                            className={`w-[calc(100%-8px)] mx-1 flex items-center justify-center gap-2 p-2 rounded-lg border-dashed border transition duration-200 text-xs font-black uppercase tracking-wider mb-2 ${themeMode === "black"
+                              ? "border-emerald-500/25 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/40"
+                              : "border-emerald-200 bg-emerald-500/5 text-emerald-600 hover:bg-emerald-500/10"
+                              }`}
+                          >
+                            <Plus size={13} />
+                            <span>✨ Create Custom Agent</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setPdfAgentModalOpen(true);
+                              setAgentDropdownOpen(false);
+                            }}
+                            className={`w-[calc(100%-8px)] mx-1 flex items-center justify-center gap-2 p-2 rounded-lg border-dashed border transition duration-200 text-xs font-black uppercase tracking-wider mb-2 ${themeMode === "black"
+                              ? "border-indigo-500/25 bg-indigo-500/5 text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/40"
+                              : "border-indigo-200 bg-indigo-500/5 text-indigo-600 hover:bg-indigo-500/10"
+                              }`}
+                          >
+                            <FileText size={13} />
+                            <span>📄 Upload PDF Agent</span>
+                          </button>
+
+                          {allAgents.map((agent) => {
+                            const isSelected = selectedAgentId === agent.id;
+                            return (
+                              <div key={agent.id} className="relative group/agent flex items-center w-full">
                                 <button
                                   type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteCustomAgent(agent.id);
+                                  onClick={() => {
+                                    handleAgentChange(agent.id);
+                                    setAgentDropdownOpen(false);
+                                    // Start a new chat if there are already messages in the current one
+                                    if (messages.length > 0) {
+                                      handleNewChat();
+                                    }
                                   }}
-                                  className="absolute right-2 p-1.5 rounded-md hover:bg-red-500/15 text-neutral-500 hover:text-red-400 opacity-0 group-hover/agent:opacity-100 transition duration-150 z-10"
-                                  title="Delete custom agent"
+                                  className={`w-full text-left flex items-start gap-3 p-2.5 rounded-lg transition duration-200 pr-10 ${isSelected
+                                    ? themeMode === "black"
+                                      ? "bg-neutral-200/10 text-white border border-neutral-200/20"
+                                      : "bg-neutral-100 text-neutral-900 border border-neutral-200"
+                                    : themeMode === "black"
+                                      ? "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
+                                      : "border border-transparent hover:bg-[#F1F5F9] text-neutral-700 hover:text-neutral-900"
+                                    }`}
                                 >
-                                  <Trash2 size={13} />
+                                  {agent.isCustom ? (
+                                    (() => {
+                                      const CustomIcon = resolveCustomIcon(agent.icon);
+                                      return <CustomIcon size={16} className={`mt-0.5 flex-shrink-0 ${isSelected ? (themeMode === "black" ? "text-neutral-200" : "text-neutral-700") : "text-emerald-400"}`} />;
+                                    })()
+                                  ) : (
+                                    (() => {
+                                      const AgentIcon = agent.icon;
+                                      return <AgentIcon size={16} className={`mt-0.5 flex-shrink-0 ${isSelected ? (themeMode === "black" ? "text-neutral-200" : "text-neutral-700") : "text-neutral-500"}`} />;
+                                    })()
+                                  )}
+                                  <div className="flex flex-col text-xs leading-normal">
+                                    <span className={`font-bold ${themeMode === "black" ? "text-neutral-200" : "text-neutral-900"} flex items-center gap-1.5`}>
+                                      {agent.banglaName}
+                                      {agent.isCustom && (
+                                        <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Custom</span>
+                                      )}
+                                    </span>
+                                    <span className="text-[10px] text-neutral-500 leading-normal mt-0.5">
+                                      {agent.banglaDesc}
+                                    </span>
+                                  </div>
                                 </button>
-                              )}
-                            </div>
-                          );
-                        })}
+
+                                {agent.isCustom && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteCustomAgent(agent.id);
+                                    }}
+                                    className="absolute right-2 p-1.5 rounded-md hover:bg-red-500/15 text-neutral-500 hover:text-red-400 opacity-0 group-hover/agent:opacity-100 transition duration-150 z-10"
+                                    title="Delete custom agent"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  </>
-                )}
-              </div>
+                    </>
+                  )}
+                </div>
 
-              <Link
-                href="/"
-                className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition duration-300 text-xs ${themeMode === "black"
-                  ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:bg-neutral-850"
-                  : "border-neutral-200 bg-white text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 shadow-sm"
-                  }`}
-              >
-                Home
-              </Link>
+                <Link
+                  href="/"
+                  className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition duration-300 text-xs ${themeMode === "black"
+                    ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:bg-neutral-850"
+                    : "border-neutral-200 bg-white text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 shadow-sm"
+                    }`}
+                >
+                  Home
+                </Link>
 
-              {/* Theme Toggle Button */}
-              <button
-                onClick={toggleTheme}
-                className={`p-2 rounded-lg transition duration-200 ${themeMode === "black"
-                  ? "text-neutral-500 hover:text-amber-400 hover:bg-neutral-900"
-                  : "text-neutral-500 hover:text-amber-650 hover:bg-neutral-100"
-                  }`}
-                title={themeMode === "black" ? "Switch to System Light Theme" : "Switch to Obsidian Black Theme"}
-              >
-                {themeMode === "black" ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
+                {/* Theme Toggle Button */}
+                <button
+                  onClick={toggleTheme}
+                  className={`p-2 rounded-lg transition duration-200 ${themeMode === "black"
+                    ? "text-neutral-500 hover:text-amber-400 hover:bg-neutral-900"
+                    : "text-neutral-500 hover:text-amber-650 hover:bg-neutral-100"
+                    }`}
+                  title={themeMode === "black" ? "Switch to System Light Theme" : "Switch to Obsidian Black Theme"}
+                >
+                  {themeMode === "black" ? <Sun size={16} /> : <Moon size={16} />}
+                </button>
 
-              <button
-                onClick={() => setIsSettingsModalOpen(true)}
-                className={`p-2 rounded-lg transition duration-200 ${themeMode === "black" ? "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
-                  }`}
-                title="Manage Account"
-              >
-                <Settings size={16} />
-              </button>
-              <Link
-                href="/settings"
-                className={`p-2 rounded-lg transition duration-200 ${themeMode === "black" ? "text-neutral-500 hover:text-red-400 hover:bg-neutral-900" : "text-neutral-500 hover:text-red-600 hover:bg-neutral-100"
-                  }`}
-                title="OpenRouter API Keys"
-              >
-                <Key size={16} />
-              </Link>
+                <button
+                  onClick={() => setIsSettingsModalOpen(true)}
+                  className={`p-2 rounded-lg transition duration-200 ${themeMode === "black" ? "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900" : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
+                    }`}
+                  title="Manage Account"
+                >
+                  <Settings size={16} />
+                </button>
+                <Link
+                  href="/settings"
+                  className={`p-2 rounded-lg transition duration-200 ${themeMode === "black" ? "text-neutral-500 hover:text-red-400 hover:bg-neutral-900" : "text-neutral-500 hover:text-red-600 hover:bg-neutral-100"
+                    }`}
+                  title="OpenRouter API Keys"
+                >
+                  <Key size={16} />
+                </Link>
 
-              {/* Toggle control bar visibility */}
-              <button
-                type="button"
-                onClick={() => setControlBarVisible(v => !v)}
-                title={controlBarVisible ? "Hide controls" : "Show controls"}
-                className={`p-2 rounded-lg transition duration-200 ${themeMode === "black"
-                  ? controlBarVisible
-                    ? "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
-                    : "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900"
-                  : controlBarVisible
-                    ? "text-emerald-600 bg-emerald-50 hover:bg-emerald-100"
+                {/* Toggle control bar visibility */}
+                <button
+                  type="button"
+                  onClick={() => setControlBarVisible(v => !v)}
+                  title={controlBarVisible ? "Hide controls" : "Show controls"}
+                  className={`p-2 rounded-lg transition duration-200 ${themeMode === "black"
+                    ? controlBarVisible
+                      ? "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
+                      : "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900"
+                    : controlBarVisible
+                      ? "text-emerald-600 bg-emerald-50 hover:bg-emerald-100"
+                      : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
+                    }`}
+                >
+                  <ChevronDown size={16} className={`transition-transform duration-300 ${controlBarVisible ? "" : "rotate-180"}`} />
+                </button>
+
+                {/* Hide main header */}
+                <button
+                  type="button"
+                  onClick={() => setHeaderVisible(false)}
+                  title="Hide header"
+                  className={`p-2 rounded-lg transition duration-200 ${themeMode === "black"
+                    ? "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-900"
                     : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
-                  }`}
-              >
-                <ChevronDown size={16} className={`transition-transform duration-300 ${controlBarVisible ? "" : "rotate-180"}`} />
-              </button>
+                    }`}
+                >
+                  <ChevronDown size={16} />
+                </button>
 
-              <UserButton />
-            </div>
-          </header>
+                <UserButton />
+              </div>
+            </header>
+          </div>{/* end header wrapper */}
 
           {/* Premium Sub-Header AI Engine Control Bar (Horizontal Pill Scroller) */}
           <div className={`transition-all duration-300 ease-in-out overflow-hidden ${controlBarVisible ? "max-h-40 opacity-100" : "max-h-0 opacity-0 pointer-events-none"}`}>
