@@ -1,104 +1,85 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Key, AlertTriangle, ExternalLink } from "lucide-react";
+import { X, ExternalLink, Zap } from "lucide-react";
 
 export type BannerType = "api_key_exhausted" | "groq_rate_limit" | "info";
 
 interface ApiKeyBannerProps {
     type: BannerType;
-    message?: string; // optional server-provided reason override
+    message?: string;
     onDismiss: () => void;
 }
 
-const BANNER_CONFIG = {
-    api_key_exhausted: {
-        icon: <Key size={15} className="shrink-0" />,
-        title: "API Key Exhausted",
-        defaultMessage: "All your OpenRouter API keys have hit their rate limit or quota. Add a new key to continue.",
-        actionLabel: "Add API Key →",
-        actionHref: "/settings",
-        bg: "bg-amber-500/10 border-amber-500/30",
-        iconColor: "text-amber-400",
-        titleColor: "text-amber-300",
-        textColor: "text-amber-200/80",
-        actionColor: "text-amber-300 hover:text-amber-100",
-    },
-    groq_rate_limit: {
-        icon: <AlertTriangle size={15} className="shrink-0" />,
-        title: "Rate Limit Hit",
-        defaultMessage: "Groq API rate limit reached. The system will retry with OpenRouter. If this persists, add more API keys.",
-        actionLabel: "Manage Keys →",
-        actionHref: "/settings",
-        bg: "bg-orange-500/10 border-orange-500/30",
-        iconColor: "text-orange-400",
-        titleColor: "text-orange-300",
-        textColor: "text-orange-200/80",
-        actionColor: "text-orange-300 hover:text-orange-100",
-    },
-    info: {
-        icon: <AlertTriangle size={15} className="shrink-0" />,
-        title: "Notice",
-        defaultMessage: "Something needs your attention.",
-        actionLabel: "Settings →",
-        actionHref: "/settings",
-        bg: "bg-blue-500/10 border-blue-500/30",
-        iconColor: "text-blue-400",
-        titleColor: "text-blue-300",
-        textColor: "text-blue-200/80",
-        actionColor: "text-blue-300 hover:text-blue-100",
-    },
-};
-
 export default function ApiKeyBanner({ type, message, onDismiss }: ApiKeyBannerProps) {
     const [visible, setVisible] = useState(false);
-    const config = BANNER_CONFIG[type];
 
     useEffect(() => {
-        const t = setTimeout(() => setVisible(true), 50);
+        const t = setTimeout(() => setVisible(true), 60);
         return () => clearTimeout(t);
     }, []);
 
     const handleDismiss = () => {
         setVisible(false);
-        setTimeout(onDismiss, 300);
+        setTimeout(onDismiss, 250);
     };
+
+    const defaultMessage =
+        type === "groq_rate_limit"
+            ? "Groq rate limit hit. System is retrying with OpenRouter. Add more keys if this persists."
+            : "All API keys are exhausted or invalid. Add a new key to keep chatting.";
 
     return (
         <div
             className={`
-        transition-all duration-300 ease-out
-        ${visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2"}
-        mx-3 mb-2 rounded-xl border px-3.5 py-2.5 flex items-start gap-3
-        ${config.bg}
+        transition-all duration-250 ease-out mb-2
+        ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"}
       `}
         >
-            {/* Icon */}
-            <span className={`mt-0.5 ${config.iconColor}`}>{config.icon}</span>
+            <div className="relative overflow-hidden rounded-xl border border-red-500/20 bg-[#1a0a0a]">
+                {/* Red glow bar on left */}
+                <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-red-500 to-orange-500" />
 
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-                <p className={`text-[11px] font-bold ${config.titleColor}`}>{config.title}</p>
-                <p className={`text-[11px] mt-0.5 leading-relaxed ${config.textColor}`}>
-                    {message || config.defaultMessage}
-                </p>
-                <a
-                    href={config.actionHref}
-                    className={`inline-flex items-center gap-1 text-[11px] font-bold mt-1.5 transition-colors ${config.actionColor}`}
-                >
-                    {config.actionLabel}
-                    <ExternalLink size={10} />
-                </a>
+                <div className="flex items-center gap-3 px-4 py-3 pl-5">
+                    {/* Icon */}
+                    <div className="shrink-0 w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center">
+                        <Zap size={13} className="text-red-400" fill="currentColor" />
+                    </div>
+
+                    {/* Text */}
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-black text-red-400 uppercase tracking-widest">
+                                {type === "groq_rate_limit" ? "Rate Limit" : "API Key Exhausted"}
+                            </span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 font-bold uppercase tracking-wider border border-red-500/20">
+                                Action Required
+                            </span>
+                        </div>
+                        <p className="text-[11px] text-neutral-400 mt-0.5 leading-relaxed">
+                            {message || defaultMessage}
+                        </p>
+                    </div>
+
+                    {/* CTA */}
+                    <a
+                        href="/settings"
+                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 text-[11px] font-bold transition-all duration-200 whitespace-nowrap"
+                    >
+                        Add Key
+                        <ExternalLink size={10} />
+                    </a>
+
+                    {/* Dismiss */}
+                    <button
+                        onClick={handleDismiss}
+                        className="shrink-0 ml-1 text-neutral-600 hover:text-neutral-400 transition-colors"
+                        aria-label="Dismiss"
+                    >
+                        <X size={13} />
+                    </button>
+                </div>
             </div>
-
-            {/* Dismiss */}
-            <button
-                onClick={handleDismiss}
-                className="mt-0.5 text-neutral-500 hover:text-neutral-300 transition-colors shrink-0"
-                aria-label="Dismiss"
-            >
-                <X size={13} />
-            </button>
         </div>
     );
 }
