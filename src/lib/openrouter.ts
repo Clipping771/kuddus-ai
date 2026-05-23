@@ -12,6 +12,15 @@ import { supabase } from "@/lib/supabase";
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const HTTP_REFERER = "https://kachamorich.vercel.app";
 
+/** Typed error for when all API keys are exhausted */
+export class ApiKeyExhaustedError extends Error {
+    public readonly type = "API_KEY_EXHAUSTED";
+    constructor(message: string) {
+        super(message);
+        this.name = "ApiKeyExhaustedError";
+    }
+}
+
 /** Fetch active API keys from database for a specific user */
 async function getDbKeys(userId: string): Promise<string[]> {
     try {
@@ -138,8 +147,8 @@ export async function openrouterFetchWithFallback(
         }
     }
 
-    throw new Error(
-        `All models and API keys exhausted. Last error: ${lastError}`
+    throw new ApiKeyExhaustedError(
+        `All OpenRouter API keys and models exhausted. Last error: ${lastError}`
     );
 }
 

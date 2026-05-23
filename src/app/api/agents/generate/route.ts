@@ -219,10 +219,35 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { idea, field } = body;
+    const { idea, field, nameOnly } = body;
 
     if (!idea || typeof idea !== "string") {
       return NextResponse.json({ error: "Idea is required" }, { status: 400 });
+    }
+
+    // ⚡ Fast path: just generate a good agent name (used on PDF file select)
+    if (nameOnly) {
+      const isBangla = /[\u0980-\u09FF]/.test(idea);
+      const namePrompt = isBangla
+        ? `"${idea}" বিষয়ক একটি AI এজেন্টের জন্য একটি সংক্ষিপ্ত, শক্তিশালী নাম দাও (২-৪ শব্দ)। শুধু নামটি লেখো, আর কিছু না।`
+        : `Give a short, punchy 2-4 word expert agent name for the topic: "${idea}". Reply with ONLY the name, nothing else.`;
+
+      if (!process.env.GROQ_API_KEY) {
+        return NextResponse.json({ name: idea });
+      }
+      const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+      try {
+        const completion = await groq.chat.completions.create({
+          messages: [{ role: "user", content: namePrompt }],
+          model: "llama-3.1-8b-instant",
+          temperature: 0.7,
+          max_tokens: 15,
+        });
+        const name = completion.choices[0]?.message?.content?.trim().replace(/^["']|["']$/g, "") || idea;
+        return NextResponse.json({ name });
+      } catch {
+        return NextResponse.json({ name: idea });
+      }
     }
 
     // If generating a single field (e.g. just instructions or just name)

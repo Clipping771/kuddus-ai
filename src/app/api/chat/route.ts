@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabase";
 import Groq from "groq-sdk";
 import { needsWebSearch, performWebSearch, extractSearchQuery } from "@/lib/search";
-import { openrouterFetchWithFallback } from "@/lib/openrouter";
+import { openrouterFetchWithFallback, ApiKeyExhaustedError } from "@/lib/openrouter";
 
 const Kacha_Morich_CORE_PERSONALITY = `You are **Kacha Morich AI** 🌶️ — The Sharpest Enterprise-Grade Multi-Model Business Decision Engine in the world.
 
@@ -1097,9 +1097,14 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
               .insert({ chat_id: activeChatId, role: "assistant", content: finalSavedText });
             if (assistantSaveError) console.error("Save error:", assistantSaveError);
           }
-        } catch (streamErr) {
+        } catch (streamErr: any) {
           console.error("Stream Error:", streamErr);
-          controller.enqueue(encoder.encode("\n[Error: Stream interrupted. Please try again.]"));
+          // Send a special signal if all API keys are exhausted so the frontend can show a proper notification
+          if (streamErr?.name === "ApiKeyExhaustedError" || streamErr?.message?.includes("exhausted") || streamErr?.message?.includes("All models and API keys")) {
+            controller.enqueue(encoder.encode("\n__API_KEY_EXHAUSTED__"));
+          } else {
+            controller.enqueue(encoder.encode("\n[Error: Stream interrupted. Please try again.]"));
+          }
         } finally {
           controller.close();
         }

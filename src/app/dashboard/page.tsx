@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 // NovaAvatar removed — using dynamic AIAvatar now
 import TypingIndicator from "@/components/TypingIndicator";
+import ApiKeyBanner, { BannerType } from "@/components/ApiKeyBanner";
 
 // Helper to clean LaTeX arrows in AI response
 function cleanArrows(text: string | null | undefined): string {
@@ -876,6 +877,10 @@ export default function Dashboard() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [newPdfAgentName, setNewPdfAgentName] = useState("");
+  const [isGeneratingPdfName, setIsGeneratingPdfName] = useState(false);
+
+  // API key notification banner
+  const [apiBanner, setApiBanner] = useState<BannerType | null>(null);
 
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentBanglaName, setNewAgentBanglaName] = useState("");
@@ -1177,9 +1182,9 @@ export default function Dashboard() {
     }
   };
 
-  const handlePdfFileSelect = (file: File) => {
+  const handlePdfFileSelect = async (file: File) => {
     setPdfFile(file);
-    // Instantly derive a clean agent name from the filename — no LLM call needed
+    // Step 1: Instantly show cleaned filename so UI is never empty
     const cleanName = file.name
       .replace(/\.pdf$/i, "")
       .replace(/[-_]/g, " ")
@@ -1189,6 +1194,26 @@ export default function Dashboard() {
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(" ");
     setNewPdfAgentName(cleanName);
+    setIsGeneratingPdfName(true);
+
+    // Step 2: Fire a fast nameOnly LLM call in the background (~500ms)
+    try {
+      const res = await fetch("/api/agents/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idea: cleanName, nameOnly: true }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.name && data.name.trim()) {
+          setNewPdfAgentName(data.name.trim());
+        }
+      }
+    } catch {
+      // Keep the filename-derived name — already set above
+    } finally {
+      setIsGeneratingPdfName(false);
+    }
   };
 
   const handleUploadPdfAgent = async (e: React.FormEvent) => {
@@ -1235,6 +1260,7 @@ export default function Dashboard() {
 
         setPdfFile(null);
         setNewPdfAgentName("");
+        setIsGeneratingPdfName(false);
         setPdfAgentModalOpen(false);
 
         if (messages.length > 0) {
@@ -1971,6 +1997,26 @@ export default function Dashboard() {
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
+
+        // Detect API key exhausted signal from server
+        if (chunk.includes("__API_KEY_EXHAUSTED__")) {
+          const cleanChunk = chunk.replace("__API_KEY_EXHAUSTED__", "").trim();
+          if (cleanChunk) {
+            accumulatedResponse += cleanChunk;
+          }
+          setApiBanner("api_key_exhausted");
+          setMessages((prev) => {
+            const updated = [...prev];
+            if (updated.length > 0) {
+              updated[updated.length - 1] = {
+                role: "assistant",
+                content: accumulatedResponse || "⚠️ All API keys are exhausted. Please add a new OpenRouter key in Settings to continue.",
+              };
+            }
+            return updated;
+          });
+          break;
+        }
 
         // Custom Header parsing to set activeChatId on new chats
         if (!hasHeaderIdParsed && chunk.includes("__CHAT_ID__:")) {
@@ -3216,6 +3262,15 @@ export default function Dashboard() {
                   </button>
                 </div>
               )}
+
+              {/* API Key Exhausted Banner */}
+              {apiBanner && (
+                <ApiKeyBanner
+                  type={apiBanner}
+                  onDismiss={() => setApiBanner(null)}
+                />
+              )}
+
               <form
                 onSubmit={handleSubmit}
                 className={`w-full relative rounded-2xl border transition-all duration-300 overflow-hidden backdrop-blur-md ${themeMode === "black"
@@ -3936,6 +3991,7 @@ export default function Dashboard() {
               <div>
                 <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
                   Agent Name
+                  {isGeneratingPdfName && <span className="ml-2 text-indigo-400 normal-case font-normal tracking-normal animate-pulse">✨ Generating...</span>}
                 </label>
                 <div className="relative">
                   <input
@@ -3949,9 +4005,12 @@ export default function Dashboard() {
                       : "bg-neutral-50 border-neutral-200 focus:border-indigo-500 text-neutral-900 placeholder-neutral-400"
                       }`}
                   />
+                  {isGeneratingPdfName && (
+                    <Loader2 size={13} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-indigo-400" />
+                  )}
                 </div>
                 <p className={`text-[10px] mt-1.5 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
-                  Auto-filled from your PDF filename — you can edit it anytime.
+                  Auto-generated from your PDF — you can edit it anytime.
                 </p>
               </div>
 
