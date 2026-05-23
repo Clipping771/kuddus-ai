@@ -40,7 +40,7 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const { userId: clerkId } = await auth();
 
@@ -59,11 +59,21 @@ export async function POST() {
       return NextResponse.json({ error: "User profile not found" }, { status: 404 });
     }
 
-    // 2. Create a new chat
+    // 2. Parse request body to get optional agent_id
+    let agentId: string | null = null;
+    try {
+      const body = await request.json();
+      agentId = body.agent_id || null;
+    } catch {
+      // No body or invalid JSON, agentId remains null
+    }
+
+    // 3. Create a new chat
     const { data: newChat, error: chatError } = await supabase
       .from("chats")
       .insert({
         user_id: dbUser.id,
+        agent_id: agentId,
         title: "New Business Idea",
       })
       .select("*")

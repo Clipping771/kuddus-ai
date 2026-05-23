@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import NextImage from "next/image";
 import { useUser, UserButton } from "@clerk/nextjs";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -32,10 +33,19 @@ if (typeof window !== "undefined") {
 const MermaidDiagram = ({ chart }: { chart: string }) => {
   const [svg, setSvg] = useState<string>("");
   const [error, setError] = useState<boolean>(false);
-  const elementId = useRef(`mermaid-${Math.floor(Math.random() * 1000000)}`);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const elementId = useRef<string>("");
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  // Initialize elementId only on client side to avoid hydration mismatch
   useEffect(() => {
+    elementId.current = `mermaid-${Math.floor(Math.random() * 1000000)}`;
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+
     async function renderChart() {
       if (!chart) return;
       try {
@@ -48,7 +58,7 @@ const MermaidDiagram = ({ chart }: { chart: string }) => {
       }
     }
     renderChart();
-  }, [chart]);
+  }, [chart, isHydrated]);
 
   const downloadPNG = () => {
     if (!containerRef.current) return;
@@ -110,7 +120,7 @@ const MermaidDiagram = ({ chart }: { chart: string }) => {
     );
   }
 
-  if (!svg) {
+  if (!isHydrated || !svg) {
     return (
       <div className="flex items-center justify-center p-8 bg-neutral-900/30 rounded-xl border border-white/5 my-4">
         <span className="text-xs text-neutral-500 animate-pulse">Rendering UML Diagram...</span>
@@ -196,10 +206,26 @@ import {
   Moon,
   Download,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Key
 } from "lucide-react";
 import Link from "next/link";
 import { parseAnyFile } from "@/lib/fileParser";
+
+// Resolves a stored icon string (e.g. "FileText") to the actual Lucide component for custom agents
+function resolveCustomIcon(iconName: string) {
+  const iconMap: Record<string, React.ElementType> = {
+    FileText, Lightbulb, DollarSign, Search, Eye, Code, Target, Video,
+    Share2, ShieldCheck, GraduationCap, Briefcase, TrendingUp, Settings,
+    Mail, Calendar, Heart, Sparkles, Loader2,
+  };
+  return iconMap[iconName] || FileText;
+}
+
+// Strip heavy instructions before saving to localStorage to avoid QuotaExceededError
+function agentsForStorage(agents: CustomAgent[]) {
+  return agents.map(({ instructions: _instructions, ...rest }) => rest);
+}
 const parseThoughtAndContent = (text: string): { thought: string; content: string } => {
   if (!text) return { thought: "", content: "" };
 
@@ -760,17 +786,16 @@ const TONES_LIST = [
   { id: "detailed", name: "Detailed", icon: "📝", prompt: "Provide extremely long, in-depth, comprehensive explanations covering all angles." },
 ];
 
-const MODELS_LIST = [
-  { id: "google/gemma-4-31b-it", name: "Google Gemma 31B", icon: "💎", badge: "Primary" },
-  { id: "arcee-ai/trinity-large-thinking:free", name: "Trinity Large (Thinking)", icon: "🔮", badge: "Reasoning King" },
-  { id: "deepseek/deepseek-v4-flash", name: "DeepSeek V4 Flash", icon: "⚡", badge: "Super Fast" },
-  { id: "nousresearch/hermes-3-llama-3.1-405b", name: "Hermes 3 405B Instruct", icon: "🧠", badge: "Max Reasoning" },
-  { id: "openai/gpt-oss-120b:free", name: "GPT OSS 120B", icon: "🤖", badge: "OSS Giant" },
-  { id: "nvidia/nemotron-3-super-120b-a12b:free", name: "Nvidia Nemotron 120B", icon: "🐲", badge: "Enterprise" },
-  { id: "baidu/cobuddy:free", name: "Baidu Cobuddy", icon: "🐼", badge: "Smart Agent" },
-  { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B", icon: "🦙", badge: "Meta Logic" },
-  { id: "liquid/lfm-2.5-1.2b-thinking:free", name: "Liquid LFM Thinking", icon: "💧", badge: "Fluid Logic" },
-  { id: "openrouter/owl-alpha", name: "Owl Alpha", icon: "🦉", badge: "Alpha Tier" },
+// Fallback models shown before dynamic list loads
+const FALLBACK_MODELS = [
+  { id: "google/gemma-4-31b-it", name: "Google Gemma 31B", icon: "💎", badge: "Primary", isFree: false },
+  { id: "arcee-ai/trinity-large-thinking:free", name: "Trinity Large", icon: "🔮", badge: "Free", isFree: true },
+  { id: "deepseek/deepseek-v4-flash", name: "DeepSeek V4 Flash", icon: "⚡", badge: "Fast", isFree: false },
+  { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B", icon: "🦙", badge: "Free", isFree: true },
+  { id: "openai/gpt-oss-120b:free", name: "GPT OSS 120B", icon: "🤖", badge: "Free", isFree: true },
+  { id: "nousresearch/hermes-3-llama-3.1-405b", name: "Hermes 3 405B", icon: "🧠", badge: "Max Reasoning", isFree: false },
+  { id: "nvidia/nemotron-3-super-120b-a12b:free", name: "Nvidia Nemotron 120B", icon: "🐲", badge: "Free", isFree: true },
+  { id: "google/gemini-2.5-flash-preview", name: "Gemini 2.5 Flash", icon: "💎", badge: "Fast", isFree: false },
 ];
 
 function parseChatTitle(rawTitle: string) {
@@ -799,6 +824,7 @@ function parseChatTitle(rawTitle: string) {
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
+  const [isHydrated, setIsHydrated] = useState(false);
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -820,12 +846,23 @@ export default function Dashboard() {
   const [selectedModelId, setSelectedModelId] = useState<string>("google/gemma-4-31b-it");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
 
+  // Dynamic model list from OpenRouter
+  const [modelsList, setModelsList] = useState<any[]>(FALLBACK_MODELS);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelsSearch, setModelsSearch] = useState("");
+  const [showFreeOnly, setShowFreeOnly] = useState(false);
+
   // Multi-Agent Brain Trust State
   const [isBrainTrust, setIsBrainTrust] = useState(false);
   const [boardSize, setBoardSize] = useState<number>(16);
 
   // Theme Mode State: "black" (dark) or "light" (clean light)
   const [themeMode, setThemeMode] = useState<"black" | "light">("black");
+
+  // Set hydration flag on mount
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   // Custom Pull-to-Refresh Gesture State for Nested Scrolls
   const [pullStartY, setPullStartY] = useState(0);
@@ -835,6 +872,11 @@ export default function Dashboard() {
   // Custom Agent Builder States
   const [customAgents, setCustomAgents] = useState<CustomAgent[]>([]);
   const [customAgentModalOpen, setCustomAgentModalOpen] = useState(false);
+  const [pdfAgentModalOpen, setPdfAgentModalOpen] = useState(false);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [newPdfAgentName, setNewPdfAgentName] = useState("");
+  const [isGeneratingPdfName, setIsGeneratingPdfName] = useState(false);
 
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentBanglaName, setNewAgentBanglaName] = useState("");
@@ -863,15 +905,25 @@ export default function Dashboard() {
       banglaDesc: ca.banglaDesc,
       icon: null as any,
       placeholder: "How can this specialized custom agent help you today?",
-      suggestions: [
-        "Give me a detailed strategic master plan based on your custom expert instructions.",
-        "Critically evaluate my business concept using your core specialized logic."
-      ],
+      suggestions: [] as any[], // always empty — prompts are generated dynamically
       isCustom: true,
       customIcon: ca.icon,
       instructions: ca.instructions
     }))
   ];
+
+  // Auto-generate prompts when switching to a custom agent with no cached suggestions
+  useEffect(() => {
+    const activeAgent = allAgents.find((a) => a.id === selectedAgentId);
+    if (
+      activeAgent?.isCustom &&
+      !customSuggestions[selectedAgentId] &&
+      !isGeneratingPrompts
+    ) {
+      generatePromptsForAgent(selectedAgentId, allAgents);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAgentId, customAgents]);
 
   // Robust Hydrated Persistence Engine
   useEffect(() => {
@@ -884,13 +936,56 @@ export default function Dashboard() {
       const savedTheme = localStorage.getItem("kacha_selected_theme") as "black" | "light";
       const savedCustomAgents = localStorage.getItem("kacha_custom_agents");
 
+      // Step 1: Load from localStorage immediately (instant UI)
       if (savedCustomAgents) {
         try {
-          setCustomAgents(JSON.parse(savedCustomAgents));
+          const parsed = JSON.parse(savedCustomAgents);
+          // Strip instructions from any previously saved agents (migration fix)
+          setCustomAgents(parsed.map(({ instructions: _i, ...rest }: any) => ({ ...rest, isCustom: true })));
         } catch (e) {
           console.error("Failed to parse custom agents:", e);
         }
       }
+
+      // Step 2: Fetch DB custom agents — merge with localStorage, DB is source of truth
+      fetch("/api/agents")
+        .then(res => {
+          if (!res.ok) {
+            // 401 = not logged in yet, 404 = user not in DB yet — keep localStorage data
+            console.warn(`[Agents] Fetch returned ${res.status}, keeping localStorage agents`);
+            return null;
+          }
+          return res.json();
+        })
+        .then(data => {
+          if (!data) return; // error case handled above
+          if (data.agents && Array.isArray(data.agents) && data.agents.length > 0) {
+            // Only overwrite if DB actually has agents — prevents empty-array wipe
+            const dbAgents: CustomAgent[] = data.agents.map((a: any) => ({
+              id: a.id,
+              name: a.name,
+              banglaName: a.name,
+              banglaDesc: a.description,
+              icon: a.icon || "FileText",
+              instructions: a.instructions,
+              isCustom: true
+            }));
+            setCustomAgents(dbAgents);
+            localStorage.setItem("kacha_custom_agents", JSON.stringify(agentsForStorage(dbAgents)));
+          } else if (data.agents && Array.isArray(data.agents) && data.agents.length === 0) {
+            // DB returned empty — only clear localStorage if we're confident user is synced
+            // Check if localStorage has agents; if so, keep them (DB may not have synced yet)
+            const savedCustomAgents = localStorage.getItem("kacha_custom_agents");
+            if (!savedCustomAgents || savedCustomAgents === "[]") {
+              setCustomAgents([]);
+            }
+            // else: keep localStorage agents — don't wipe on empty DB response
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to fetch agents from DB, keeping localStorage data:", err);
+          // On network error, localStorage data is already loaded above — do nothing
+        });
 
       if (savedTone) setSelectedToneId(savedTone);
       if (savedAgent) setSelectedAgentId(savedAgent);
@@ -949,12 +1044,36 @@ export default function Dashboard() {
   const [isGeneratingPrompts, setIsGeneratingPrompts] = useState(false);
   const [customPromptText, setCustomPromptText] = useState("");
 
-  const handleGeneratePrompts = async () => {
-    const activeAgent = allAgents.find((a) => a.id === selectedAgentId) || allAgents[0];
+  // Core generate function — used both manually and auto
+  const generatePromptsForAgent = async (agentId: string, agents: typeof allAgents) => {
+    const activeAgent = agents.find((a) => a.id === agentId) || agents[0];
     if (!activeAgent) return;
 
     setIsGeneratingPrompts(true);
     try {
+      // If custom agent has no instructions loaded yet (localStorage strips them),
+      // fetch fresh from DB to get the actual instructions
+      let instructions = activeAgent.isCustom ? (activeAgent.instructions || "").substring(0, 3000) : "";
+
+      if (activeAgent.isCustom && !instructions) {
+        try {
+          const agentsRes = await fetch("/api/agents");
+          if (agentsRes.ok) {
+            const agentsData = await agentsRes.json();
+            const dbAgent = agentsData.agents?.find((a: any) => a.id === agentId);
+            if (dbAgent?.instructions) {
+              instructions = dbAgent.instructions.substring(0, 3000);
+              // Update local state with instructions so future calls don't need to re-fetch
+              setCustomAgents(prev => prev.map(ca =>
+                ca.id === agentId ? { ...ca, instructions: dbAgent.instructions } : ca
+              ));
+            }
+          }
+        } catch (fetchErr) {
+          console.warn("Failed to fetch agent instructions from DB:", fetchErr);
+        }
+      }
+
       const response = await fetch(`/api/prompts/generate?t=${Date.now()}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -962,7 +1081,9 @@ export default function Dashboard() {
         body: JSON.stringify({
           agentId: activeAgent.id,
           agentName: activeAgent.name,
-          agentDesc: activeAgent.desc
+          agentDesc: activeAgent.banglaDesc || (activeAgent as any).desc || "",
+          isCustom: activeAgent.isCustom || false,
+          instructions,
         })
       });
       if (response.ok) {
@@ -970,7 +1091,7 @@ export default function Dashboard() {
         if (data.suggestions) {
           setCustomSuggestions(prev => ({
             ...prev,
-            [selectedAgentId]: data.suggestions
+            [agentId]: data.suggestions
           }));
         }
       }
@@ -980,6 +1101,8 @@ export default function Dashboard() {
       setIsGeneratingPrompts(false);
     }
   };
+
+  const handleGeneratePrompts = () => generatePromptsForAgent(selectedAgentId, allAgents);
 
   const handleAddCustomPrompt = () => {
     if (!customPromptText.trim()) return;
@@ -1055,6 +1178,93 @@ export default function Dashboard() {
     }
   };
 
+  const handlePdfFileSelect = async (file: File) => {
+    setPdfFile(file);
+    // Auto-generate agent name from the PDF filename/topic
+    setIsGeneratingPdfName(true);
+    try {
+      // Derive a clean topic hint from the filename
+      const rawName = file.name.replace(/\.pdf$/i, "").replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
+      const res = await fetch("/api/agents/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idea: rawName }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.name) {
+          setNewPdfAgentName(data.name);
+        }
+      }
+    } catch (err) {
+      console.error("Auto name generation failed:", err);
+      // Fallback: use cleaned filename
+      const fallback = file.name.replace(/\.pdf$/i, "").replace(/[-_]/g, " ").trim();
+      setNewPdfAgentName(fallback);
+    } finally {
+      setIsGeneratingPdfName(false);
+    }
+  };
+
+  const handleUploadPdfAgent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pdfFile || !newPdfAgentName.trim()) return;
+
+    setIsUploadingPdf(true);
+    const formData = new FormData();
+    formData.append("file", pdfFile);
+    formData.append("name", newPdfAgentName.trim());
+    formData.append("description", "A custom AI agent trained entirely on your uploaded document. It acts as a specialized subject matter expert.");
+
+    try {
+      const res = await fetch("/api/agents", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        alert(errData.error || "Failed to upload PDF");
+        setIsUploadingPdf(false);
+        return;
+      }
+
+      const data = await res.json();
+      if (data.agent) {
+        const newAgent: CustomAgent = {
+          id: data.agent.id,
+          name: data.agent.name,
+          banglaName: data.agent.name,
+          banglaDesc: data.agent.description,
+          icon: data.agent.icon || "FileText",
+          instructions: data.agent.instructions,
+          isCustom: true
+        };
+
+        const updatedList = [...customAgents, newAgent];
+        setCustomAgents(updatedList);
+        localStorage.setItem("kacha_custom_agents", JSON.stringify(agentsForStorage(updatedList)));
+
+        setSelectedAgentId(newAgent.id);
+        localStorage.setItem("kacha_selected_agent", newAgent.id);
+
+        setPdfFile(null);
+        setNewPdfAgentName("");
+        setIsGeneratingPdfName(false);
+        setPdfAgentModalOpen(false);
+
+        if (messages.length > 0) {
+          handleNewChat();
+        }
+      }
+    } catch (err) {
+      console.error("PDF upload error:", err);
+      alert("An unexpected error occurred during upload.");
+    } finally {
+      setIsUploadingPdf(false);
+    }
+  };
+
   const handleCreateCustomAgent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAgentName.trim() || !newAgentBanglaName.trim() || !newAgentInstructions.trim()) return;
@@ -1071,7 +1281,7 @@ export default function Dashboard() {
 
     const updatedList = [...customAgents, newAgent];
     setCustomAgents(updatedList);
-    localStorage.setItem("kacha_custom_agents", JSON.stringify(updatedList));
+    localStorage.setItem("kacha_custom_agents", JSON.stringify(agentsForStorage(updatedList)));
 
     // Auto-select the newly created custom agent!
     setSelectedAgentId(newAgent.id);
@@ -1093,14 +1303,28 @@ export default function Dashboard() {
     }
   };
 
-  const handleDeleteCustomAgent = (id: string) => {
+  const handleDeleteCustomAgent = async (id: string) => {
+    // Optimistically remove from UI immediately
     const updated = customAgents.filter((ca) => ca.id !== id);
     setCustomAgents(updated);
-    localStorage.setItem("kacha_custom_agents", JSON.stringify(updated));
-    // Fallback if the deleted agent was selected
+    localStorage.setItem("kacha_custom_agents", JSON.stringify(agentsForStorage(updated)));
     if (selectedAgentId === id) {
       setSelectedAgentId("daily-innovation-idea-agent");
       localStorage.setItem("kacha_selected_agent", "daily-innovation-idea-agent");
+    }
+
+    // Delete from DB — only applies to DB-backed agents (UUID ids, not "custom-agent-..." local ones)
+    const isDbAgent = !id.startsWith("custom-agent-");
+    if (isDbAgent) {
+      try {
+        await fetch("/api/agents", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+      } catch (err) {
+        console.error("Failed to delete agent from DB:", err);
+      }
     }
   };
 
@@ -1125,7 +1349,7 @@ export default function Dashboard() {
 
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
     if (pullStartY === 0 || isPullRefreshing) return;
-    
+
     const container = e.currentTarget;
     if (container.scrollTop > 0) {
       // Reset if scrolled down
@@ -1136,12 +1360,12 @@ export default function Dashboard() {
 
     const currentY = e.touches[0].clientY;
     const diff = currentY - pullStartY;
-    
+
     if (diff > 0) {
       // Capped pull distance with tension resistance factor for native tactile feel
       const distance = Math.min(120, diff * 0.4);
       setPullDistance(distance);
-      
+
       // Prevent native browser overscroll/refresh gesture so they do not conflict
       if (e.cancelable) {
         e.preventDefault();
@@ -1153,7 +1377,7 @@ export default function Dashboard() {
     if (pullDistance > 65) {
       setIsPullRefreshing(true);
       setPullDistance(50); // Set to active loader position
-      
+
       // Perform window reload to trigger full refresh
       setTimeout(() => {
         window.location.reload();
@@ -1582,6 +1806,21 @@ export default function Dashboard() {
     }
   }, [isLoaded, user]);
 
+  // Fetch dynamic model list from OpenRouter via our API
+  useEffect(() => {
+    if (!isLoaded || !user) return;
+    setModelsLoading(true);
+    fetch("/api/models")
+      .then(res => res.json())
+      .then(data => {
+        if (data.models && data.models.length > 0) {
+          setModelsList(data.models);
+        }
+      })
+      .catch(err => console.error("Failed to fetch models:", err))
+      .finally(() => setModelsLoading(false));
+  }, [isLoaded, user]);
+
   // 2. Fetch messages when activeChatId changes
   useEffect(() => {
     async function fetchMessages() {
@@ -1833,6 +2072,18 @@ export default function Dashboard() {
     </div>
   );
 
+  // Prevent hydration mismatch by not rendering until client-side hydration is complete
+  if (!isHydrated) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-black">
+        <div className="text-center">
+          <div className="w-12 h-12 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-neutral-400 text-sm">Loading Kacha Morich AI...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div
@@ -1841,15 +2092,13 @@ export default function Dashboard() {
         style={{ height: "var(--viewport-height, 100%)" }}
       >
         <aside
-          className={`fixed inset-y-0 left-0 z-40 flex-shrink-0 transform transition-all duration-300 ease-in-out ${
-            (sidebarOpen || (!isSidebarFolded && !sidebarOpen))
-              ? "w-72 opacity-100 lg:static lg:translate-x-0"
-              : "w-0 lg:w-0 overflow-hidden opacity-0 -translate-x-full lg:-translate-x-full lg:static pointer-events-none"
-          } ${sidebarOpen ? "translate-x-0" : (!isSidebarFolded ? "max-lg:-translate-x-full" : "-translate-x-full")} ${
-            themeMode === "black"
+          className={`fixed inset-y-0 left-0 z-40 flex-shrink-0 transform transition-all duration-300 ease-in-out ${(sidebarOpen || (!isSidebarFolded && !sidebarOpen))
+            ? "w-72 opacity-100 lg:static lg:translate-x-0"
+            : "w-0 lg:w-0 overflow-hidden opacity-0 -translate-x-full lg:-translate-x-full lg:static pointer-events-none"
+            } ${sidebarOpen ? "translate-x-0" : (!isSidebarFolded ? "max-lg:-translate-x-full" : "-translate-x-full")} ${themeMode === "black"
               ? `bg-[#050505] ${isSidebarFolded ? "border-r-0" : "border-r border-white/5"}`
               : `bg-[#FFFFFF] ${isSidebarFolded ? "border-r-0" : "border-r border-neutral-200"}`
-          }`}
+            }`}
         >
           <div className="flex flex-col h-full">
             {/* Sidebar Top Nav Brand */}
@@ -1873,11 +2122,10 @@ export default function Dashboard() {
                   </button>
                   <button
                     type="button"
-                    className={`hidden lg:flex items-center justify-center p-1.5 rounded-xl border transition-all duration-300 group/toggle ${
-                      themeMode === "black"
-                        ? "border-white/5 bg-white/[0.02] hover:bg-white/[0.06] text-neutral-400 hover:text-white"
-                        : "border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800"
-                    }`}
+                    className={`hidden lg:flex items-center justify-center p-1.5 rounded-xl border transition-all duration-300 group/toggle ${themeMode === "black"
+                      ? "border-white/5 bg-white/[0.02] hover:bg-white/[0.06] text-neutral-400 hover:text-white"
+                      : "border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-500 hover:text-neutral-800"
+                      }`}
                     onClick={handleSidebarFoldToggle}
                     title="Hide Sidebar"
                   >
@@ -1896,8 +2144,8 @@ export default function Dashboard() {
               <button
                 onClick={handleNewChat}
                 className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border transition-all duration-300 shadow-sm text-xs font-bold ${themeMode === "black"
-                    ? "border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent hover:from-white/[0.08] text-neutral-200 hover:text-white"
-                    : "border-transparent bg-[#0A0A0C] hover:bg-neutral-800 text-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:scale-[1.01] active:scale-[0.99] transform"
+                  ? "border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent hover:from-white/[0.08] text-neutral-200 hover:text-white"
+                  : "border-transparent bg-[#0A0A0C] hover:bg-neutral-800 text-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:scale-[1.01] active:scale-[0.99] transform"
                   }`}
               >
                 <Plus size={16} /> New Analysis
@@ -1919,12 +2167,12 @@ export default function Dashboard() {
                       setSidebarOpen(false);
                     }}
                     className={`group w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition duration-300 text-xs ${activeChatId === chat.id
-                        ? themeMode === "black"
-                          ? "bg-white/[0.04] border border-white/[0.06] text-white font-medium shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
-                          : "bg-amber-500/10 border border-amber-500/20 text-amber-955 font-bold shadow-sm"
-                        : themeMode === "black"
-                          ? "border border-transparent text-neutral-400 hover:bg-white/[0.02] hover:text-neutral-200"
-                          : "border border-transparent text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
+                      ? themeMode === "black"
+                        ? "bg-white/[0.04] border border-white/[0.06] text-white font-medium shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
+                        : "bg-amber-500/10 border border-amber-500/20 text-amber-955 font-bold shadow-sm"
+                      : themeMode === "black"
+                        ? "border border-transparent text-neutral-400 hover:bg-white/[0.02] hover:text-neutral-200"
+                        : "border border-transparent text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
                       }`}
                   >
                     <div className="flex items-center gap-2 truncate">
@@ -1938,8 +2186,8 @@ export default function Dashboard() {
                     <button
                       onClick={(e) => handleDeleteChat(e, chat.id)}
                       className={`p-1 rounded opacity-0 group-hover:opacity-100 transition duration-300 ${themeMode === "black"
-                          ? "text-neutral-600 hover:text-red-400 hover:bg-red-950/20"
-                          : "text-neutral-400 hover:text-red-500 hover:bg-red-50"
+                        ? "text-neutral-600 hover:text-red-400 hover:bg-red-950/20"
+                        : "text-neutral-400 hover:text-red-500 hover:bg-red-50"
                         }`}
                     >
                       <Trash2 size={13} />
@@ -2019,8 +2267,8 @@ export default function Dashboard() {
             </div>
           )}
           <header className={`h-16 px-4 sm:px-6 border-b backdrop-blur-xl flex items-center justify-between z-40 transition-colors duration-300 ${themeMode === "black"
-              ? "border-white/5 bg-[#050505]/80"
-              : "border-neutral-200 bg-[#FFFFFF]/80 shadow-sm"
+            ? "border-white/5 bg-[#050505]/80"
+            : "border-neutral-200 bg-[#FFFFFF]/80 shadow-sm"
             }`}>
             <div className="flex items-center gap-3">
               <button
@@ -2033,11 +2281,10 @@ export default function Dashboard() {
               {isSidebarFolded && (
                 <button
                   type="button"
-                  className={`hidden lg:flex items-center justify-center p-2 rounded-xl border transition-all duration-300 group/toggle animate-fade-in ${
-                    themeMode === "black"
-                      ? "border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400 hover:text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
-                      : "border-emerald-200 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-600 hover:text-emerald-700"
-                  }`}
+                  className={`hidden lg:flex items-center justify-center p-2 rounded-xl border transition-all duration-300 group/toggle animate-fade-in ${themeMode === "black"
+                    ? "border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400 hover:text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                    : "border-emerald-200 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-600 hover:text-emerald-700"
+                    }`}
                   onClick={handleSidebarFoldToggle}
                   title="Show Sidebar"
                 >
@@ -2060,8 +2307,8 @@ export default function Dashboard() {
                       type="button"
                       onClick={() => setToneDropdownOpen(!toneDropdownOpen)}
                       className={`flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 sm:px-2.5 sm:py-1 rounded-xl transition-all font-extrabold shadow-sm border ${themeMode === "black"
-                          ? "bg-emerald-950/40 text-emerald-400 border-emerald-500/20 hover:bg-emerald-900/50"
-                          : "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 hover:bg-emerald-500/20"
+                        ? "bg-emerald-950/40 text-emerald-400 border-emerald-500/20 hover:bg-emerald-900/50"
+                        : "bg-emerald-500/10 text-emerald-700 border-emerald-500/20 hover:bg-emerald-500/20"
                         }`}
                     >
                       <span className="text-[11px] sm:text-xs font-black tracking-wider uppercase">
@@ -2080,8 +2327,8 @@ export default function Dashboard() {
 
                     {toneDropdownOpen && (
                       <div className={`absolute top-full left-0 mt-2 w-56 backdrop-blur-xl border rounded-2xl p-1 shadow-2xl z-50 transition-colors duration-300 ${themeMode === "black"
-                          ? "bg-[#0A0A0A]/95 border-white/10"
-                          : "bg-[#FFFFFF]/95 border-neutral-200"
+                        ? "bg-[#0A0A0A]/95 border-white/10"
+                        : "bg-[#FFFFFF]/95 border-neutral-200"
                         }`}>
                         <div className="max-h-64 overflow-y-auto font-sans">
                           {TONES_LIST.map((tone) => (
@@ -2093,12 +2340,12 @@ export default function Dashboard() {
                                 setToneDropdownOpen(false);
                               }}
                               className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-semibold rounded-xl transition duration-200 ${selectedToneId === tone.id
-                                  ? themeMode === "black"
-                                    ? "bg-emerald-500/10 text-emerald-400"
-                                    : "bg-emerald-500/10 text-emerald-700 font-black shadow-inner"
-                                  : themeMode === "black"
-                                    ? "text-neutral-400 hover:bg-white/5 hover:text-white"
-                                    : "text-neutral-600 hover:bg-neutral-150 hover:text-neutral-900"
+                                ? themeMode === "black"
+                                  ? "bg-emerald-500/10 text-emerald-400"
+                                  : "bg-emerald-500/10 text-emerald-700 font-black shadow-inner"
+                                : themeMode === "black"
+                                  ? "text-neutral-400 hover:bg-white/5 hover:text-white"
+                                  : "text-neutral-600 hover:bg-neutral-150 hover:text-neutral-900"
                                 }`}
                             >
                               <span className="text-base">{tone.icon}</span>
@@ -2123,15 +2370,16 @@ export default function Dashboard() {
                   type="button"
                   onClick={() => setAgentDropdownOpen(!agentDropdownOpen)}
                   className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border transition duration-300 font-bold shadow-sm text-xs ${themeMode === "black"
-                      ? "border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 text-neutral-300 hover:text-white hover:border-neutral-200/30"
-                      : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
+                    ? "border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 text-neutral-300 hover:text-white hover:border-neutral-200/30"
+                    : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
                     }`}
                 >
                   {(() => {
                     const activeAgent = allAgents.find((a) => a.id === selectedAgentId) || allAgents[0];
                     if (activeAgent) {
                       if (activeAgent.isCustom) {
-                        return <span className="text-xs mr-0.5">{activeAgent.customIcon}</span>;
+                        const CustomIcon = resolveCustomIcon(activeAgent.icon);
+                        return <CustomIcon size={14} className={`${themeMode === "black" ? "text-neutral-200" : "text-neutral-700"} flex-shrink-0 animate-pulse`} />;
                       }
                       const AgentIcon = activeAgent.icon;
                       return <AgentIcon size={14} className={`${themeMode === "black" ? "text-neutral-200" : "text-neutral-700"} flex-shrink-0 animate-pulse`} />;
@@ -2149,8 +2397,8 @@ export default function Dashboard() {
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setAgentDropdownOpen(false)} />
                     <div className={`absolute right-0 mt-2.5 w-80 max-h-[420px] overflow-y-auto rounded-xl border p-2 shadow-2xl z-50 divide-y space-y-1 scrollbar-thin ${themeMode === "black"
-                        ? "border-neutral-800 bg-[#090909]/95 backdrop-blur-md divide-neutral-900"
-                        : "border-neutral-200 bg-white divide-neutral-100 shadow-xl"
+                      ? "border-neutral-800 bg-[#090909]/95 backdrop-blur-md divide-neutral-900"
+                      : "border-neutral-200 bg-white divide-neutral-100 shadow-xl"
                       }`}>
                       <div className={`px-3 py-1.5 text-[9px] font-black tracking-widest uppercase flex items-center justify-between ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
                         }`}>
@@ -2166,12 +2414,25 @@ export default function Dashboard() {
                             setAgentDropdownOpen(false);
                           }}
                           className={`w-[calc(100%-8px)] mx-1 flex items-center justify-center gap-2 p-2 rounded-lg border-dashed border transition duration-200 text-xs font-black uppercase tracking-wider mb-2 ${themeMode === "black"
-                              ? "border-emerald-500/25 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/40"
-                              : "border-emerald-200 bg-emerald-500/5 text-emerald-600 hover:bg-emerald-500/10"
+                            ? "border-emerald-500/25 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/40"
+                            : "border-emerald-200 bg-emerald-500/5 text-emerald-600 hover:bg-emerald-500/10"
                             }`}
                         >
                           <Plus size={13} />
                           <span>✨ Create Custom Agent</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPdfAgentModalOpen(true);
+                            setAgentDropdownOpen(false);
+                          }}
+                          className={`w-[calc(100%-8px)] mx-1 flex items-center justify-center gap-2 p-2 rounded-lg border-dashed border transition duration-200 text-xs font-black uppercase tracking-wider mb-2 ${themeMode === "black"
+                            ? "border-indigo-500/25 bg-indigo-500/5 text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/40"
+                            : "border-indigo-200 bg-indigo-500/5 text-indigo-600 hover:bg-indigo-500/10"
+                            }`}
+                        >
+                          <FileText size={13} />
+                          <span>📄 Upload PDF Agent</span>
                         </button>
 
                         {allAgents.map((agent) => {
@@ -2189,16 +2450,19 @@ export default function Dashboard() {
                                   }
                                 }}
                                 className={`w-full text-left flex items-start gap-3 p-2.5 rounded-lg transition duration-200 pr-10 ${isSelected
-                                    ? themeMode === "black"
-                                      ? "bg-neutral-200/10 text-white border border-neutral-200/20"
-                                      : "bg-neutral-100 text-neutral-900 border border-neutral-200"
-                                    : themeMode === "black"
-                                      ? "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
-                                      : "border border-transparent hover:bg-[#F1F5F9] text-neutral-700 hover:text-neutral-900"
+                                  ? themeMode === "black"
+                                    ? "bg-neutral-200/10 text-white border border-neutral-200/20"
+                                    : "bg-neutral-100 text-neutral-900 border border-neutral-200"
+                                  : themeMode === "black"
+                                    ? "border border-transparent hover:bg-neutral-900 text-neutral-300 hover:text-neutral-100"
+                                    : "border border-transparent hover:bg-[#F1F5F9] text-neutral-700 hover:text-neutral-900"
                                   }`}
                               >
                                 {agent.isCustom ? (
-                                  <span className="text-base mt-0.5 flex-shrink-0 w-4 h-4 flex items-center justify-center">{agent.customIcon}</span>
+                                  (() => {
+                                    const CustomIcon = resolveCustomIcon(agent.icon);
+                                    return <CustomIcon size={16} className={`mt-0.5 flex-shrink-0 ${isSelected ? (themeMode === "black" ? "text-neutral-200" : "text-neutral-700") : "text-emerald-400"}`} />;
+                                  })()
                                 ) : (
                                   (() => {
                                     const AgentIcon = agent.icon;
@@ -2243,8 +2507,8 @@ export default function Dashboard() {
               <Link
                 href="/"
                 className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition duration-300 text-xs ${themeMode === "black"
-                    ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:bg-neutral-850"
-                    : "border-neutral-200 bg-white text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 shadow-sm"
+                  ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:bg-neutral-850"
+                  : "border-neutral-200 bg-white text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 shadow-sm"
                   }`}
               >
                 Home
@@ -2254,8 +2518,8 @@ export default function Dashboard() {
               <button
                 onClick={toggleTheme}
                 className={`p-2 rounded-lg transition duration-200 ${themeMode === "black"
-                    ? "text-neutral-500 hover:text-amber-400 hover:bg-neutral-900"
-                    : "text-neutral-500 hover:text-amber-650 hover:bg-neutral-100"
+                  ? "text-neutral-500 hover:text-amber-400 hover:bg-neutral-900"
+                  : "text-neutral-500 hover:text-amber-650 hover:bg-neutral-100"
                   }`}
                 title={themeMode === "black" ? "Switch to System Light Theme" : "Switch to Obsidian Black Theme"}
               >
@@ -2270,6 +2534,14 @@ export default function Dashboard() {
               >
                 <Settings size={16} />
               </button>
+              <Link
+                href="/settings"
+                className={`p-2 rounded-lg transition duration-200 ${themeMode === "black" ? "text-neutral-500 hover:text-red-400 hover:bg-neutral-900" : "text-neutral-500 hover:text-red-600 hover:bg-neutral-100"
+                  }`}
+                title="OpenRouter API Keys"
+              >
+                <Key size={16} />
+              </Link>
               <UserButton />
             </div>
           </header>
@@ -2277,34 +2549,137 @@ export default function Dashboard() {
           {/* Premium Sub-Header AI Engine Control Bar (Horizontal Pill Scroller) */}
           <div className={`px-4 sm:px-6 py-2 border-b flex flex-col md:flex-row md:items-center justify-between gap-3 transition-colors duration-300 z-20 ${themeMode === "black" ? "border-white/5 bg-[#050505]/95" : "border-neutral-200 bg-white/95 shadow-sm"
             }`}>
-            {/* Models Scroll Bar */}
+            {/* Models Dropdown */}
             <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-3 flex-1 min-w-0">
               <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider whitespace-nowrap ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"
                 }`}>Select AI Brain Model:</span>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 min-w-0">
-                {MODELS_LIST.map((model) => {
-                  const isSelected = selectedModelId === model.id;
-                  return (
-                    <button
-                      key={model.id}
-                      type="button"
-                      onClick={() => handleModelChange(model.id)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full border text-[9px] sm:text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all duration-300 flex-shrink-0 ${isSelected
-                          ? themeMode === "black"
-                            ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
-                            : "bg-emerald-50 border-emerald-500/30 text-emerald-700 shadow-sm"
-                          : themeMode === "black"
-                            ? "bg-neutral-900/40 border-neutral-800 text-neutral-400 hover:text-neutral-200"
-                            : "bg-white border-neutral-200 text-neutral-600 hover:text-neutral-900"
-                        }`}
-                    >
-                      <span>{model.icon}</span>
-                      <span>{model.name.replace(" (Thinking)", "")}</span>
-                      <span className={`text-[8px] px-1 rounded font-black tracking-normal ml-0.5 ${isSelected ? (themeMode === "black" ? "bg-emerald-400/20 text-emerald-300" : "bg-emerald-100 text-emerald-850") : (themeMode === "black" ? "bg-white/5 text-neutral-500" : "bg-neutral-100 text-neutral-500")}`}>{model.badge}</span>
-                    </button>
-                  );
-                })}
+              <div className="relative flex-1 max-w-xs">
+                <button
+                  type="button"
+                  onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                  className={`w-full flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl border transition duration-300 font-bold shadow-sm text-xs ${themeMode === "black"
+                    ? "border-white/10 bg-[#0A0A0A]/50 hover:bg-[#111111]/80 text-neutral-300 hover:text-white hover:border-neutral-200/30"
+                    : "border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 hover:text-neutral-900"
+                    }`}
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {(() => {
+                      const activeModel = modelsList.find((m) => m.id === selectedModelId) || modelsList[0];
+                      return (
+                        <>
+                          <span className="text-sm flex-shrink-0">{activeModel?.icon || "✨"}</span>
+                          <span className="truncate font-extrabold">{activeModel?.name?.replace(" (Thinking)", "") || selectedModelId.split("/")[1]}</span>
+                          <span className={`text-[7px] px-1.5 py-0.5 rounded font-black tracking-normal flex-shrink-0 ${activeModel?.isFree
+                            ? (themeMode === "black" ? "bg-emerald-400/20 text-emerald-300" : "bg-emerald-100 text-emerald-700")
+                            : (themeMode === "black" ? "bg-amber-400/20 text-amber-300" : "bg-amber-100 text-amber-700")
+                            }`}>
+                            {activeModel?.badge || "Model"}
+                          </span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {modelsLoading && <span className="w-3 h-3 border border-neutral-500 border-t-transparent rounded-full animate-spin" />}
+                    <ChevronDown size={14} className={`text-neutral-500 transition duration-300 ${modelDropdownOpen ? "rotate-180 text-neutral-200" : ""}`} />
+                  </div>
+                </button>
+
+                {/* Model Dropdown List */}
+                {modelDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => { setModelDropdownOpen(false); setModelsSearch(""); }} />
+                    <div className={`absolute left-0 mt-2 rounded-xl border shadow-2xl z-50 overflow-hidden ${themeMode === "black"
+                      ? "border-neutral-800 bg-[#090909]/98 backdrop-blur-md"
+                      : "border-neutral-200 bg-white shadow-xl"
+                      }`} style={{ width: "340px" }}>
+
+                      {/* Header */}
+                      <div className={`px-3 py-2 border-b flex items-center justify-between ${themeMode === "black" ? "border-neutral-800" : "border-neutral-100"}`}>
+                        <span className={`text-[9px] font-black tracking-widest uppercase ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
+                          {modelsLoading ? "Loading models..." : `${modelsList.filter(m => !showFreeOnly || m.isFree).filter(m => !modelsSearch || m.name.toLowerCase().includes(modelsSearch.toLowerCase()) || m.id.toLowerCase().includes(modelsSearch.toLowerCase())).length} Models`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowFreeOnly(!showFreeOnly)}
+                          className={`text-[8px] px-2 py-0.5 rounded-full font-black transition-all ${showFreeOnly
+                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                            : (themeMode === "black" ? "bg-white/5 text-neutral-500 border border-white/10" : "bg-neutral-100 text-neutral-500 border border-neutral-200")
+                            }`}
+                        >
+                          {showFreeOnly ? "✅ FREE ONLY" : "ALL MODELS"}
+                        </button>
+                      </div>
+
+                      {/* Search */}
+                      <div className={`px-3 py-2 border-b ${themeMode === "black" ? "border-neutral-800" : "border-neutral-100"}`}>
+                        <input
+                          type="text"
+                          value={modelsSearch}
+                          onChange={e => setModelsSearch(e.target.value)}
+                          placeholder="Search models..."
+                          autoFocus
+                          className={`w-full text-xs px-3 py-1.5 rounded-lg border outline-none font-medium ${themeMode === "black"
+                            ? "bg-neutral-900 border-neutral-700 text-neutral-200 placeholder-neutral-600"
+                            : "bg-neutral-50 border-neutral-200 text-neutral-800 placeholder-neutral-400"
+                            }`}
+                        />
+                      </div>
+
+                      {/* Model List */}
+                      <div className="max-h-[320px] overflow-y-auto p-1.5 space-y-0.5">
+                        {modelsList
+                          .filter(m => !showFreeOnly || m.isFree)
+                          .filter(m => !modelsSearch || m.name.toLowerCase().includes(modelsSearch.toLowerCase()) || m.id.toLowerCase().includes(modelsSearch.toLowerCase()))
+                          .map((model) => {
+                            const isSelected = selectedModelId === model.id;
+                            return (
+                              <button
+                                key={model.id}
+                                type="button"
+                                onClick={() => {
+                                  handleModelChange(model.id);
+                                  setModelDropdownOpen(false);
+                                  setModelsSearch("");
+                                }}
+                                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition duration-150 text-left ${isSelected
+                                  ? themeMode === "black"
+                                    ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-400"
+                                    : "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                                  : themeMode === "black"
+                                    ? "text-neutral-400 hover:bg-white/5 hover:text-white"
+                                    : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
+                                  }`}
+                              >
+                                <span className="text-base flex-shrink-0">{model.icon}</span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[11px] font-extrabold uppercase tracking-wide truncate">{model.name.replace(" (Thinking)", "")}</span>
+                                    <span className={`text-[7px] px-1.5 py-0.5 rounded font-black flex-shrink-0 ${model.isFree
+                                      ? (isSelected ? "bg-emerald-400/30 text-emerald-200" : (themeMode === "black" ? "bg-emerald-500/10 text-emerald-500" : "bg-emerald-100 text-emerald-700"))
+                                      : (themeMode === "black" ? "bg-amber-500/10 text-amber-500" : "bg-amber-100 text-amber-700")
+                                      }`}>
+                                      {model.badge}
+                                    </span>
+                                  </div>
+                                  <div className={`text-[9px] truncate mt-0.5 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
+                                    {model.id}
+                                  </div>
+                                </div>
+                                {isSelected && <Check size={13} className={themeMode === "black" ? "text-emerald-400 flex-shrink-0" : "text-emerald-600 flex-shrink-0"} />}
+                              </button>
+                            );
+                          })}
+                        {modelsList.filter(m => !showFreeOnly || m.isFree).filter(m => !modelsSearch || m.name.toLowerCase().includes(modelsSearch.toLowerCase()) || m.id.toLowerCase().includes(modelsSearch.toLowerCase())).length === 0 && (
+                          <div className={`text-center py-6 text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
+                            No models found for &quot;{modelsSearch}&quot;
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -2319,10 +2694,10 @@ export default function Dashboard() {
                   onClick={() => handleBrainTrustToggle(!isBrainTrust)}
                   disabled={isLoading || isFileParsing}
                   className={`flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all duration-300 ${isBrainTrust
-                      ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
-                      : themeMode === "black"
-                        ? "bg-neutral-900/40 border-neutral-800 text-neutral-500"
-                        : "bg-white border-neutral-200 text-neutral-500 shadow-sm"
+                    ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                    : themeMode === "black"
+                      ? "bg-neutral-900/40 border-neutral-800 text-neutral-500"
+                      : "bg-white border-neutral-200 text-neutral-500 shadow-sm"
                     }`}
                 >
                   <span>🧠 Board: {isBrainTrust ? "ON" : "OFF"}</span>
@@ -2333,8 +2708,8 @@ export default function Dashboard() {
                     value={boardSize}
                     onChange={(e) => setBoardSize(Number(e.target.value))}
                     className={`px-1.5 py-0.5 text-[8px] sm:text-[10px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${themeMode === "black"
-                        ? "bg-neutral-950 border-neutral-800 text-neutral-400"
-                        : "bg-white border-neutral-200 text-neutral-600 shadow-sm"
+                      ? "bg-neutral-950 border-neutral-800 text-neutral-400"
+                      : "bg-white border-neutral-200 text-neutral-600 shadow-sm"
                       }`}
                   >
                     <option value={3}>3 Ag</option>
@@ -2348,7 +2723,7 @@ export default function Dashboard() {
           </div>
 
           {/* Scrollable Conversation area */}
-          <div 
+          <div
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -2356,18 +2731,17 @@ export default function Dashboard() {
           >
             {/* Custom Pull-to-Refresh Indicator */}
             {pullDistance > 0 && (
-              <div 
+              <div
                 className="w-full flex items-center justify-center overflow-hidden transition-all duration-75 pointer-events-none sticky top-0 z-50"
-                style={{ 
+                style={{
                   height: `${pullDistance}px`,
                   opacity: Math.min(1, pullDistance / 50)
                 }}
               >
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
-                  themeMode === "black" 
-                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]" 
-                    : "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm"
-                }`}>
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${themeMode === "black"
+                  ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+                  : "bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm"
+                  }`}>
                   {isPullRefreshing ? (
                     <span className="flex items-center gap-2">
                       <span className="w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
@@ -2375,8 +2749,8 @@ export default function Dashboard() {
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
-                      <span 
-                        className="text-xs transition-transform duration-75" 
+                      <span
+                        className="text-xs transition-transform duration-75"
                         style={{ transform: `rotate(${pullDistance * 4.5}deg)` }}
                       >
                         🌶️
@@ -2401,8 +2775,8 @@ export default function Dashboard() {
                 </div>
 
                 <h2 className={`text-2xl sm:text-3xl font-extrabold mt-4 tracking-tight transition-colors duration-300 ${themeMode === "black"
-                    ? "bg-clip-text text-transparent bg-gradient-to-b from-white via-neutral-100 to-neutral-400"
-                    : "text-neutral-900"
+                  ? "bg-clip-text text-transparent bg-gradient-to-b from-white via-neutral-100 to-neutral-400"
+                  : "text-neutral-900"
                   }`}>
                   {aiName}:{" "}
                   <span className={`font-semibold transition-colors duration-300 ${themeMode === "black" ? "text-emerald-400" : "text-emerald-600"}`}>
@@ -2416,8 +2790,8 @@ export default function Dashboard() {
 
                 {/* Warning box */}
                 <div className={`mt-6 w-full p-4 rounded-xl border text-xs flex items-center gap-2.5 justify-center shadow-sm transition duration-300 ${themeMode === "black"
-                    ? "border-amber-500/25 bg-amber-500/5 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.04)]"
-                    : "border-amber-200 bg-amber-500/10 text-amber-955 shadow-[0_0_15px_rgba(245,158,11,0.05)] font-semibold"
+                  ? "border-amber-500/25 bg-amber-500/5 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.04)]"
+                  : "border-amber-200 bg-amber-500/10 text-amber-955 shadow-[0_0_15px_rgba(245,158,11,0.05)] font-semibold"
                   }`}>
                   <Sparkles size={14} className={`flex-shrink-0 animate-pulse ${themeMode === "black" ? "text-neutral-200" : "text-amber-700"}`} />
                   <span>● <strong>Operational Advisor Warning:</strong> Please specify your <strong>target country and primary market</strong> first for accurate feedback.</span>
@@ -2444,10 +2818,10 @@ export default function Dashboard() {
                         disabled={isGeneratingPrompts}
                         title="Generate New AI Consultation Cases"
                         className={`relative z-10 p-2 rounded-full border transition-all duration-300 hover:scale-115 active:scale-90 ${isGeneratingPrompts
-                            ? "opacity-50 cursor-not-allowed"
-                            : themeMode === "black"
-                              ? "bg-amber-500/20 border-amber-500 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.35)] hover:shadow-[0_0_22px_rgba(245,158,11,0.6)] hover:border-amber-400"
-                              : "bg-amber-500/15 border-amber-500/50 text-amber-700 shadow-[0_0_12px_rgba(245,158,11,0.2)] hover:shadow-[0_0_18px_rgba(245,158,11,0.45)] hover:border-amber-600"
+                          ? "opacity-50 cursor-not-allowed"
+                          : themeMode === "black"
+                            ? "bg-amber-500/20 border-amber-500 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.35)] hover:shadow-[0_0_22px_rgba(245,158,11,0.6)] hover:border-amber-400"
+                            : "bg-amber-500/15 border-amber-500/50 text-amber-700 shadow-[0_0_12px_rgba(245,158,11,0.2)] hover:shadow-[0_0_18px_rgba(245,158,11,0.45)] hover:border-amber-600"
                           }`}
                       >
                         {isGeneratingPrompts ? (
@@ -2460,7 +2834,16 @@ export default function Dashboard() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {(customSuggestions[selectedAgentId] || ((allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.suggestions || [])).map((suggestText, sIdx) => {
+                    {isGeneratingPrompts && (allAgents.find(a => a.id === selectedAgentId)?.isCustom) && !customSuggestions[selectedAgentId] ? (
+                      [1, 2, 3, 4].map(i => (
+                        <div key={i} className={`p-5 rounded-2xl border animate-pulse ${themeMode === "black" ? "border-neutral-800 bg-[#0c0c0c]/80" : "border-neutral-200 bg-white"}`}>
+                          <div className={`h-3 w-20 rounded mb-3 ${themeMode === "black" ? "bg-neutral-800" : "bg-neutral-200"}`}></div>
+                          <div className={`h-4 w-3/4 rounded mb-2 ${themeMode === "black" ? "bg-neutral-800" : "bg-neutral-200"}`}></div>
+                          <div className={`h-3 w-full rounded mb-1 ${themeMode === "black" ? "bg-neutral-800" : "bg-neutral-200"}`}></div>
+                          <div className={`h-3 w-2/3 rounded ${themeMode === "black" ? "bg-neutral-800" : "bg-neutral-200"}`}></div>
+                        </div>
+                      ))
+                    ) : (customSuggestions[selectedAgentId] || ((allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.suggestions || [])).map((suggestText, sIdx) => {
                       const isObj = typeof suggestText === "object" && suggestText !== null;
                       const cardTitle = isObj ? (suggestText as any).title : "Consultation Scenario";
                       const cardPrompt = isObj ? (suggestText as any).prompt : String(suggestText);
@@ -2479,8 +2862,8 @@ export default function Dashboard() {
                           key={sIdx}
                           onClick={() => handleQuickSuggest(cardPrompt)}
                           className={`relative p-5 text-left rounded-2xl border transition-all duration-300 text-xs leading-relaxed hover:scale-[1.01] hover:-translate-y-0.5 active:scale-[0.99] flex flex-col justify-between gap-4 group overflow-hidden ${themeMode === "black"
-                              ? "border-neutral-800 bg-[#0c0c0c]/80 hover:border-amber-500/40 text-neutral-300 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
-                              : "border-neutral-250 hover:border-amber-500/35 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:shadow-lg"
+                            ? "border-neutral-800 bg-[#0c0c0c]/80 hover:border-amber-500/40 text-neutral-300 hover:shadow-[0_0_20px_rgba(245,158,11,0.06)]"
+                            : "border-neutral-250 hover:border-amber-500/35 bg-white hover:bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:shadow-lg"
                             }`}
                         >
                           <div className="absolute top-0 right-0 w-28 h-28 bg-amber-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-amber-500/10 transition-all duration-500"></div>
@@ -2518,8 +2901,8 @@ export default function Dashboard() {
 
                   {/* Add Custom Suggestion Prompt Widget */}
                   <div className={`mt-5 p-3 rounded-xl border flex items-center gap-2 ${themeMode === "black"
-                      ? "bg-neutral-950/40 border-neutral-900"
-                      : "bg-[#F8FAFC] border-neutral-200"
+                    ? "bg-neutral-950/40 border-neutral-900"
+                    : "bg-[#F8FAFC] border-neutral-200"
                     }`}>
                     <input
                       type="text"
@@ -2540,8 +2923,8 @@ export default function Dashboard() {
                       onClick={handleAddCustomPrompt}
                       disabled={!customPromptText.trim()}
                       className={`text-[10px] font-extrabold px-3 py-2 rounded-lg border transition-all duration-300 uppercase tracking-wider ${themeMode === "black"
-                          ? "bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:text-neutral-100 disabled:opacity-40"
-                          : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50 hover:text-neutral-800 disabled:opacity-40"
+                        ? "bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:text-neutral-100 disabled:opacity-40"
+                        : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50 hover:text-neutral-800 disabled:opacity-40"
                         }`}
                     >
                       ➕ Add Case
@@ -2563,8 +2946,8 @@ export default function Dashboard() {
                             {aiName.toUpperCase()}
                           </span>
                           <div className={`border rounded-2xl rounded-tl-none px-4 sm:px-6 py-4 sm:py-5 leading-relaxed text-sm shadow-md backdrop-blur-md prose prose-sm max-w-full w-full overflow-hidden relative transition-colors duration-300 ${themeMode === "black"
-                              ? "bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border-white/5 text-neutral-200 prose-invert"
-                              : "bg-gradient-to-br from-[#FFFFFF] to-[#F8FAFC] border-neutral-200/80 text-neutral-800 shadow-md prose-neutral"
+                            ? "bg-gradient-to-br from-[#0F0F0F] to-[#0A0A0A] border-white/5 text-neutral-200 prose-invert"
+                            : "bg-gradient-to-br from-[#FFFFFF] to-[#F8FAFC] border-neutral-200/80 text-neutral-800 shadow-md prose-neutral"
                             }`}>
                             {msg.content ? (() => {
                               const { thought, content: finalContent } = parseThoughtAndContent(msg.content);
@@ -2593,8 +2976,8 @@ export default function Dashboard() {
                                           return (
                                             <blockquote
                                               className={`relative my-6 px-5 py-4 rounded-xl border-l-[3px] ${themeMode === "black"
-                                                  ? "bg-[#0a0a0a]/80 border-amber-500 text-amber-300 shadow-[0_0_25px_rgba(245,158,11,0.15)] ring-1 ring-white/5"
-                                                  : "bg-amber-500/5 border-amber-500 text-amber-900 shadow-md ring-1 ring-black/5"
+                                                ? "bg-[#0a0a0a]/80 border-amber-500 text-amber-300 shadow-[0_0_25px_rgba(245,158,11,0.15)] ring-1 ring-white/5"
+                                                : "bg-amber-500/5 border-amber-500 text-amber-900 shadow-md ring-1 ring-black/5"
                                                 } font-mono text-[11px] sm:text-xs tracking-wide leading-relaxed overflow-hidden backdrop-blur-md [&>p]:m-0 [&>p]:mb-1.5 last:[&>p]:mb-0`}
                                               {...props}
                                             >
@@ -2651,8 +3034,8 @@ export default function Dashboard() {
                                 type="button"
                                 onClick={() => copyToClipboard(msg.content, `msg-${index}`)}
                                 className={`opacity-75 hover:opacity-100 focus:opacity-100 transition-opacity p-1 mt-1 rounded-md border flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 shadow-inner ${themeMode === "black"
-                                    ? "bg-[#0F0F0F] border-white/5 text-neutral-400 hover:text-neutral-200"
-                                    : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 shadow-sm"
+                                  ? "bg-[#0F0F0F] border-white/5 text-neutral-400 hover:text-neutral-200"
+                                  : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 shadow-sm"
                                   }`}
                                 title="Copy response"
                               >
@@ -2731,17 +3114,19 @@ export default function Dashboard() {
                           {themeMode === "black" && <span className="w-1 h-1 bg-emerald-400 rounded-full animate-ping" />}
                         </span>
                         <div className={`border rounded-2xl rounded-tr-none px-5 py-4 text-sm flex flex-col items-end relative transition-all duration-300 shadow-lg ${themeMode === "black"
-                            ? "bg-emerald-950/15 border-emerald-500/15 text-emerald-50/95"
-                            : "bg-amber-500/10 border-amber-500/20 text-neutral-800 shadow-md"
+                          ? "bg-emerald-950/15 border-emerald-500/15 text-emerald-50/95"
+                          : "bg-amber-500/10 border-amber-500/20 text-neutral-800 shadow-md"
                           }`}>
                           {imageUrls.length > 0 && (
                             <div className="flex flex-wrap gap-2 mb-3 max-w-full justify-end">
                               {imageUrls.map((url, imgIdx) => (
                                 <div key={imgIdx} className={`relative rounded-xl overflow-hidden border group shadow-md max-w-[180px] sm:max-w-[220px] ${themeMode === "black" ? "border-white/10" : "border-neutral-200"
                                   }`}>
-                                  <img
+                                  <NextImage
                                     src={url}
                                     alt={`Uploaded visual context ${imgIdx + 1}`}
+                                    width={220}
+                                    height={160}
                                     className="max-h-40 max-w-full object-contain rounded-xl transition-transform duration-300 group-hover:scale-105"
                                   />
                                   {/* Glowing Hover Action Overlay with Download Icon */}
@@ -2831,8 +3216,8 @@ export default function Dashboard() {
 
           {/* Input Text Form Area */}
           <div className={`p-3 pb-6 sm:p-4 md:p-6 border-t transition-colors duration-300 ${themeMode === "black"
-              ? "border-white/5 bg-gradient-to-t from-[#020202] to-black"
-              : "border-neutral-200 bg-gradient-to-t from-[#F8FAFC] to-[#F1F5F9]"
+            ? "border-white/5 bg-gradient-to-t from-[#020202] to-black"
+            : "border-neutral-200 bg-gradient-to-t from-[#F8FAFC] to-[#F1F5F9]"
             }`}>
             <div className="max-w-3xl mx-auto relative">
               {/* Stop Generation Button */}
@@ -2850,8 +3235,8 @@ export default function Dashboard() {
               <form
                 onSubmit={handleSubmit}
                 className={`w-full relative rounded-2xl border transition-all duration-300 overflow-hidden backdrop-blur-md ${themeMode === "black"
-                    ? "border-white/[0.04] bg-[#0A0A0C]/80 shadow-[0_4px_30px_rgba(0,0,0,0.7)] focus-within:border-emerald-500/30 focus-within:shadow-[0_0_40px_rgba(16,185,129,0.08)]"
-                    : "border-neutral-200 bg-white/90 shadow-[0_5px_30px_rgba(0,0,0,0.03)] focus-within:border-emerald-500/25 focus-within:shadow-[0_0_30px_rgba(16,185,129,0.04)]"
+                  ? "border-white/[0.04] bg-[#0A0A0C]/80 shadow-[0_4px_30px_rgba(0,0,0,0.7)] focus-within:border-emerald-500/30 focus-within:shadow-[0_0_40px_rgba(16,185,129,0.08)]"
+                  : "border-neutral-200 bg-white/90 shadow-[0_5px_30px_rgba(0,0,0,0.03)] focus-within:border-emerald-500/25 focus-within:shadow-[0_0_30px_rgba(16,185,129,0.04)]"
                   }`}
               >
                 <textarea
@@ -2899,8 +3284,8 @@ export default function Dashboard() {
                   }}
                   placeholder={(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.placeholder || "Describe your startup idea and which country/market you are targeting..."}
                   className={`w-full bg-transparent border-0 ring-0 focus:ring-0 focus:outline-none text-sm px-5 py-4 resize-none h-[64px] min-h-[50px] max-h-[200px] ${themeMode === "black"
-                      ? "placeholder-neutral-600 text-neutral-200"
-                      : "placeholder-neutral-400 text-neutral-800 font-medium"
+                    ? "placeholder-neutral-600 text-neutral-200"
+                    : "placeholder-neutral-400 text-neutral-800 font-medium"
                     }`}
                   disabled={isLoading}
                   onFocus={(e) => {
@@ -2934,9 +3319,11 @@ export default function Dashboard() {
                       if (isImage) {
                         return (
                           <div key={attIdx} className="relative group/thumb w-14 h-14 rounded-xl border overflow-hidden shadow-md animate-fade-in flex-shrink-0" style={{ borderColor: themeMode === "black" ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)" }}>
-                            <img
+                            <NextImage
                               src={imgSrc}
                               alt={att.name}
+                              width={56}
+                              height={56}
                               className="w-full h-full object-cover"
                             />
                             {/* Hover Overlay with Delete button */}
@@ -2956,8 +3343,8 @@ export default function Dashboard() {
 
                       return (
                         <div key={attIdx} className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-2 max-w-[200px] shadow-sm animate-fade-in ${themeMode === "black"
-                            ? "bg-gradient-to-r from-neutral-200/10 to-transparent border-neutral-200/15 text-white"
-                            : "bg-[#FAFAFA] border-neutral-200 text-neutral-850"
+                          ? "bg-gradient-to-r from-neutral-200/10 to-transparent border-neutral-200/15 text-white"
+                          : "bg-[#FAFAFA] border-neutral-200 text-neutral-850"
                           }`}>
                           <FileText size={13} className="text-emerald-400 flex-shrink-0" />
                           <span className="truncate font-semibold flex-1">{att.name}</span>
@@ -2983,8 +3370,8 @@ export default function Dashboard() {
                 )}
 
                 <div className={`flex items-center justify-between px-5 pb-3 border-t pt-2.5 transition-colors duration-300 ${themeMode === "black"
-                    ? "bg-[#0D0D0D] border-neutral-900"
-                    : "bg-[#FAFAFA] border-neutral-150"
+                  ? "bg-[#0D0D0D] border-neutral-900"
+                  : "bg-[#FAFAFA] border-neutral-150"
                   }`}>
                   {/* Media tools */}
                   <div className="flex items-center gap-2">
@@ -3005,8 +3392,8 @@ export default function Dashboard() {
                       disabled={isLoading || isFileParsing}
                       title="Attach file (PDF, Word, Excel, Images, Text)"
                       className={`p-2 rounded-xl border transition duration-300 ${themeMode === "black"
-                          ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20"
-                          : "border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800 hover:border-neutral-300"
+                        ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20"
+                        : "border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800 hover:border-neutral-300"
                         }`}
                     >
                       <Paperclip size={15} />
@@ -3019,8 +3406,8 @@ export default function Dashboard() {
                       disabled={isLoading || isFileParsing}
                       title="Take Photo"
                       className={`p-2 rounded-xl border transition duration-300 ${themeMode === "black"
-                          ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20"
-                          : "border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800 hover:border-neutral-300"
+                        ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-white hover:border-neutral-200/20"
+                        : "border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800 hover:border-neutral-300"
                         }`}
                     >
                       <Camera size={15} />
@@ -3034,10 +3421,10 @@ export default function Dashboard() {
                         disabled={isLoading || isFileParsing}
                         title="Executive Board: Massively Parallel Deep Analysis"
                         className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${isBrainTrust
-                            ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
-                            : themeMode === "black"
-                              ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600"
-                              : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 shadow-sm"
+                          ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                          : themeMode === "black"
+                            ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600"
+                            : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 shadow-sm"
                           }`}
                       >
                         <span>🧠 {boardSize}-Agent Board</span>
@@ -3048,8 +3435,8 @@ export default function Dashboard() {
                           value={boardSize}
                           onChange={(e) => setBoardSize(Number(e.target.value))}
                           className={`px-2 py-1 text-[9px] font-black uppercase rounded-full border transition-all duration-300 outline-none ${themeMode === "black"
-                              ? "bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white"
-                              : "bg-white border-neutral-200 text-neutral-600 hover:text-black shadow-sm"
+                            ? "bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white"
+                            : "bg-white border-neutral-200 text-neutral-600 hover:text-black shadow-sm"
                             }`}
                         >
                           <option value={3}>3 Agents</option>
@@ -3066,10 +3453,10 @@ export default function Dashboard() {
                       onClick={toggleListening}
                       title={isListening ? "Stop listening" : "Dictate (Speech to Text)"}
                       className={`p-2 rounded-xl border transition duration-300 ${isListening
-                          ? "bg-red-500/10 border-red-500/30 text-red-500 animate-pulse"
-                          : themeMode === "black"
-                            ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-red-400 hover:border-red-500/20"
-                            : "border-neutral-200 bg-white text-neutral-500 hover:text-red-500 hover:border-red-200"
+                        ? "bg-red-500/10 border-red-500/30 text-red-500 animate-pulse"
+                        : themeMode === "black"
+                          ? "border-neutral-800 bg-neutral-900/40 text-neutral-400 hover:text-red-400 hover:border-red-500/20"
+                          : "border-neutral-200 bg-white text-neutral-500 hover:text-red-500 hover:border-red-200"
                         }`}
                     >
                       {isListening ? <MicOff size={15} /> : <Mic size={15} />}
@@ -3085,12 +3472,12 @@ export default function Dashboard() {
                     type="submit"
                     disabled={isLoading || (!inputMessage.trim() && !attachedFile)}
                     className={`ml-auto p-2.5 rounded-xl flex items-center justify-center transition duration-300 ${isLoading || (!inputMessage.trim() && !attachedFile)
-                        ? themeMode === "black"
-                          ? "bg-neutral-900 text-neutral-600 cursor-not-allowed border border-neutral-900/40"
-                          : "bg-neutral-100 text-neutral-450 cursor-not-allowed border border-neutral-200"
-                        : themeMode === "black"
-                          ? "bg-neutral-200 hover:bg-white hover:scale-105 active:scale-95 text-neutral-950 font-bold"
-                          : "bg-neutral-900 hover:bg-black hover:scale-105 active:scale-95 text-white font-bold"
+                      ? themeMode === "black"
+                        ? "bg-neutral-900 text-neutral-600 cursor-not-allowed border border-neutral-900/40"
+                        : "bg-neutral-100 text-neutral-450 cursor-not-allowed border border-neutral-200"
+                      : themeMode === "black"
+                        ? "bg-neutral-200 hover:bg-white hover:scale-105 active:scale-95 text-neutral-950 font-bold"
+                        : "bg-neutral-900 hover:bg-black hover:scale-105 active:scale-95 text-white font-bold"
                       }`}
                   >
                     <Send size={15} />
@@ -3139,8 +3526,8 @@ export default function Dashboard() {
               <button
                 onClick={capturePhoto}
                 className={`group relative flex items-center justify-center w-16 h-16 rounded-full border-4 transition duration-300 ${themeMode === "black"
-                    ? "bg-white/10 border-white/20 hover:border-white"
-                    : "bg-black/5 border-neutral-300 hover:border-neutral-800"
+                  ? "bg-white/10 border-white/20 hover:border-white"
+                  : "bg-black/5 border-neutral-300 hover:border-neutral-800"
                   }`}
               >
                 <div className={`w-12 h-12 rounded-full group-hover:scale-95 transition-transform duration-300 ${themeMode === "black" ? "bg-white" : "bg-neutral-800"
@@ -3247,8 +3634,8 @@ export default function Dashboard() {
                         type="button"
                         onClick={() => setConfirmDeleteAll(false)}
                         className={`px-4 py-2.5 rounded-xl font-bold text-xs text-center transition duration-300 border ${themeMode === "black"
-                            ? "bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 border-white/5"
-                            : "bg-white hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 border-neutral-200 shadow-sm"
+                          ? "bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 border-white/5"
+                          : "bg-white hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 border-neutral-200 shadow-sm"
                           }`}
                       >
                         Cancel
@@ -3260,10 +3647,10 @@ export default function Dashboard() {
                       onClick={() => setConfirmDeleteAll(true)}
                       disabled={chats.length === 0}
                       className={`w-full py-2.5 rounded-xl font-bold text-xs text-center transition duration-300 flex items-center justify-center gap-2 ${chats.length === 0
-                          ? themeMode === "black"
-                            ? "bg-neutral-950 text-neutral-700 border border-neutral-900 cursor-not-allowed"
-                            : "bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed"
-                          : "bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 hover:border-transparent"
+                        ? themeMode === "black"
+                          ? "bg-neutral-950 text-neutral-700 border border-neutral-900 cursor-not-allowed"
+                          : "bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed"
+                        : "bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 hover:border-transparent"
                         }`}
                     >
                       <Trash2 size={14} />
@@ -3284,8 +3671,8 @@ export default function Dashboard() {
 
           {/* Modal Container */}
           <div className={`relative max-w-md w-full max-h-[92vh] overflow-y-auto rounded-3xl p-5 sm:p-6 border shadow-2xl transition duration-300 transform scale-100 scrollbar-thin ${themeMode === "black"
-              ? "bg-[#0A0A0C]/95 border-white/10 text-neutral-100 shadow-[0_0_50px_rgba(16,185,129,0.05)]"
-              : "bg-white/95 border-neutral-200 text-neutral-900 shadow-2xl"
+            ? "bg-[#0A0A0C]/95 border-white/10 text-neutral-100 shadow-[0_0_50px_rgba(16,185,129,0.05)]"
+            : "bg-white/95 border-neutral-200 text-neutral-900 shadow-2xl"
             }`}>
             {/* Modal Header */}
             <div className={`flex items-center justify-between pb-3 border-b mb-4 ${themeMode === "black" ? "border-white/5" : "border-neutral-200"
@@ -3313,8 +3700,8 @@ export default function Dashboard() {
             <form onSubmit={handleCreateCustomAgent} className="space-y-4 text-xs sm:text-sm font-medium">
               {/* Quick AI Assist Panel */}
               <div className={`p-3 rounded-2xl border transition duration-200 ${themeMode === "black"
-                  ? "bg-emerald-950/5 border-emerald-500/10"
-                  : "bg-emerald-500/5 border-emerald-500/15"
+                ? "bg-emerald-950/5 border-emerald-500/10"
+                : "bg-emerald-500/5 border-emerald-500/15"
                 }`}>
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <Sparkles size={11} className="text-emerald-500 animate-pulse" />
@@ -3330,8 +3717,8 @@ export default function Dashboard() {
                     value={agentConceptPrompt}
                     onChange={(e) => setAgentConceptPrompt(e.target.value)}
                     className={`flex-1 p-2 rounded-lg border outline-none text-xs ${themeMode === "black"
-                        ? "bg-black/40 border-white/5 text-white placeholder-neutral-600 focus:border-emerald-500"
-                        : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400 focus:border-emerald-500"
+                      ? "bg-black/40 border-white/5 text-white placeholder-neutral-600 focus:border-emerald-500"
+                      : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400 focus:border-emerald-500"
                       }`}
                   />
                   <button
@@ -3369,8 +3756,8 @@ export default function Dashboard() {
                   value={newAgentName}
                   onChange={(e) => setNewAgentName(e.target.value)}
                   className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
-                      ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                      : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
+                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
                     }`}
                 />
               </div>
@@ -3398,8 +3785,8 @@ export default function Dashboard() {
                   value={newAgentBanglaName}
                   onChange={(e) => setNewAgentBanglaName(e.target.value)}
                   className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
-                      ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                      : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
+                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
                     }`}
                 />
               </div>
@@ -3427,8 +3814,8 @@ export default function Dashboard() {
                   value={newAgentBanglaDesc}
                   onChange={(e) => setNewAgentBanglaDesc(e.target.value)}
                   className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
-                      ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                      : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
+                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
                     }`}
                 />
               </div>
@@ -3456,10 +3843,10 @@ export default function Dashboard() {
                       type="button"
                       onClick={() => setNewAgentIcon(emoji)}
                       className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition duration-150 ${newAgentIcon === emoji
-                          ? "border-emerald-500 bg-emerald-500/10 scale-110 shadow-sm shadow-emerald-500/20"
-                          : themeMode === "black"
-                            ? "border-white/5 bg-neutral-900 hover:bg-neutral-800"
-                            : "border-neutral-200 bg-white hover:bg-neutral-50"
+                        ? "border-emerald-500 bg-emerald-500/10 scale-110 shadow-sm shadow-emerald-500/20"
+                        : themeMode === "black"
+                          ? "border-white/5 bg-neutral-900 hover:bg-neutral-800"
+                          : "border-neutral-200 bg-white hover:bg-neutral-50"
                         }`}
                     >
                       {emoji}
@@ -3494,8 +3881,8 @@ export default function Dashboard() {
                   value={newAgentInstructions}
                   onChange={(e) => setNewAgentInstructions(e.target.value)}
                   className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 resize-none leading-relaxed ${themeMode === "black"
-                      ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                      : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
+                    ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
+                    : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
                     }`}
                 />
               </div>
@@ -3507,6 +3894,95 @@ export default function Dashboard() {
               >
                 <Plus size={14} />
                 <span>Create Agent</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Upload PDF Agent Modal */}
+      {pdfAgentModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-md" onClick={() => setPdfAgentModalOpen(false)} />
+          <div className={`relative max-w-md w-full max-h-[92vh] overflow-y-auto rounded-3xl p-5 sm:p-6 border shadow-2xl transition duration-300 transform scale-100 scrollbar-thin ${themeMode === "black"
+            ? "bg-[#0A0A0C]/95 border-white/10 text-neutral-100 shadow-[0_0_50px_rgba(79,70,229,0.05)]"
+            : "bg-white/95 border-neutral-200 text-neutral-900 shadow-2xl"
+            }`}>
+            <div className={`flex items-center justify-between pb-3 border-b mb-4 ${themeMode === "black" ? "border-white/5" : "border-neutral-200"}`}>
+              <div className="flex items-center gap-2.5">
+                <div className={`p-1.5 rounded-lg ${themeMode === "black" ? "bg-indigo-500/10" : "bg-indigo-50"}`}>
+                  <FileText size={14} className="text-indigo-500" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base tracking-tight">Upload PDF Agent</h3>
+                  <p className={`text-[10px] mt-0.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Extract expertise from a document</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPdfAgentModalOpen(false)}
+                className={`p-1.5 rounded-lg transition duration-150 ${themeMode === "black" ? "hover:bg-white/5 text-neutral-500 hover:text-neutral-200" : "hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700"}`}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUploadPdfAgent} className="space-y-4">
+              <div>
+                <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>PDF Document</label>
+                <input
+                  type="file"
+                  required
+                  accept=".pdf"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      handlePdfFileSelect(e.target.files[0]);
+                    }
+                  }}
+                  className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 ${themeMode === "black"
+                    ? "bg-neutral-900/50 border-white/10 focus:border-indigo-500 text-white"
+                    : "bg-neutral-50 border-neutral-200 focus:border-indigo-500 text-neutral-900"
+                    }`}
+                />
+                <p className={`text-[10px] mt-2 leading-relaxed ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
+                  The AI will analyze the core topics of this PDF and automatically generate an expert persona based on its contents.
+                </p>
+              </div>
+
+              <div>
+                <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
+                  Agent Name
+                  {isGeneratingPdfName && <span className="ml-2 text-indigo-400 normal-case font-normal tracking-normal">✨ Auto-generating...</span>}
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder={isGeneratingPdfName ? "Generating name from PDF..." : "e.g. Rich Dad Financial Advisor"}
+                    value={newPdfAgentName}
+                    onChange={(e) => setNewPdfAgentName(e.target.value)}
+                    disabled={isGeneratingPdfName}
+                    className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${isGeneratingPdfName ? "opacity-60 cursor-wait" : ""} ${themeMode === "black"
+                      ? "bg-neutral-900/50 border-white/10 focus:border-indigo-500 text-white placeholder-neutral-600"
+                      : "bg-neutral-50 border-neutral-200 focus:border-indigo-500 text-neutral-900 placeholder-neutral-400"
+                      }`}
+                  />
+                  {isGeneratingPdfName && (
+                    <Loader2 size={13} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-indigo-400" />
+                  )}
+                </div>
+                <p className={`text-[10px] mt-1.5 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
+                  Auto-generated from your PDF — you can edit it anytime.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isUploadingPdf || isGeneratingPdfName || !pdfFile || !newPdfAgentName.trim()}
+                className="w-full py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-indigo-500/15 hover:shadow-indigo-500/35 hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2 mt-2"
+              >
+                {isUploadingPdf ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                <span>{isUploadingPdf ? "Analyzing & Generating..." : "Generate AI Agent"}</span>
               </button>
             </form>
           </div>

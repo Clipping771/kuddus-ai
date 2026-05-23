@@ -22,6 +22,9 @@ const ALWAYS_SEARCH_AGENTS = new Set([
   "daily-innovation-idea-agent",
   "personal-cfo-finance-agent",
   "sales-lead-generator",
+  "pain-point-scraper-agent",   // always needs real complaints data
+  "research-agent",             // always needs current market data
+  "competitor-spy-agent",       // always needs current competitor info
 ]);
 
 // Keywords that trigger web search in any agent
@@ -72,8 +75,8 @@ export async function performWebSearch(
   }
 
   // Customize search depth for research-heavy agents
-  const searchDepth = agentId === "crypto-stock-researcher" ? "advanced" : "basic";
-  const maxResults = agentId === "crypto-stock-researcher" ? 7 : 5;
+  const searchDepth = (agentId === "crypto-stock-researcher" || agentId === "pain-point-scraper-agent" || agentId === "research-agent") ? "advanced" : "basic";
+  const maxResults = (agentId === "crypto-stock-researcher" || agentId === "pain-point-scraper-agent" || agentId === "research-agent") ? 8 : 5;
 
   try {
     const response = await fetch("https://api.tavily.com/search", {
@@ -129,13 +132,29 @@ INSTRUCTION: Use the above real-time data to ground your response with accurate,
  * Extracts a clean search query from the user's full message
  * (strips file attachments and base64 images)
  */
-export function extractSearchQuery(message: string): string {
+export function extractSearchQuery(message: string, agentId?: string): string {
   // Remove base64 image tags
   let clean = message.replace(/\[IMAGE_BASE64:[^\]]+\]/g, "");
   // Remove attached document blocks
   clean = clean.replace(/\[ATTACHED DOCUMENT:[^\]]+\][\s\S]*?```[\s\S]*?```/g, "");
   // Remove "User Prompt:" prefix
   clean = clean.replace(/User Prompt:\s*/g, "");
-  // Trim and limit length for search query
-  return clean.trim().slice(0, 300);
+  clean = clean.trim().slice(0, 300);
+
+  // For pain point scraper, add Reddit/forum context to get real complaints
+  if (agentId === "pain-point-scraper-agent") {
+    return `${clean} complaints problems frustrations Reddit forum reviews`;
+  }
+
+  // For competitor spy, add competitor-specific context
+  if (agentId === "competitor-spy-agent") {
+    return `${clean} competitor analysis pricing reviews alternatives`;
+  }
+
+  // For research agent, add market data context
+  if (agentId === "research-agent") {
+    return `${clean} market size trends statistics 2025 2026`;
+  }
+
+  return clean;
 }

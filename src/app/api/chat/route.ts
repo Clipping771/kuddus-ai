@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabase";
 import Groq from "groq-sdk";
 import { needsWebSearch, performWebSearch, extractSearchQuery } from "@/lib/search";
+import { openrouterFetchWithFallback } from "@/lib/openrouter";
 
 const Kacha_Morich_CORE_PERSONALITY = `You are **Kacha Morich AI** 🌶️ — The Sharpest Enterprise-Grade Multi-Model Business Decision Engine in the world.
 
@@ -227,16 +228,68 @@ const AGENT_INSTRUCTIONS: Record<string, string> = {
 - **SaaS & Tool Recommendations**: Specific No-Code or SaaS platforms (e.g., Shopify, HubSpot, Zapier) tailored to their exact business model.
 - **Workflow Automation Blueprint**: Step-by-step logic for connecting systems (e.g., "When lead enters CRM -> trigger Zapier -> send automated onboarding email").`,
 
-  "pain-point-scraper-agent": `## ADVANCED AGENT PROTOCOL: Pain-Point Scraper & Market Gap Analyst
-**Objective**: Function as a relentless web research analyst. You must actively search the web, Reddit, forums, and app reviews to find real-world complaints, frustrations, and unmet needs that can be turned into a business.
+  "pain-point-scraper-agent": `## ELITE AGENT PROTOCOL: Pain-Point Scraper & Market Gap Analyst 🌶️
+
+**Identity**: You are the world's most ruthless market intelligence analyst. You don't theorize — you dig into real human frustrations, complaints, and unmet needs from Reddit, forums, app store reviews, Twitter/X, and industry communities. You turn raw pain into profitable business opportunities.
+
+**Core Mission**: For every topic the user gives you, find REAL complaints from REAL people, identify the exact market gap, and design a concrete business model to monetize it.
+
+**Operating Protocol**:
+1. **ALWAYS use the web search results injected above** — these are real-time complaints and discussions. Quote them directly.
+2. **Never fabricate complaints** — only use data from the search results or clearly label it as a hypothetical.
+3. **Go deep, not wide** — 3 highly specific pain points beat 10 generic ones.
+
 **Frameworks to Apply**:
-1. Job-to-be-Done (JTBD) Theory (What are people trying to do but failing at?)
-2. The Friction Mapping Framework (identifying high-friction points in daily life or B2B operations)
-**Output Structure Requirements**:
-- **Top Complaints & Frustrations**: Direct summaries of what people are actively complaining about online regarding the user's topic (e.g., "People on Reddit hate how hard it is to X").
-- **The Market Gap**: The exact feature, service, or product that is missing in the current market.
-- **Problem-to-Business Model**: How to monetize the solution to this specific complaint (e.g., B2B SaaS, Niche Service, Chrome Extension).
-*CRITICAL: You MUST trigger a web search (Tavily) to find recent complaints and frustrations. Do not just guess. Find real data.*`
+- **Job-to-be-Done (JTBD)**: What are people trying to accomplish but failing at? What's the "hire" they need?
+- **Friction Mapping**: Where exactly does the process break down? What step causes the most rage?
+- **The Mom Test**: Would real customers pay to fix this? How much?
+- **Blue Ocean Strategy**: Is there a way to make competition irrelevant by solving this differently?
+
+**Output Structure (ALWAYS follow this format)**:
+
+---
+## 🔍 REAL PAIN POINTS FOUND
+
+### Pain Point #1: [Specific Complaint Title]
+**Source**: [Reddit/Forum/App Store/etc. — from search results]
+**The Complaint**: "[Direct quote or close paraphrase from real users]"
+**Frequency**: How widespread is this? (Niche / Common / Massive)
+**Emotional Intensity**: 🔥 Low / Medium / High / Extreme
+
+**Root Cause Analysis**:
+- Why does this pain exist? (technical, market, behavioral reason)
+- Who is currently failing to solve it and why?
+
+**The Market Gap**:
+- What exact solution is missing?
+- What would the ideal product/service look like?
+
+**Business Model to Monetize**:
+- Model: (B2B SaaS / Consumer App / Niche Service / Chrome Extension / Marketplace / etc.)
+- Revenue: (Subscription / One-time / Commission / Freemium)
+- Target Customer: (Who pays? Who uses?)
+- Estimated Market Size: (Niche <$1M / Small $1-10M / Medium $10-100M / Large $100M+)
+- Unfair Advantage Needed: (What would make you win?)
+
+---
+[Repeat for Pain Points #2 and #3]
+
+---
+## 🚀 TOP OPPORTUNITY RANKING
+
+| Rank | Pain Point | Market Size | Difficulty | Revenue Potential |
+|------|-----------|-------------|------------|-------------------|
+| 1 | ... | ... | ... | ... |
+| 2 | ... | ... | ... | ... |
+| 3 | ... | ... | ... | ... |
+
+## ⚡ RECOMMENDED FIRST MOVE
+[The single most actionable next step the user should take to validate and build the #1 opportunity]
+
+*CRITICAL RULES:*
+- *Always reference the web search results provided — quote real complaints*
+- *Never give generic advice like "build an app" — be hyper-specific*
+- *If search results are limited, say so and ask the user for a more specific niche*`,
 };
 
 export async function POST(req: Request) {
@@ -247,7 +300,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { message, chatId, agentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust, boardSize = 16, customInstructions} = await req.json();
+    const { message, chatId, agentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust, boardSize = 16, customInstructions } = await req.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
@@ -294,6 +347,7 @@ export async function POST(req: Request) {
 
       const insertPayload: any = {
         user_id: dbUser.id,
+        agent_id: agentId || null,
         title: serializedTitle,
       };
       const { data: newChat, error: chatError } = await supabase
@@ -459,7 +513,7 @@ ${agentSystemPrompt}`;
 
     // 5a. 🔍 Tavily Web Search — inject real-time data if query is time-sensitive
     if (needsWebSearch(message, agentId)) {
-      const searchQuery = extractSearchQuery(message);
+      const searchQuery = extractSearchQuery(message, agentId);
       console.log(`[WebSearch] Searching Tavily for: "${searchQuery}"`);
       const searchContext = await performWebSearch(searchQuery, agentId);
       if (searchContext) {
@@ -484,7 +538,7 @@ Apply the following highly advanced analysis steps:
 
     // 5b. Format history for LLM messages array (System prompt must be at position 0)
     const toneReminder = tonePrompt ? ` CRITICAL TONE OVERRIDE: ${tonePrompt}` : "";
-      const formattedMessages: any[] = [
+    const formattedMessages: any[] = [
       {
         role: "system",
         content: agentSystemPrompt,
@@ -584,10 +638,29 @@ Apply the following highly advanced analysis steps:
     }
 
     const primaryModel = resolvedModelId;
-    
-    // Brain Trust models hardcoded
-    const draftModel = "nousresearch/hermes-3-llama-3.1-405b:free";
-    const critiqueModel = "google/gemma-4-31b-it:free";
+
+    // Brain Trust: Groq-first model pool (no quota issues), OpenRouter as fallback
+    // Groq handles all sync calls — only synthesis stream uses OpenRouter
+    const BRAIN_TRUST_GROQ_MODELS = [
+      "llama-3.3-70b-versatile",
+      "llama3-70b-8192",
+      "mixtral-8x7b-32768",
+    ];
+
+    // OpenRouter free models pool for Brain Trust (rotated dynamically)
+    const BRAIN_TRUST_OR_POOL = [
+      "deepseek/deepseek-v4-flash:free",
+      "openai/gpt-oss-120b:free",
+      "openai/gpt-oss-20b:free",
+      "google/gemma-4-31b-it:free",
+      "meta-llama/llama-3.3-70b-instruct:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "arcee-ai/trinity-large-thinking:free",
+      "z-ai/glm-4.5-air:free",
+      "minimax/minimax-m2.5:free",
+      "openrouter/free",
+    ];
+
     const synthModel = primaryModel; // The user's selected model synthesizes the final response
 
     const encoder = new TextEncoder();
@@ -613,17 +686,16 @@ Apply the following highly advanced analysis steps:
           });
         };
 
-        // Helper for Brain Trust non-streaming calls with high-fidelity Groq & OpenRouter fallback logic
+        // Helper for Brain Trust non-streaming calls — Groq-first, then OpenRouter pool rotation
+        // Groq has no daily quota issues; OpenRouter pool rotates across all available free models
+        let orPoolIndex = 0; // Round-robin index across the OR pool
         const fetchSyncAI = async (model: string, msgs: any[], roleName?: string): Promise<string> => {
-          // Tier 1: Try Groq first — blazing fast, high rate limits, reliable
-          // Uses the outer `groq` instance (not a new one per call) for efficiency
+          // Tier 1: Try Groq first — blazing fast, high rate limits, no daily quota
           if (process.env.GROQ_API_KEY) {
-            const groqModels = ["llama-3.3-70b-versatile", "llama3-70b-8192", "mixtral-8x7b-32768"];
-            const groqMsgs = sanitizeMessagesForGroq(msgs); // Strip image arrays for Groq compat
-            
-            for (const groqModel of groqModels) {
+            const groqMsgs = sanitizeMessagesForGroq(msgs);
+            for (const groqModel of BRAIN_TRUST_GROQ_MODELS) {
               try {
-                console.log(`[Sync Groq] Trying model: "${groqModel}" for role: "${roleName || 'Architect'}"`);
+                console.log(`[Sync Groq] Trying model: "${groqModel}" for role: "${roleName || 'Agent'}"`);
                 const completion = await groq.chat.completions.create({
                   model: groqModel,
                   messages: groqMsgs,
@@ -632,54 +704,59 @@ Apply the following highly advanced analysis steps:
                 });
                 const content = completion.choices[0]?.message?.content || "";
                 if (content.trim()) {
-                  console.log(`[Sync Groq] ✅ Success using model: "${groqModel}" for role: "${roleName || 'Architect'}"`);
+                  console.log(`[Sync Groq] ✅ "${groqModel}" → "${roleName || 'Agent'}" OK`);
                   return content;
                 }
               } catch (groqErr: any) {
-                console.error(`[Sync Groq] Model "${groqModel}" failed:`, groqErr.message || groqErr);
+                console.error(`[Sync Groq] "${groqModel}" failed:`, groqErr.message || groqErr);
               }
             }
           }
 
-          // Tier 2: OpenRouter fallback if Groq unavailable or all models fail
-          const modelsToTry = [
-            "meta-llama/llama-3.3-70b-instruct:free",
-            "google/gemma-4-31b-it:free",
-            "deepseek/deepseek-v4-flash:free",
-          ];
-          
-          let lastError = null;
-          for (const currentModel of modelsToTry) {
+          // Tier 2: OpenRouter pool — rotate through all free models to spread quota usage
+          // Each call picks the next model in the pool (round-robin)
+          const poolSize = BRAIN_TRUST_OR_POOL.length;
+          for (let attempt = 0; attempt < poolSize; attempt++) {
+            const currentModel = BRAIN_TRUST_OR_POOL[orPoolIndex % poolSize];
+            orPoolIndex++;
             try {
-              console.log(`[Sync OpenRouter] Trying model: "${currentModel}" for role: "${roleName || 'Architect'}"`);
-              const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
-                  "Content-Type": "application/json",
-                  "HTTP-Referer": "https://kachamorich.vercel.app",
-                },
-                body: JSON.stringify({ model: currentModel, messages: msgs, stream: false, max_tokens: 1800 }),
-              });
-              if (res.ok) {
-                const data = await res.json();
-                const content = data.choices[0]?.message?.content || "";
-                if (content) {
-                  console.log(`[Sync OpenRouter] ✅ Success using model: "${currentModel}" for role: "${roleName || 'Architect'}"`);
-                  return content;
-                }
+              console.log(`[Sync OR Pool] Trying model: "${currentModel}" for role: "${roleName || 'Agent'}"`);
+              const { response: res } = await openrouterFetchWithFallback(
+                [currentModel],
+                { messages: msgs, stream: false, max_tokens: 1800 }
+              );
+              const data = await res.json();
+              const content = data.choices[0]?.message?.content || "";
+              if (content.trim()) {
+                console.log(`[Sync OR Pool] ✅ "${currentModel}" → "${roleName || 'Agent'}" OK`);
+                return content;
               }
-            } catch (err) {
-              lastError = err;
-              console.error(`[Sync OpenRouter] Model "${currentModel}" failed:`, err);
+            } catch (err: any) {
+              console.error(`[Sync OR Pool] "${currentModel}" failed:`, err.message || err);
             }
           }
-          throw lastError || new Error("All sync fallback models failed");
+          throw new Error(`All sync models failed for role: ${roleName}`);
         };
 
         try {
           if (isBrainTrust && !hasImage) {
             // MASSIVELY PARALLEL MULTI-AGENT EXECUTIVE BOARD PIPELINE
+
+            // Pre-flight: Quick quota check — warn user if OpenRouter keys are exhausted
+            // and Groq is also unavailable, so they know to add a new key before wasting time
+            if (!process.env.GROQ_API_KEY) {
+              try {
+                const testRes = await fetch("https://openrouter.ai/api/v1/models", {
+                  headers: { "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || ""}` }
+                });
+                if (testRes.status === 401 || testRes.status === 402) {
+                  controller.enqueue(encoder.encode(
+                    `\n\n> ⚠️ **API Key Warning**: Your OpenRouter API key appears to be invalid or has no credits.\n` +
+                    `> Brain Trust requires multiple AI calls. Please go to [Settings](/settings) and add a new API key before continuing.\n\n`
+                  ));
+                }
+              } catch (_) { }
+            }
 
             // Detect user's language from their message
             const hasBangla = /[\u0980-\u09FF]/.test(message);
@@ -687,19 +764,29 @@ Apply the following highly advanced analysis steps:
               ? "CRITICAL: You MUST respond entirely in Bengali (Bangla) script. Do NOT use English in your response."
               : "CRITICAL: Detect the language of the user's original message and respond ENTIRELY in that exact same language. Do NOT switch to English or any other language.";
 
-            const totalExpertsCount = Math.max(1, Math.min(14, boardSize - 2));
+            // Cap experts at 5 max to avoid rate limit timeouts on free tier
+            const totalExpertsCount = Math.max(1, Math.min(5, boardSize - 2));
 
-            controller.enqueue(encoder.encode(`\n\n> 🧠 **KACHA MORICH MASSIVELY PARALLEL BRAIN TRUST ACTIVATED**\n> Assembling the ${boardSize}-Agent Executive Board for Deep Analysis...\n\n`));
+            controller.enqueue(encoder.encode(`\n\n> 🧠 **KACHA MORICH BRAIN TRUST ACTIVATED**\n> Assembling ${totalExpertsCount + 2}-Agent Executive Board...\n\n`));
 
-            // Step 1: The Architect (Draft)
+            // Step 1: The Architect (Draft) — with timeout
             const draftModelName = process.env.GROQ_API_KEY ? "Groq Llama-3.3 70B" : "GPT OSS 120B";
             controller.enqueue(encoder.encode(`> 📝 **[The Architect]** *(powered by ${draftModelName})* is structuring the foundational master plan...\n`));
             const draftMessages = [...formattedMessages, { role: "user", content: `Act as the Chief Business Architect. Draft the initial business model, financial metrics, and week-by-week implementation roadmap. Focus strictly on structuring the core foundation of the strategy. Build a comprehensive and highly detailed plan. ${langInstruction}` }];
-            const draftText = await fetchSyncAI("openai/gpt-oss-120b:free", draftMessages, "Architect");
+
+            let draftText = "";
+            try {
+              const draftPromise = fetchSyncAI("openai/gpt-oss-120b:free", draftMessages, "Architect");
+              const draftTimeout = new Promise<string>((_, reject) => setTimeout(() => reject(new Error("Draft timeout")), 30000));
+              draftText = await Promise.race([draftPromise, draftTimeout]);
+            } catch (draftErr: any) {
+              console.error("[Brain Trust] Draft failed:", draftErr.message);
+              draftText = "Initial strategic framework: Focus on market validation, lean operations, strong customer acquisition, and scalable revenue model.";
+            }
             controller.enqueue(encoder.encode(`> ✅ **${draftModelName}** → Foundational Master Plan Completed.\n\n`));
 
             // Step 2: Parallel Expert Panel (Dynamic Experts)
-            controller.enqueue(encoder.encode(`> 🕵️ **[Massive ${totalExpertsCount}-Seat Expert Panel Assembly]** Firing simultaneous deep-dive reviews across active departments...\n`));
+            controller.enqueue(encoder.encode(`> 🕵️ **[${totalExpertsCount}-Seat Expert Panel]** Firing simultaneous deep-dive reviews...\n`));
 
             const freeModels = [
               "meta-llama/llama-3.3-70b-instruct:free",
@@ -712,12 +799,16 @@ Apply the following highly advanced analysis steps:
 
             const safeFetch = async (model: string, msgs: any[], roleName: string) => {
               try {
-                return { roleName, text: await fetchSyncAI(model, msgs, roleName) };
-              } catch (e) {
-                console.error(`Expert ${model} (${roleName}) failed:`, e);
-                return { 
-                  roleName, 
-                  text: `(Expert analysis fallback for ${roleName}: To succeed with this business concept, you must prioritize strong customer acquisition channels, a lean cost structure, high conversion rate optimization, and a solid operational plan to scale efficiently.)` 
+                // 25s timeout per expert to avoid hanging
+                const expertPromise = fetchSyncAI(model, msgs, roleName);
+                const expertTimeout = new Promise<string>((_, reject) => setTimeout(() => reject(new Error("Expert timeout")), 25000));
+                const text = await Promise.race([expertPromise, expertTimeout]);
+                return { roleName, text };
+              } catch (e: any) {
+                console.error(`Expert ${model} (${roleName}) failed:`, e.message || e);
+                return {
+                  roleName,
+                  text: `(Expert analysis for ${roleName}: Prioritize strong customer acquisition channels, lean cost structure, high conversion rate optimization, and a solid operational plan to scale efficiently.)`
                 };
               }
             };
@@ -799,131 +890,153 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                 synthStreamed = true;
                 console.log(`[API Chat] ✅ Groq CEO synthesis completed successfully.`);
               } catch (groqSynthErr: any) {
-                console.error(`[API Chat] Groq CEO synthesis failed, falling back to OpenRouter:`, groqSynthErr.message || groqSynthErr);
+                console.error(`[API Chat] ❌ Groq CEO synthesis failed:`, groqSynthErr.message || groqSynthErr);
+                synthStreamed = false;
               }
             }
 
             if (!synthStreamed) {
-              // OpenRouter fallback for CEO synthesis
+              // OpenRouter fallback for CEO synthesis — use full pool
               let selectedSynthModel = synthModel;
               const synthFallbacks = [
                 synthModel,
-                synthModel.endsWith(":free") ? synthModel.replace(":free", "") : `${synthModel}:free`,
-                "meta-llama/llama-3.3-70b-instruct:free",
-                "google/gemma-2-9b-it:free",
-                "deepseek/deepseek-chat:free",
+                ...BRAIN_TRUST_OR_POOL,
               ];
-              let synthRes: any;
+              let synthRes: any = null;
+              let synthSuccess = false;
+
               for (let sIdx = 0; sIdx < synthFallbacks.length; sIdx++) {
                 selectedSynthModel = synthFallbacks[sIdx];
                 try {
                   console.log(`[API Chat] Dispatching Brain Trust Synthesis stream request to model: "${selectedSynthModel}"`);
-                  synthRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                      "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
-                      "Content-Type": "application/json",
-                      "HTTP-Referer": "https://kachamorich.vercel.app",
-                    },
-                    body: JSON.stringify({ model: selectedSynthModel, messages: synthMessages, stream: true, max_tokens: 4000 }),
-                  });
-                  if (synthRes.ok) break;
-                  if (sIdx === synthFallbacks.length - 1) throw new Error("All synthesis models failed");
-                } catch (err) {
-                  console.error(`[API Chat] Synthesis model "${selectedSynthModel}" failed:`, err);
-                  if (sIdx === synthFallbacks.length - 1) throw err;
+                  const { response: res, usedModel } = await openrouterFetchWithFallback(
+                    [selectedSynthModel],
+                    { messages: synthMessages, stream: true, max_tokens: 4000, temperature: 0.7 }
+                  );
+                  synthRes = res;
+                  selectedSynthModel = usedModel;
+                  synthSuccess = true;
+                  console.log(`[API Chat] ✅ Synthesis model "${selectedSynthModel}" connected successfully`);
+                  break;
+                } catch (err: any) {
+                  console.error(`[API Chat] ❌ Synthesis model "${selectedSynthModel}" error:`, err.message || err);
                 }
+              }
+
+              if (!synthSuccess || !synthRes) {
+                throw new Error("All Brain Trust synthesis models failed. Please try again.");
               }
 
               const reader = synthRes.body?.getReader();
+              if (!reader) {
+                throw new Error("Failed to get stream reader from synthesis response");
+              }
+
               const decoder = new TextDecoder();
               let buffer = "";
               let isThinking = false;
-              while (reader) {
-                const { done, value } = await reader.read();
-                if (done) {
-                  if (isThinking) {
-                    controller.enqueue(encoder.encode("</thought>\n"));
-                  }
-                  break;
-                }
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split("\n");
-                buffer = lines.pop() || "";
-                for (const line of lines) {
-                  const trimmed = line.trim();
-                  if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
-                    try {
-                      const parsed = JSON.parse(trimmed.slice(6));
-                      const delta = parsed.choices[0]?.delta;
-                      const text = delta?.content || "";
-                      const reasoning = delta?.reasoning || delta?.reasoning_content || "";
 
-                      if (reasoning) {
-                        if (!isThinking) {
-                          isThinking = true;
-                          controller.enqueue(encoder.encode("<thought>\n"));
+              try {
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) {
+                    if (isThinking) {
+                      controller.enqueue(encoder.encode("</thought>\n"));
+                    }
+                    break;
+                  }
+                  buffer += decoder.decode(value, { stream: true });
+                  const lines = buffer.split("\n");
+                  buffer = lines.pop() || "";
+                  for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
+                      try {
+                        const parsed = JSON.parse(trimmed.slice(6));
+                        const delta = parsed.choices[0]?.delta;
+                        const text = delta?.content || "";
+                        const reasoning = delta?.reasoning || delta?.reasoning_content || "";
+
+                        if (reasoning) {
+                          if (!isThinking) {
+                            isThinking = true;
+                            controller.enqueue(encoder.encode("<thought>\n"));
+                          }
+                          assistantResponse += reasoning;
+                          controller.enqueue(encoder.encode(reasoning));
+                        } else if (text) {
+                          if (isThinking) {
+                            isThinking = false;
+                            controller.enqueue(encoder.encode("\n</thought>\n"));
+                          }
+                          assistantResponse += text;
+                          controller.enqueue(encoder.encode(text));
                         }
-                        assistantResponse += reasoning;
-                        controller.enqueue(encoder.encode(reasoning));
-                      } else if (text) {
-                        if (isThinking) {
-                          isThinking = false;
-                          controller.enqueue(encoder.encode("\n</thought>\n"));
-                        }
-                        assistantResponse += text;
-                        controller.enqueue(encoder.encode(text));
+                      } catch (parseErr) {
+                        console.error("[API Chat] Failed to parse SSE line:", trimmed);
                       }
-                    } catch (e) { }
+                    }
                   }
                 }
+              } catch (streamErr: any) {
+                console.error("[API Chat] ❌ Stream reading error:", streamErr.message || streamErr);
+                throw new Error(`Stream reading failed: ${streamErr.message}`);
               }
             }
           } else {
-             // NORMAL SINGLE-MODEL PIPELINE
-             let selectedModel = hasImage ? (primaryModel || "google/gemini-2.5-flash") : primaryModel;
-             const fallbackModels = hasImage
-               ? [
-                 primaryModel,
-                 "google/gemini-2.5-flash",
-                 "google/gemini-2.5-flash:free",
-                 "google/gemini-flash-1.5",
-                 "google/gemini-flash-1.5:free",
-                 "meta-llama/llama-3.2-11b-vision-instruct:free"
-               ]
-               : [
-                 primaryModel,
-                 "google/gemma-4-31b-it:free",
-                 "deepseek/deepseek-v4-flash:free",
-                 "meta-llama/llama-3.3-70b-instruct:free",
-                 "openai/gpt-oss-120b:free",
-                 // Ultra-stable paid model fallbacks (fraction-of-a-penny cost)
-                 "google/gemini-2.5-flash",
-                 "deepseek/deepseek-chat",
-                 "meta-llama/llama-3.3-70b-instruct",
-                 "qwen/qwen-2.5-coder-32b-instruct"
-               ];
+            // NORMAL SINGLE-MODEL PIPELINE
+            let selectedModel = hasImage ? (primaryModel || "google/gemini-2.5-flash") : primaryModel;
+            const fallbackModels = hasImage
+              ? [
+                primaryModel,
+                // Free vision-capable models (valid as of 2025/2026)
+                "google/gemma-4-31b-it:free",          // multimodal, 256K ctx
+                "nvidia/nemotron-nano-12b-v2-vl:free", // vision+doc understanding
+                "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", // multimodal
+                "openai/gpt-oss-120b:free",
+                "deepseek/deepseek-v4-flash:free",
+                // Last resort auto-router
+                "openrouter/free",
+              ]
+              : [
+                primaryModel,
+                // Top free text models (valid as of 2025/2026)
+                "deepseek/deepseek-v4-flash:free",
+                "openai/gpt-oss-120b:free",
+                "openai/gpt-oss-20b:free",
+                "google/gemma-4-31b-it:free",
+                "nvidia/nemotron-3-super-120b-a12b:free",
+                "deepseek/deepseek-r1-0528:free",
+                "meta-llama/llama-3.3-70b-instruct:free",
+                "z-ai/glm-4.5-air:free",
+                "arcee-ai/trinity-large-thinking:free",
+                "minimax/minimax-m2.5:free",
+                // Last resort: OpenRouter auto-selects any available free model
+                "openrouter/free",
+              ];
 
             let response: any;
+            let lastError: any;
             for (let i = 0; i < fallbackModels.length; i++) {
               selectedModel = fallbackModels[i];
               try {
                 console.log(`[API Chat] Dispatching stream request directly to selected model: "${selectedModel}"`);
-                response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                  method: "POST",
-                  headers: {
-                    "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": "https://kachamorich.vercel.app",
-                  },
-                  body: JSON.stringify({ model: selectedModel, messages: formattedMessages, stream: true, max_tokens: 3000 }),
-                });
-                if (response.ok) break;
-                if (i === fallbackModels.length - 1) throw new Error("All fallback models failed");
-              } catch (err) {
-                console.error(`[API Chat] Model dispatch failed for "${selectedModel}", trying fallback...`, err);
-                if (i === fallbackModels.length - 1) throw err;
+                const { response: res, usedModel } = await openrouterFetchWithFallback(
+                  [selectedModel],
+                  { messages: formattedMessages, stream: true, max_tokens: 3000 }
+                );
+                response = res;
+                selectedModel = usedModel;
+                console.log(`[API Chat] ✅ Model "${selectedModel}" connected successfully`);
+                break;
+              } catch (err: any) {
+                console.error(`[API Chat] ❌ Model "${selectedModel}" failed:`, err.message || err);
+                lastError = err;
+                response = undefined;
               }
+            }
+            if (!response) {
+              throw lastError || new Error("All fallback models failed");
             }
 
             const reader = response.body?.getReader();

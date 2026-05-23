@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import Groq from "groq-sdk";
+import { openrouterFetchWithFallback } from "@/lib/openrouter";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,8 @@ export async function POST(req: Request) {
   let agentId = "generic";
   let agentName = "Specialist AI";
   let agentDesc = "Business consultant";
+  let isCustom = false;
+  let instructions = "";
 
   try {
     const { userId } = await auth();
@@ -29,6 +32,8 @@ export async function POST(req: Request) {
     agentId = body.agentId || "generic";
     agentName = body.agentName || "Specialist AI";
     agentDesc = body.agentDesc || "Business consultant";
+    isCustom = body.isCustom || false;
+    instructions = body.instructions || "";
   } catch (authError) {
     console.error("Auth/body read error:", authError);
   }
@@ -171,43 +176,50 @@ export async function POST(req: Request) {
   ];
 
   // Randomly shuffle fallback pools on every single request
-  const responseSuggestions = shuffleArray(fallbacks[agentId] || genericFallbacks).slice(0, 4);
+  // For custom agents, generate instruction-aware fallbacks instead of generic ones
+  let responseSuggestions;
+  if (isCustom && instructions) {
+    const snippet = instructions.substring(0, 150).replace(/\n/g, " ");
+    // Generate fallbacks that are specific to the agent name + instructions snippet
+    responseSuggestions = shuffleArray([
+      { title: `${agentName} Core Task`, prompt: `Please ${agentName.toLowerCase().includes("humaniz") ? "humanize this AI-generated text for me" : `help me with a task related to ${agentName}`}: [paste your content here]`, tag: "Strategy", level: "Intermediate" },
+      { title: "Step-by-Step Guide", prompt: `Give me a detailed step-by-step guide on how to best use your capabilities as ${agentName}.`, tag: "Operations", level: "Advanced" },
+      { title: "Quick Analysis", prompt: `Analyze this and give me your expert feedback based on your specialization in ${agentName}: [paste your content here]`, tag: "Analysis", level: "Expert" },
+      { title: "Best Practices", prompt: `What are the top 5 best practices I should follow when working with ${agentName}?`, tag: "Innovation", level: "Advanced" },
+    ]).slice(0, 4);
+  } else {
+    responseSuggestions = shuffleArray(fallbacks[agentId] || genericFallbacks).slice(0, 4);
+  }
 
   // AI-driven live generation block
   try {
+    // For custom PDF agents, use their actual instructions to generate relevant prompts
+    const agentContext = isCustom && instructions
+      ? `This is a custom AI agent trained on a specific document. Here are its core instructions/expertise:\n\n${instructions}\n\nAgent Name: "${agentName}"`
+      : `Agent: "${agentName}" (${agentDesc})`;
+
     const systemPrompt = `You are the ultimate Prompt Engineering Expert for Kacha Morich AI 🌶️.
-Your job is to generate exactly 4 highly creative, extremely realistic, specific, and high-value business consultation prompts or case scenarios for our specialized agent: "${agentName}" (${agentDesc}).
+Your job is to generate exactly 4 highly creative, extremely realistic, specific, and high-value consultation prompts or case scenarios tailored specifically to this agent's expertise.
+
+${agentContext}
 
 Rules for prompts:
-- Each prompt must be a direct, 1st-person inquiry/request a business owner or startup founder would ask this specialist agent (e.g., "Draft a detailed WBS for my new Shopify store...").
+- Each prompt must be a direct, 1st-person inquiry/request that is SPECIFICALLY relevant to this agent's actual knowledge and expertise (based on the instructions above).
+- Do NOT generate generic business prompts — they must be deeply tied to the specific topics, concepts, and domain of this agent.
 - Keep them action-oriented, engaging, and modern.
 - You MUST respond with ONLY a valid JSON array of 4 objects. No explanation, no markdown backticks like \`\`\`json, no introductory text. Just the raw JSON array.
 
 Each object in the array MUST have the exact following structure:
 {
-  "title": "Short catchy title (3-5 words max, e.g. 'Shopify WBS Architect')",
+  "title": "Short catchy title (3-5 words max)",
   "prompt": "The actual detailed first-person prompt matching rules above",
-  "tag": "A single business tag like 'Finance', 'Growth', 'Coding', 'Legal', 'Innovation'",
+  "tag": "A single relevant tag like 'Finance', 'Growth', 'Coding', 'Legal', 'Innovation', 'Strategy'",
   "level": "One of: 'Intermediate', 'Advanced', 'Expert'"
-}
+}`;
 
-Example Output:
-[
-  {
-    "title": "Remote Onboarding Roadmap",
-    "prompt": "Create a 30-60-90 day onboarding roadmap for a remote marketing lead.",
-    "tag": "HR",
-    "level": "Advanced"
-  },
-  {
-    "title": "React Developer Audit",
-    "prompt": "What behavioral interview questions should I ask to test a React developer's architecture skills?",
-    "tag": "Tech",
-    "level": "Expert"
-  }
-]`;
-
-    const userMessage = `Generate 4 brand new dynamic, structured case suggestions for "${agentName}". Random salt: ${Math.random() * 100000}. Ensure these business ideas are completely unique and cover different angles.`;
+    const userMessage = isCustom && instructions
+      ? `Generate 4 brand new, highly specific consultation prompts for the custom agent "${agentName}" based on its actual document expertise above. Random salt: ${Math.random() * 100000}. Make them deeply relevant to the specific content and topics in the agent's instructions.`
+      : `Generate 4 brand new dynamic, structured case suggestions for "${agentName}". Random salt: ${Math.random() * 100000}. Ensure these business ideas are completely unique and cover different angles.`;
 
     const parseAndReturn = (rawContent: string) => {
       let cleanJSON = rawContent.trim();
@@ -248,30 +260,24 @@ Example Output:
       }
     }
 
-    // Tier 2: OpenRouter fallback with 4.5s timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4500);
-
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || "gsk_placeholder"}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://kachamorich.vercel.app",
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
+    // Tier 2: OpenRouter fallback with key rotation
+    const { response } = await openrouterFetchWithFallback(
+      [
+        "meta-llama/llama-3.3-70b-instruct:free",
+        "deepseek/deepseek-v4-flash:free",
+        "google/gemma-4-31b-it:free",
+        "openai/gpt-oss-20b:free",
+        "openrouter/free",
+      ],
+      {
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage }
         ],
         temperature: 0.9,
         max_tokens: 700,
-      }),
-    });
-
-    clearTimeout(timeoutId);
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`OpenRouter API failed with status ${response.status}`);

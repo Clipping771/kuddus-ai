@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabase";
-
 import { headers } from "next/headers";
+
+export const dynamic = "force-dynamic";
 
 const ADMIN_EMAILS = [
   "koishiquedhrubo@gmail.com",
@@ -85,7 +86,7 @@ export async function GET(req: Request) {
       latestChats: dbChats.slice(0, 10).map((chat) => {
         // Find corresponding user email
         const userObj = dbUsers.find((u) => u.id === chat.user_id);
-        
+
         // Strip metadata for clean rendering
         let cleanTitle = chat.title.split(" | ")[0];
         if (cleanTitle.startsWith("[ATTACHED DOCUMENT:")) {

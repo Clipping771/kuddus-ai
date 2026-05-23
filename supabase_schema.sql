@@ -18,12 +18,15 @@ CREATE INDEX IF NOT EXISTS idx_users_clerk_id ON users(clerk_id);
 CREATE TABLE IF NOT EXISTS chats (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    agent_id UUID REFERENCES custom_agents(id) ON DELETE CASCADE,
     title TEXT NOT NULL DEFAULT 'New Chat',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Index for querying a user's chats
 CREATE INDEX IF NOT EXISTS idx_chats_user_id ON chats(user_id);
+-- Index for querying chats by agent
+CREATE INDEX IF NOT EXISTS idx_chats_agent_id ON chats(agent_id);
 
 -- 3. Create messages table
 CREATE TABLE IF NOT EXISTS messages (
@@ -37,3 +40,17 @@ CREATE TABLE IF NOT EXISTS messages (
 -- Index for retrieving a chat's messages ordered by creation time
 CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+
+-- 4. Create custom_agents table
+CREATE TABLE IF NOT EXISTS custom_agents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    instructions TEXT NOT NULL,
+    icon TEXT DEFAULT 'FileText',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Index for querying a user's custom agents
+CREATE INDEX IF NOT EXISTS idx_custom_agents_user_id ON custom_agents(user_id);
