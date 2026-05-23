@@ -1041,7 +1041,7 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
               }
             }
             if (!response) {
-              throw lastError || new Error("All fallback models failed");
+              throw new ApiKeyExhaustedError(lastError?.message || "All fallback models and API keys exhausted");
             }
 
             const reader = response.body?.getReader();

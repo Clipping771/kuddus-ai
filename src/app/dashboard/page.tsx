@@ -881,6 +881,7 @@ export default function Dashboard() {
 
   // API key notification banner
   const [apiBanner, setApiBanner] = useState<BannerType | null>(null);
+  const [apiBannerMessage, setApiBannerMessage] = useState<string>("");
 
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentBanglaName, setNewAgentBanglaName] = useState("");
@@ -1804,6 +1805,18 @@ export default function Dashboard() {
         if (data.chats) {
           setChats(data.chats);
         }
+
+        // Check API key health in background — show banner if any keys need attention
+        fetch("/api/check-keys")
+          .then(r => r.ok ? r.json() : null)
+          .then(status => {
+            if (status?.needsAttention) {
+              setApiBanner("api_key_exhausted");
+              if (status.reason) setApiBannerMessage(status.reason);
+            }
+          })
+          .catch(() => { /* silent — don't block UI */ });
+
       } catch (err) {
         console.error("Initialization error:", err);
       } finally {
@@ -1982,6 +1995,13 @@ export default function Dashboard() {
       });
 
       if (!response.ok) {
+        // Try to read error body to detect API key exhaustion
+        try {
+          const errData = await response.json();
+          if (errData?.error?.includes("exhausted") || errData?.error?.includes("API key") || response.status === 402 || response.status === 429) {
+            setApiBanner("api_key_exhausted");
+          }
+        } catch { /* ignore parse error */ }
         throw new Error("API call failed");
       }
 
@@ -1999,11 +2019,12 @@ export default function Dashboard() {
         const chunk = decoder.decode(value, { stream: true });
 
         // Detect API key exhausted signal from server
-        if (chunk.includes("__API_KEY_EXHAUSTED__")) {
+        if (chunk.includes("__API_KEY_EXHAUSTED__") || accumulatedResponse.includes("__API_KEY_EXHAUSTED__")) {
           const cleanChunk = chunk.replace("__API_KEY_EXHAUSTED__", "").trim();
           if (cleanChunk) {
             accumulatedResponse += cleanChunk;
           }
+          accumulatedResponse = accumulatedResponse.replace("__API_KEY_EXHAUSTED__", "").trim();
           setApiBanner("api_key_exhausted");
           setMessages((prev) => {
             const updated = [...prev];
@@ -3267,7 +3288,8 @@ export default function Dashboard() {
               {apiBanner && (
                 <ApiKeyBanner
                   type={apiBanner}
-                  onDismiss={() => setApiBanner(null)}
+                  message={apiBannerMessage || undefined}
+                  onDismiss={() => { setApiBanner(null); setApiBannerMessage(""); }}
                 />
               )}
 

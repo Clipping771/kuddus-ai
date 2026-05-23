@@ -7,6 +7,7 @@ export type BannerType = "api_key_exhausted" | "groq_rate_limit" | "info";
 
 interface ApiKeyBannerProps {
     type: BannerType;
+    message?: string; // optional server-provided reason override
     onDismiss: () => void;
 }
 
@@ -14,7 +15,7 @@ const BANNER_CONFIG = {
     api_key_exhausted: {
         icon: <Key size={15} className="shrink-0" />,
         title: "API Key Exhausted",
-        message: "All your OpenRouter API keys have hit their rate limit or quota. Add a new key to continue.",
+        defaultMessage: "All your OpenRouter API keys have hit their rate limit or quota. Add a new key to continue.",
         actionLabel: "Add API Key →",
         actionHref: "/settings",
         bg: "bg-amber-500/10 border-amber-500/30",
@@ -26,7 +27,7 @@ const BANNER_CONFIG = {
     groq_rate_limit: {
         icon: <AlertTriangle size={15} className="shrink-0" />,
         title: "Rate Limit Hit",
-        message: "Groq API rate limit reached. The system will automatically retry with OpenRouter. If this persists, add more API keys.",
+        defaultMessage: "Groq API rate limit reached. The system will retry with OpenRouter. If this persists, add more API keys.",
         actionLabel: "Manage Keys →",
         actionHref: "/settings",
         bg: "bg-orange-500/10 border-orange-500/30",
@@ -38,7 +39,7 @@ const BANNER_CONFIG = {
     info: {
         icon: <AlertTriangle size={15} className="shrink-0" />,
         title: "Notice",
-        message: "Something needs your attention.",
+        defaultMessage: "Something needs your attention.",
         actionLabel: "Settings →",
         actionHref: "/settings",
         bg: "bg-blue-500/10 border-blue-500/30",
@@ -49,11 +50,10 @@ const BANNER_CONFIG = {
     },
 };
 
-export default function ApiKeyBanner({ type, onDismiss }: ApiKeyBannerProps) {
+export default function ApiKeyBanner({ type, message, onDismiss }: ApiKeyBannerProps) {
     const [visible, setVisible] = useState(false);
     const config = BANNER_CONFIG[type];
 
-    // Animate in
     useEffect(() => {
         const t = setTimeout(() => setVisible(true), 50);
         return () => clearTimeout(t);
@@ -80,7 +80,7 @@ export default function ApiKeyBanner({ type, onDismiss }: ApiKeyBannerProps) {
             <div className="flex-1 min-w-0">
                 <p className={`text-[11px] font-bold ${config.titleColor}`}>{config.title}</p>
                 <p className={`text-[11px] mt-0.5 leading-relaxed ${config.textColor}`}>
-                    {config.message}
+                    {message || config.defaultMessage}
                 </p>
                 <a
                     href={config.actionHref}
