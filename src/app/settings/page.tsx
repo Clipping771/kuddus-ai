@@ -34,6 +34,7 @@ export default function SettingsPage() {
     const [groqNewValue, setGroqNewValue] = useState("");
     const [groqNewLabel, setGroqNewLabel] = useState("");
     const [groqAdding, setGroqAdding] = useState(false);
+    const [groqTableReady, setGroqTableReady] = useState(true);
 
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -95,6 +96,7 @@ export default function SettingsPage() {
             const res = await fetch("/api/settings/groq-keys");
             const data = await res.json();
             if (data.keys) setGroqKeys(data.keys);
+            if (data.tableNotReady) setGroqTableReady(false);
         } catch { } finally { setGroqLoading(false); }
     };
 
@@ -336,6 +338,25 @@ export default function SettingsPage() {
 
                         {groqLoading ? (
                             <div className="text-center py-10 text-neutral-600 text-sm">Loading...</div>
+                        ) : !groqTableReady ? (
+                            <div className="p-5 rounded-2xl border border-orange-500/20 bg-orange-500/5">
+                                <p className="text-sm font-bold text-orange-400 mb-2">⚠️ Database migration required</p>
+                                <p className="text-xs text-neutral-400 mb-3">Run this SQL in your <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:underline">Supabase SQL Editor</a> to enable Groq key storage:</p>
+                                <pre className="text-[11px] bg-black/40 border border-white/10 rounded-xl p-3 overflow-x-auto text-neutral-300 leading-relaxed">{`CREATE TABLE IF NOT EXISTS groq_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  api_key TEXT NOT NULL,
+  label TEXT NOT NULL DEFAULT 'Groq Key',
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_groq_keys_user_id ON groq_keys(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_groq_keys_unique ON groq_keys(user_id, api_key);`}</pre>
+                                <button onClick={fetchGroqKeys} className="mt-3 px-4 py-2 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 text-orange-400 text-xs font-bold transition-all">
+                                    Retry after running SQL →
+                                </button>
+                            </div>
                         ) : groqKeys.length === 0 ? (
                             <div className="text-center py-12 border border-dashed border-white/[0.06] rounded-2xl">
                                 <Zap size={36} className="mx-auto mb-3 text-neutral-700" />

@@ -23,7 +23,11 @@ export async function GET() {
         .eq("user_id", dbUser.id)
         .order("created_at", { ascending: true });
 
-    if (error) return NextResponse.json({ error: "Failed to fetch keys" }, { status: 500 });
+    // If table doesn't exist yet (migration not run), return empty array gracefully
+    if (error) {
+        console.warn("[groq-keys GET] Error — table may not exist yet:", error.message);
+        return NextResponse.json({ keys: [], tableNotReady: true });
+    }
 
     const masked = (keys || []).map((k) => ({
         id: k.id,
