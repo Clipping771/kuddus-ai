@@ -69,13 +69,19 @@ export async function POST(request: Request) {
     }
 
     // 3. Create a new chat
+    const insertPayload: any = {
+      user_id: dbUser.id,
+      title: "New Business Idea",
+    };
+
+    // Only include agent_id if it's a valid UUID (DB-backed agent)
+    if (agentId && /^[0-9a-f-]{36}$/i.test(agentId)) {
+      insertPayload.agent_id = agentId;
+    }
+
     const { data: newChat, error: chatError } = await supabase
       .from("chats")
-      .insert({
-        user_id: dbUser.id,
-        agent_id: agentId,
-        title: "New Business Idea",
-      })
+      .insert(insertPayload)
       .select("*")
       .single();
 

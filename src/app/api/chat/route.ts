@@ -347,9 +347,14 @@ export async function POST(req: Request) {
 
       const insertPayload: any = {
         user_id: dbUser.id,
-        agent_id: agentId || null,
         title: serializedTitle,
       };
+
+      // Only include agent_id if it's a DB-backed custom agent (UUID format)
+      // This prevents errors if the agent_id column doesn't exist yet in the schema
+      if (agentId && !agentId.startsWith("custom-agent-") && /^[0-9a-f-]{36}$/i.test(agentId)) {
+        insertPayload.agent_id = agentId;
+      }
       const { data: newChat, error: chatError } = await supabase
         .from("chats")
         .insert(insertPayload)
