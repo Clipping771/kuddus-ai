@@ -2847,15 +2847,15 @@ export default function Dashboard() {
               </div>
             </div>
           </div>{/* end control bar inner */}
-      </div>{/* end control bar wrapper */}
+          </div>{/* end control bar wrapper */}
 
-      {/* Scrollable Conversation area */}
-      <div
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8 space-y-6 relative"
-      >
+          {/* Scrollable Conversation area */}
+          <div
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8 space-y-6 relative"
+          >
         {/* Custom Pull-to-Refresh Indicator */}
         {pullDistance > 0 && (
           <div
