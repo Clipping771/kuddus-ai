@@ -372,63 +372,90 @@ const parseMarkdownForPDF = (markdown: string): string => {
 };
 
 const PDFArtifactCard = ({ content }: { content: string }) => {
-  const handleDownload = () => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      alert("Please allow popups to export as PDF");
-      return;
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleDownload = async () => {
+    setIsGenerating(true);
+    try {
+      // Dynamic import to avoid SSR issues
+      const jsPDF = (await import('jspdf')).default;
+      const html2canvas = (await import('html2canvas')).default;
+
+      // Create a temporary container for rendering
+      const tempContainer = document.createElement('div');
+      tempContainer.style.position = 'absolute';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.width = '210mm'; // A4 width
+      tempContainer.style.padding = '20mm';
+      tempContainer.style.backgroundColor = '#ffffff';
+      tempContainer.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+      tempContainer.style.color = '#333';
+      tempContainer.style.lineHeight = '1.6';
+
+      const html = parseMarkdownForPDF(content);
+
+      tempContainer.innerHTML = `
+        <div style="text-align:center;margin-bottom:30px;border-bottom:2px solid #E11D48;padding-bottom:10px;">
+          <h2 style="margin:0;color:#E11D48;font-size:24px;">🌶️ KACHA MORICH AI</h2>
+          <p style="margin:5px 0 0 0;font-size:12px;color:#666;text-transform:uppercase;letter-spacing:1px;">Generated Business Artifact</p>
+        </div>
+        <div>${html}</div>
+      `;
+
+      document.body.appendChild(tempContainer);
+
+      // Wait for any images to load
+      const images = tempContainer.getElementsByTagName('img');
+      await Promise.all(
+        Array.from(images).map(img => {
+          if (img.complete) return Promise.resolve();
+          return new Promise(resolve => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        })
+      );
+
+      // Generate canvas from HTML
+      const canvas = await html2canvas(tempContainer, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      // Remove temporary container
+      document.body.removeChild(tempContainer);
+
+      // Create PDF
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/png');
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // Add new pages if content is longer than one page
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      // Save the PDF
+      pdf.save(`kacha_morich_report_${Date.now()}.pdf`);
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setIsGenerating(false);
     }
-
-    const html = parseMarkdownForPDF(content);
-
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Kacha Morich AI - Business Intelligence Report</title>
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.6; background-color:#fff; }
-            h1, h2, h3 { font-family: 'Segoe UI', sans-serif; color: #111; }
-            table { page-break-inside: avoid; }
-            tr { page-break-inside: avoid; page-break-after: auto; }
-            thead { display: table-header-group; }
-            @media print {
-              body { padding: 0; }
-              .no-print { display: none; }
-            }
-          </style>
-          <!-- Mermaid rendering support -->
-          <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-          <script>
-            window.onload = function() {
-              try {
-                mermaid.initialize({
-                  startOnLoad: true,
-                  theme: 'neutral',
-                  flowchart: {
-                    useMaxWidth: true,
-                    htmlLabels: true
-                  }
-                });
-              } catch(e) { console.error(e); }
-              
-              // Delay execution to allow Mermaid script to construct flowchart SVGs
-              setTimeout(function() {
-                window.print();
-                setTimeout(function() { window.close(); }, 500);
-              }, 1500);
-            };
-          </script>
-        </head>
-        <body>
-          <div style="text-align:center;margin-bottom:30px;border-bottom:2px solid #E11D48;padding-bottom:10px;">
-            <h2 style="margin:0;color:#E11D48;">🌶️ KACHA MORICH AI</h2>
-            <p style="margin:5px 0 0 0;font-size:12px;color:#666;text-transform:uppercase;letter-spacing:1px;">Generated Business Artifact</p>
-          </div>
-          <div>${html}</div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
   };
 
   return (
@@ -445,38 +472,75 @@ const PDFArtifactCard = ({ content }: { content: string }) => {
       <button
         type="button"
         onClick={handleDownload}
-        className="self-start sm:self-center px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-red-500/10 hover:shadow-red-500/30 hover:scale-[1.02] active:scale-95"
+        disabled={isGenerating}
+        className="self-start sm:self-center px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 disabled:bg-red-500/50 disabled:cursor-not-allowed text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-red-500/10 hover:shadow-red-500/30 hover:scale-[1.02] active:scale-95 disabled:scale-100 flex items-center gap-2"
       >
-        📥 Download PDF
+        {isGenerating ? (
+          <>
+            <Loader2 size={14} className="animate-spin" />
+            Generating...
+          </>
+        ) : (
+          <>
+            📥 Download PDF
+          </>
+        )}
       </button>
     </div>
   );
 };
 
 const WordArtifactCard = ({ content }: { content: string }) => {
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const handleDownload = () => {
-    const html = parseMarkdownForPDF(content);
+    setIsGenerating(true);
+    try {
+      const html = parseMarkdownForPDF(content);
 
-    const wordContent = `
-      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head><title>Kacha Morich AI Report</title></head>
-        <body>
-          <h2 style="color:#FF8C00;">🌶️ Generated Business Report</h2>
-          <hr/>
-          <div>${html}</div>
-        </body>
-      </html>
-    `;
+      const wordContent = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+          <head>
+            <meta charset="utf-8">
+            <title>Kacha Morich AI Report</title>
+            <style>
+              body { font-family: 'Segoe UI', Calibri, sans-serif; font-size: 11pt; line-height: 1.6; }
+              h1 { color: #E11D48; font-size: 24pt; font-weight: bold; }
+              h2 { color: #E11D48; font-size: 18pt; font-weight: bold; }
+              h3 { color: #0f172a; font-size: 14pt; font-weight: bold; }
+              table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+              th { background-color: #E11D48; color: white; padding: 10px; text-align: left; font-weight: bold; }
+              td { border: 1px solid #ddd; padding: 10px; }
+              tr:nth-child(even) { background-color: #f8fafc; }
+              code { background-color: #f4f4f4; padding: 2px 4px; font-family: 'Courier New', monospace; }
+              pre { background-color: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; }
+            </style>
+          </head>
+          <body>
+            <div style="text-align:center;margin-bottom:30px;border-bottom:2px solid #E11D48;padding-bottom:10px;">
+              <h2 style="margin:0;color:#E11D48;">🌶️ KACHA MORICH AI</h2>
+              <p style="margin:5px 0 0 0;font-size:10pt;color:#666;text-transform:uppercase;letter-spacing:1px;">Generated Business Artifact</p>
+            </div>
+            <div>${html}</div>
+          </body>
+        </html>
+      `;
 
-    const blob = new Blob(['\ufeff' + wordContent], { type: 'application/msword' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `kacha_morich_artifact_${Date.now()}.doc`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      const blob = new Blob(['\ufeff' + wordContent], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `kacha_morich_artifact_${Date.now()}.doc`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Word generation error:', error);
+      alert('Failed to generate Word document. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -493,43 +557,69 @@ const WordArtifactCard = ({ content }: { content: string }) => {
       <button
         type="button"
         onClick={handleDownload}
-        className="self-start sm:self-center px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-blue-500/10 hover:shadow-blue-500/30 hover:scale-[1.02] active:scale-95"
+        disabled={isGenerating}
+        className="self-start sm:self-center px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 disabled:cursor-not-allowed text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-blue-500/10 hover:shadow-blue-500/30 hover:scale-[1.02] active:scale-95 disabled:scale-100 flex items-center gap-2"
       >
-        📥 Download Word
+        {isGenerating ? (
+          <>
+            <Loader2 size={14} className="animate-spin" />
+            Generating...
+          </>
+        ) : (
+          <>
+            📥 Download Word
+          </>
+        )}
       </button>
     </div>
   );
 };
 
 const ExcelArtifactCard = ({ content }: { content: string }) => {
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const handleDownload = () => {
-    const lines = content.split('\n');
-    let csvContent = "";
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (line.startsWith('|')) {
-        if (line.includes('---')) continue;
-        const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
-        const csvRow = cells.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',');
-        csvContent += csvRow + '\r\n';
-      } else if (line.includes(',')) {
-        csvContent += line + '\r\n';
+    setIsGenerating(true);
+    try {
+      const lines = content.split('\n');
+      let csvContent = "";
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith('|')) {
+          // Skip separator lines
+          if (line.includes('---')) continue;
+
+          // Parse table rows
+          const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+          const csvRow = cells.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',');
+          csvContent += csvRow + '\r\n';
+        } else if (line.includes(',')) {
+          // Already CSV format
+          csvContent += line + '\r\n';
+        }
       }
-    }
 
-    if (!csvContent) {
-      csvContent = `"${content.replace(/"/g, '""')}"`;
-    }
+      // If no table or CSV data found, convert the entire content
+      if (!csvContent) {
+        csvContent = `"${content.replace(/"/g, '""')}"`;
+      }
 
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `kacha_morich_data_${Date.now()}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `kacha_morich_data_${Date.now()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Excel generation error:', error);
+      alert('Failed to generate Excel file. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -546,9 +636,19 @@ const ExcelArtifactCard = ({ content }: { content: string }) => {
       <button
         type="button"
         onClick={handleDownload}
-        className="self-start sm:self-center px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-95"
+        disabled={isGenerating}
+        className="self-start sm:self-center px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 disabled:cursor-not-allowed text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-95 disabled:scale-100 flex items-center gap-2"
       >
-        📥 Download Excel
+        {isGenerating ? (
+          <>
+            <Loader2 size={14} className="animate-spin" />
+            Generating...
+          </>
+        ) : (
+          <>
+            📥 Download Excel
+          </>
+        )}
       </button>
     </div>
   );
