@@ -25,27 +25,7 @@ export async function GET() {
             reason: "" as string,
         };
 
-        // ── 1. Check Groq ──────────────────────────────────────────────────────────
-        const groqKey = process.env.GROQ_API_KEY;
-        if (groqKey && !groqKey.includes("placeholder")) {
-            result.groq.checked = true;
-            try {
-                const groqRes = await fetch("https://api.groq.com/openai/v1/models", {
-                    headers: { Authorization: `Bearer ${groqKey}` },
-                });
-                result.groq.ok = groqRes.ok;
-                if (!groqRes.ok) {
-                    result.needsAttention = true;
-                    result.reason = groqRes.status === 401
-                        ? "Groq API key is invalid or expired."
-                        : `Groq returned status ${groqRes.status}.`;
-                }
-            } catch {
-                result.groq.ok = false;
-            }
-        }
-
-        // ── 1b. Check Groq DB keys ─────────────────────────────────────────────
+        // ── 1. Check Groq — DB keys first, env var as fallback ────────────────────
         const { data: dbUserForGroq } = await supabase
             .from("users").select("id").eq("clerk_id", clerkId).single();
 
@@ -66,16 +46,39 @@ export async function GET() {
                         if (r.ok) anyGroqOk = true;
                     } catch { }
                 }));
-                if (anyGroqOk) result.groq.ok = true;
+                result.groq.ok = anyGroqOk;
+                if (!anyGroqOk) {
+                    result.needsAttention = true;
+                    result.reason = "All Groq API keys are invalid or expired. Add a new key in Settings.";
+                }
+            }
+        }
+
+        // Only check env var if no DB keys were found
+        if (!result.groq.checked) {
+            const groqKey = process.env.GROQ_API_KEY;
+            if (groqKey && !groqKey.includes("placeholder")) {
+                result.groq.checked = true;
+                try {
+                    const groqRes = await fetch("https://api.groq.com/openai/v1/models", {
+                        headers: { Authorization: `Bearer ${groqKey}` },
+                    });
+                    result.groq.ok = groqRes.ok;
+                    if (!groqRes.ok) {
+                        result.needsAttention = true;
+                        result.reason = groqRes.status === 401
+                            ? "Groq API key is invalid or expired."
+                            : `Groq returned status ${groqRes.status}.`;
+                    }
+                } catch {
+                    result.groq.ok = false;
+                }
             }
         }
 
         // ── 2. Check OpenRouter DB keys ────────────────────────────────────────────
-        const { data: dbUser } = await supabase
-            .from("users")
-            .select("id")
-            .eq("clerk_id", clerkId)
-            .single();
+        // Reuse the same dbUser fetched above for Groq
+        const dbUser = dbUserForGroq;
 
         if (dbUser) {
             const { data: keys } = await supabase
