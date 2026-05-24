@@ -114,8 +114,8 @@ ${pdfText.substring(0, 12000)}
         const { response: res } = await openrouterFetchWithFallback(
           [
             "meta-llama/llama-3.3-70b-instruct:free",
-            "deepseek/deepseek-v4-flash:free",
-            "google/gemma-4-31b-it:free",
+            "deepseek/deepseek-r1-0528:free",
+            "mistralai/mistral-7b-instruct:free",
           ],
           {
             messages: [{ role: "user", content: systemPromptMsg }],

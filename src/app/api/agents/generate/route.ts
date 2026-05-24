@@ -144,7 +144,8 @@ async function tryGroq(idea: string, prompt: string) {
     throw new Error("Groq API key not configured");
   }
   const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-  const models = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama3-70b-8192"];
+  // Updated to current active Groq models (mixtral-8x7b-32768 and llama3-70b-8192 are deprecated)
+  const models = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama-3.1-8b-instant"];
 
   for (const model of models) {
     try {
@@ -170,9 +171,9 @@ async function tryGroq(idea: string, prompt: string) {
 async function tryOpenRouter(prompt: string) {
   const models = [
     "meta-llama/llama-3.3-70b-instruct:free",
-    "deepseek/deepseek-v4-flash:free",
-    "google/gemma-4-31b-it:free",
-    "openai/gpt-oss-20b:free",
+    "deepseek/deepseek-r1-0528:free",
+    "google/gemma-3-27b-it:free",
+    "mistralai/mistral-7b-instruct:free",
   ];
 
   for (const model of models) {

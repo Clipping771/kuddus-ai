@@ -1150,7 +1150,7 @@ export default function Dashboard() {
       }
     } catch (err) {
       console.error("Auto-generate error:", err);
-      alert("An unexpected error occurred.");
+      alert("An unexpected error occurred. Check the browser console for details.");
     } finally {
       setIsGeneratingAll(false);
     }
@@ -1180,7 +1180,7 @@ export default function Dashboard() {
       }
     } catch (err) {
       console.error(`Field generation error for ${field}:`, err);
-      alert("An unexpected error occurred.");
+      alert("An unexpected error occurred. Check the browser console for details.");
     } finally {
       setIsGeneratingField(null);
     }
@@ -3794,243 +3794,133 @@ export default function Dashboard() {
         )
       }
       {/* 5. Custom Agent Builder — Professional Glassmorphic Modal */}
-      {
-        customAgentModalOpen && (
+      {/* 5. Custom Agent Builder — Smart 2-Step Wizard */}
+      {customAgentModalOpen && (() => {
+        // Step state lives here via a wrapper component trick — use existing states
+        const isStep2 = newAgentName.trim() !== "" && newAgentInstructions.trim() !== "";
+        return (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/75 backdrop-blur-md" onClick={() => setCustomAgentModalOpen(false)} />
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => { setCustomAgentModalOpen(false); setAgentConceptPrompt(""); setNewAgentName(""); setNewAgentBanglaName(""); setNewAgentBanglaDesc(""); setNewAgentInstructions(""); }} />
+            <div className={`relative max-w-lg w-full max-h-[92vh] overflow-y-auto rounded-3xl border shadow-2xl scrollbar-thin ${themeMode === "black" ? "bg-[#0A0A0C]/98 border-white/10 text-neutral-100" : "bg-white border-neutral-200 text-neutral-900"}`}>
 
-            {/* Modal Container */}
-            <div className={`relative max-w-md w-full max-h-[92vh] overflow-y-auto rounded-3xl p-5 sm:p-6 border shadow-2xl transition duration-300 transform scale-100 scrollbar-thin ${themeMode === "black"
-              ? "bg-[#0A0A0C]/95 border-white/10 text-neutral-100 shadow-[0_0_50px_rgba(16,185,129,0.05)]"
-              : "bg-white/95 border-neutral-200 text-neutral-900 shadow-2xl"
-              }`}>
-              {/* Modal Header */}
-              <div className={`flex items-center justify-between pb-3 border-b mb-4 ${themeMode === "black" ? "border-white/5" : "border-neutral-200"
-                }`}>
-                <div className="flex items-center gap-2.5">
-                  <div className={`p-1.5 rounded-lg ${themeMode === "black" ? "bg-emerald-500/10" : "bg-emerald-50"}`}>
-                    <Plus size={14} className="text-emerald-500" />
+              {/* Header */}
+              <div className={`flex items-center justify-between px-6 py-4 border-b ${themeMode === "black" ? "border-white/5" : "border-neutral-100"}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${themeMode === "black" ? "bg-emerald-500/15" : "bg-emerald-50"}`}>
+                    <Sparkles size={15} className="text-emerald-500" />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-sm sm:text-base tracking-tight">Create Custom Agent</h3>
-                    <p className={`text-[10px] mt-0.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Build your own specialist AI advisor</p>
+                    <h3 className="font-extrabold text-sm tracking-tight">Create Custom Agent</h3>
+                    <p className={`text-[10px] ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
+                      {isStep2 ? "Step 2 — Review & customise" : "Step 1 — Describe your agent"}
+                    </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setCustomAgentModalOpen(false)}
-                  className={`p-1.5 rounded-lg transition duration-150 ${themeMode === "black" ? "hover:bg-white/5 text-neutral-500 hover:text-neutral-200" : "hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700"
-                    }`}
-                >
+                <button type="button" onClick={() => { setCustomAgentModalOpen(false); setAgentConceptPrompt(""); setNewAgentName(""); setNewAgentBanglaName(""); setNewAgentBanglaDesc(""); setNewAgentInstructions(""); }} className={`p-1.5 rounded-lg transition ${themeMode === "black" ? "hover:bg-white/5 text-neutral-500 hover:text-white" : "hover:bg-neutral-100 text-neutral-400"}`}>
                   <X size={16} />
                 </button>
               </div>
 
-              {/* Form */}
-              <form onSubmit={handleCreateCustomAgent} className="space-y-4 text-xs sm:text-sm font-medium">
-                {/* Quick AI Assist Panel */}
-                <div className={`p-3 rounded-2xl border transition duration-200 ${themeMode === "black"
-                  ? "bg-emerald-950/5 border-emerald-500/10"
-                  : "bg-emerald-500/5 border-emerald-500/15"
-                  }`}>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Sparkles size={11} className="text-emerald-500 animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500">Quick AI Assist (Optional)</span>
-                  </div>
-                  <p className={`text-[9px] mb-2 leading-relaxed ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
-                    Type a basic concept (e.g. &quot;Startup Pitch Deck Roast Coach&quot;) to auto-generate all fields below at once, or use it to generate fields individually!
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Describe your agent concept..."
-                      value={agentConceptPrompt}
-                      onChange={(e) => setAgentConceptPrompt(e.target.value)}
-                      className={`flex-1 p-2 rounded-lg border outline-none text-xs ${themeMode === "black"
-                        ? "bg-black/40 border-white/5 text-white placeholder-neutral-600 focus:border-emerald-500"
-                        : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400 focus:border-emerald-500"
-                        }`}
-                    />
+              <div className="px-6 py-5 space-y-4">
+                {!isStep2 ? (
+                  /* ── STEP 1: Describe ── */
+                  <>
+                    <div>
+                      <label className={`block text-[11px] font-black uppercase tracking-widest mb-2 ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>
+                        What kind of agent do you need?
+                      </label>
+                      <textarea
+                        rows={5}
+                        autoFocus
+                        placeholder={`Describe in plain language. Examples:\n\n• "A fitness coach who creates personalised workout plans and tracks progress"\n• "A legal contract reviewer who spots risks and suggests improvements"\n• "A cold email writer who crafts high-converting outreach sequences"`}
+                        value={agentConceptPrompt}
+                        onChange={(e) => setAgentConceptPrompt(e.target.value)}
+                        className={`w-full p-4 rounded-2xl border outline-none text-sm resize-none leading-relaxed transition ${themeMode === "black" ? "bg-neutral-900/60 border-white/8 text-white placeholder-neutral-600 focus:border-emerald-500/50" : "bg-neutral-50 border-neutral-200 text-neutral-900 placeholder-neutral-400 focus:border-emerald-400"}`}
+                      />
+                      <p className={`text-[10px] mt-2 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
+                        The more detail you give, the better the agent. Mention tone, expertise level, specific tasks, target audience.
+                      </p>
+                    </div>
+
                     <button
                       type="button"
                       onClick={handleGenerateAll}
                       disabled={isGeneratingAll || !agentConceptPrompt.trim()}
-                      className="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-neutral-950 text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 whitespace-nowrap"
+                      className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-neutral-950 text-sm font-black tracking-wide uppercase transition-all flex items-center justify-center gap-2"
                     >
-                      {isGeneratingAll ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
-                      <span>Auto-Gen All</span>
+                      {isGeneratingAll ? (
+                        <><Loader2 size={15} className="animate-spin" /> Generating agent...</>
+                      ) : (
+                        <><Sparkles size={15} /> Generate Agent with AI</>
+                      )}
                     </button>
-                  </div>
-                </div>
+                  </>
+                ) : (
+                  /* ── STEP 2: Review & Edit ── */
+                  <form onSubmit={handleCreateCustomAgent} className="space-y-4">
+                    {/* Generated summary card */}
+                    <div className={`p-4 rounded-2xl border ${themeMode === "black" ? "bg-emerald-500/5 border-emerald-500/15" : "bg-emerald-50 border-emerald-200"}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xl">{newAgentIcon}</span>
+                        <span className="font-extrabold text-sm text-emerald-500">{newAgentName}</span>
+                      </div>
+                      <p className={`text-xs leading-relaxed ${themeMode === "black" ? "text-neutral-400" : "text-neutral-600"}`}>{newAgentBanglaDesc}</p>
+                    </div>
 
-                {/* Agent Name */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Name</label>
-                    {agentConceptPrompt.trim() && (
-                      <button
-                        type="button"
-                        onClick={() => handleGenerateField("name")}
-                        disabled={isGeneratingField === "name"}
-                        className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
-                      >
-                        {isGeneratingField === "name" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                        <span>AI Gen</span>
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Growth Hacker, Content Strategist, Sales Coach..."
-                    value={newAgentName}
-                    onChange={(e) => setNewAgentName(e.target.value)}
-                    className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
-                      ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                      : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
-                      }`}
-                  />
-                </div>
+                    {/* Name */}
+                    <div>
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Name</label>
+                      <input type="text" required value={newAgentName} onChange={(e) => setNewAgentName(e.target.value)}
+                        className={`w-full px-4 py-2.5 rounded-xl border outline-none text-sm transition ${themeMode === "black" ? "bg-neutral-900/60 border-white/8 text-white focus:border-emerald-500/50" : "bg-neutral-50 border-neutral-200 focus:border-emerald-400"}`} />
+                    </div>
 
-                {/* Display Name */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Display Name</label>
-                    {agentConceptPrompt.trim() && (
-                      <button
-                        type="button"
-                        onClick={() => handleGenerateField("banglaName")}
-                        disabled={isGeneratingField === "banglaName"}
-                        className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
-                      >
-                        {isGeneratingField === "banglaName" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                        <span>AI Gen</span>
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Name shown in agent selector (any language)"
-                    value={newAgentBanglaName}
-                    onChange={(e) => setNewAgentBanglaName(e.target.value)}
-                    className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
-                      ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                      : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
-                      }`}
-                  />
-                </div>
+                    {/* Description */}
+                    <div>
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Short Description</label>
+                      <input type="text" value={newAgentBanglaDesc} onChange={(e) => setNewAgentBanglaDesc(e.target.value)}
+                        className={`w-full px-4 py-2.5 rounded-xl border outline-none text-sm transition ${themeMode === "black" ? "bg-neutral-900/60 border-white/8 text-white focus:border-emerald-500/50" : "bg-neutral-50 border-neutral-200 focus:border-emerald-400"}`} />
+                    </div>
 
-                {/* Short Description */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Short Description</label>
-                    {agentConceptPrompt.trim() && (
-                      <button
-                        type="button"
-                        onClick={() => handleGenerateField("banglaDesc")}
-                        disabled={isGeneratingField === "banglaDesc"}
-                        className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
-                      >
-                        {isGeneratingField === "banglaDesc" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                        <span>AI Gen</span>
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Customer acquisition & funnel optimization specialist"
-                    value={newAgentBanglaDesc}
-                    onChange={(e) => setNewAgentBanglaDesc(e.target.value)}
-                    className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 ${themeMode === "black"
-                      ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                      : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
-                      }`}
-                  />
-                </div>
+                    {/* Icon */}
+                    <div>
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Icon</label>
+                      <div className="flex flex-wrap gap-2">
+                        {["🚀", "💰", "📈", "📣", "🎨", "💻", "🧠", "🛡️", "🤝", "🔥", "🌶️", "⚡", "🎯", "📊", "🔬", "🏋️", "⚖️", "✍️", "🎓", "🌍"].map(e => (
+                          <button key={e} type="button" onClick={() => setNewAgentIcon(e)}
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center text-base border transition ${newAgentIcon === e ? "border-emerald-500 bg-emerald-500/15 scale-110" : themeMode === "black" ? "border-white/5 bg-neutral-900 hover:bg-neutral-800" : "border-neutral-200 bg-white hover:bg-neutral-50"}`}>
+                            {e}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
 
-                {/* Icon Selector */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Icon</label>
-                    {agentConceptPrompt.trim() && (
-                      <button
-                        type="button"
-                        onClick={() => handleGenerateField("icon")}
-                        disabled={isGeneratingField === "icon"}
-                        className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
-                      >
-                        {isGeneratingField === "icon" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                        <span>AI Gen</span>
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {["🚀", "💰", "📈", "📣", "🎨", "💻", "🧠", "🛡️", "🤝", "🔥", "🌶️", "⚡", "🎯", "📊", "🔬"].map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        onClick={() => setNewAgentIcon(emoji)}
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border transition duration-150 ${newAgentIcon === emoji
-                          ? "border-emerald-500 bg-emerald-500/10 scale-110 shadow-sm shadow-emerald-500/20"
-                          : themeMode === "black"
-                            ? "border-white/5 bg-neutral-900 hover:bg-neutral-800"
-                            : "border-neutral-200 bg-white hover:bg-neutral-50"
-                          }`}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                    {/* Instructions preview */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className={`text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>System Instructions</label>
+                        <span className={`text-[9px] ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>{newAgentInstructions.length} chars</span>
+                      </div>
+                      <textarea rows={5} required value={newAgentInstructions} onChange={(e) => setNewAgentInstructions(e.target.value)}
+                        className={`w-full px-4 py-3 rounded-xl border outline-none text-xs resize-none leading-relaxed transition ${themeMode === "black" ? "bg-neutral-900/60 border-white/8 text-neutral-300 focus:border-emerald-500/50" : "bg-neutral-50 border-neutral-200 focus:border-emerald-400"}`} />
+                    </div>
 
-                {/* System Instructions */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className={`block text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>System Instructions</label>
-                    {agentConceptPrompt.trim() && (
-                      <button
-                        type="button"
-                        onClick={() => handleGenerateField("instructions")}
-                        disabled={isGeneratingField === "instructions"}
-                        className="flex items-center gap-1 text-[9px] font-bold text-emerald-500 hover:text-emerald-450 disabled:opacity-50"
-                      >
-                        {isGeneratingField === "instructions" ? <Loader2 size={9} className="animate-spin" /> : <Sparkles size={9} />}
-                        <span>AI Gen</span>
+                    <div className="flex gap-3 pt-1">
+                      <button type="button" onClick={() => { setNewAgentName(""); setNewAgentInstructions(""); }}
+                        className={`flex-1 py-2.5 rounded-xl border text-xs font-bold transition ${themeMode === "black" ? "border-white/10 text-neutral-400 hover:text-white hover:border-white/20" : "border-neutral-200 text-neutral-500 hover:text-neutral-800"}`}>
+                        ← Regenerate
                       </button>
-                    )}
-                  </div>
-                  <p className={`text-[10px] mb-2 leading-relaxed ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
-                    Define how this agent should behave, its expertise, frameworks, and response style.
-                  </p>
-                  <textarea
-                    required
-                    rows={4}
-                    placeholder="Act as a Growth Hacking specialist. You focus on data-driven marketing, customer acquisition cost reduction, AARRR framework optimization, and viral loop engineering..."
-                    value={newAgentInstructions}
-                    onChange={(e) => setNewAgentInstructions(e.target.value)}
-                    className={`w-full p-3 rounded-xl border outline-none text-xs transition duration-200 resize-none leading-relaxed ${themeMode === "black"
-                      ? "bg-neutral-900/50 border-white/10 focus:border-emerald-500 text-white placeholder-neutral-600"
-                      : "bg-neutral-50 border-neutral-200 focus:border-emerald-500 text-neutral-900 placeholder-neutral-400"
-                      }`}
-                  />
-                </div>
-
-                {/* Save Button */}
-                <button
-                  type="submit"
-                  className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-neutral-950 text-xs font-black tracking-widest uppercase transition-all duration-300 shadow-lg shadow-emerald-500/15 hover:shadow-emerald-500/35 hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2 mt-2"
-                >
-                  <Plus size={14} />
-                  <span>Create Agent</span>
-                </button>
-              </form>
+                      <button type="submit"
+                        className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 text-xs font-black uppercase tracking-wider transition-all">
+                        ✓ Save Agent
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             </div>
           </div>
-        )
-      }
+        );
+      })()}
 
       {/* 6. Upload PDF Agent Modal */}
       {
