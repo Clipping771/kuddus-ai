@@ -633,13 +633,16 @@ Apply the following highly advanced analysis steps:
     }
 
     // 6. Call OpenRouter API with Streaming OR Brain Trust Pipeline
-    let resolvedModelId = modelId || "google/gemma-4-31b-it:free";
-    if (resolvedModelId === "google/gemma-4-31b-it") {
-      resolvedModelId = "google/gemma-4-31b-it:free";
-    } else if (resolvedModelId === "deepseek/deepseek-v4-flash") {
-      resolvedModelId = "deepseek/deepseek-v4-flash:free";
+    let resolvedModelId = modelId || "meta-llama/llama-3.3-70b-instruct:free";
+    // Fix stale model IDs from old fallback lists
+    if (resolvedModelId === "google/gemma-4-31b-it" || resolvedModelId === "google/gemma-4-31b-it:free") {
+      resolvedModelId = "google/gemma-3-27b-it:free";
+    } else if (resolvedModelId === "deepseek/deepseek-v4-flash" || resolvedModelId === "deepseek/deepseek-v4-flash:free") {
+      resolvedModelId = "deepseek/deepseek-r1-0528:free";
     } else if (resolvedModelId === "nousresearch/hermes-3-llama-3.1-405b") {
       resolvedModelId = "nousresearch/hermes-3-llama-3.1-405b:free";
+    } else if (resolvedModelId === "openai/gpt-oss-120b:free" || resolvedModelId === "openai/gpt-oss-20b:free") {
+      resolvedModelId = "meta-llama/llama-3.3-70b-instruct:free";
     }
 
     const primaryModel = resolvedModelId;
@@ -648,21 +651,19 @@ Apply the following highly advanced analysis steps:
     // Groq handles all sync calls — only synthesis stream uses OpenRouter
     const BRAIN_TRUST_GROQ_MODELS = [
       "llama-3.3-70b-versatile",
-      "llama3-70b-8192",
-      "mixtral-8x7b-32768",
+      "llama-3.1-70b-versatile",
+      "llama-3.1-8b-instant",
     ];
 
-    // OpenRouter free models pool for Brain Trust (rotated dynamically)
+    // OpenRouter free models pool for Brain Trust (valid as of 2026)
     const BRAIN_TRUST_OR_POOL = [
-      "deepseek/deepseek-v4-flash:free",
-      "openai/gpt-oss-120b:free",
-      "openai/gpt-oss-20b:free",
-      "google/gemma-4-31b-it:free",
+      "deepseek/deepseek-r1-0528:free",
       "meta-llama/llama-3.3-70b-instruct:free",
-      "nvidia/nemotron-3-super-120b-a12b:free",
-      "arcee-ai/trinity-large-thinking:free",
-      "z-ai/glm-4.5-air:free",
-      "minimax/minimax-m2.5:free",
+      "mistralai/mistral-7b-instruct:free",
+      "google/gemma-3-27b-it:free",
+      "deepseek/deepseek-r1:free",
+      "qwen/qwen3-8b:free",
+      "microsoft/phi-4-reasoning-plus:free",
       "openrouter/free",
     ];
 
@@ -725,7 +726,8 @@ Apply the following highly advanced analysis steps:
               console.log(`[Sync OR Pool] Trying model: "${currentModel}" for role: "${roleName || 'Agent'}"`);
               const { response: res } = await openrouterFetchWithFallback(
                 [currentModel],
-                { messages: msgs, stream: false, max_tokens: 1800 }
+                { messages: msgs, stream: false, max_tokens: 1800 },
+                dbUser.id
               );
               const data = await res.json();
               const content = data.choices[0]?.message?.content || "";
@@ -792,11 +794,11 @@ Apply the following highly advanced analysis steps:
 
             const freeModels = [
               "meta-llama/llama-3.3-70b-instruct:free",
-              "nvidia/nemotron-3-super-120b-a12b:free",
-              "arcee-ai/trinity-large-thinking:free",
-              "openai/gpt-oss-120b:free",
-              "liquid/lfm-2.5-1.2b-thinking:free",
-              "baidu/cobuddy:free"
+              "deepseek/deepseek-r1-0528:free",
+              "mistralai/mistral-7b-instruct:free",
+              "google/gemma-3-27b-it:free",
+              "qwen/qwen3-8b:free",
+              "microsoft/phi-4-reasoning-plus:free",
             ];
 
             const safeFetch = async (model: string, msgs: any[], roleName: string) => {
@@ -916,7 +918,8 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                   console.log(`[API Chat] Dispatching Brain Trust Synthesis stream request to model: "${selectedSynthModel}"`);
                   const { response: res, usedModel } = await openrouterFetchWithFallback(
                     [selectedSynthModel],
-                    { messages: synthMessages, stream: true, max_tokens: 4000, temperature: 0.7 }
+                    { messages: synthMessages, stream: true, max_tokens: 4000, temperature: 0.7 },
+                    dbUser.id
                   );
                   synthRes = res;
                   selectedSynthModel = usedModel;
@@ -994,28 +997,23 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
             const fallbackModels = hasImage
               ? [
                 primaryModel,
-                // Free vision-capable models (valid as of 2025/2026)
-                "google/gemma-4-31b-it:free",          // multimodal, 256K ctx
-                "nvidia/nemotron-nano-12b-v2-vl:free", // vision+doc understanding
-                "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", // multimodal
-                "openai/gpt-oss-120b:free",
-                "deepseek/deepseek-v4-flash:free",
+                // Free vision-capable models (valid as of 2026)
+                "google/gemma-3-27b-it:free",
+                "meta-llama/llama-3.2-11b-vision-instruct:free",
+                "mistralai/mistral-7b-instruct:free",
                 // Last resort auto-router
                 "openrouter/free",
               ]
               : [
                 primaryModel,
-                // Top free text models (valid as of 2025/2026)
-                "deepseek/deepseek-v4-flash:free",
-                "openai/gpt-oss-120b:free",
-                "openai/gpt-oss-20b:free",
-                "google/gemma-4-31b-it:free",
-                "nvidia/nemotron-3-super-120b-a12b:free",
+                // Top free text models (valid as of 2026)
                 "deepseek/deepseek-r1-0528:free",
                 "meta-llama/llama-3.3-70b-instruct:free",
-                "z-ai/glm-4.5-air:free",
-                "arcee-ai/trinity-large-thinking:free",
-                "minimax/minimax-m2.5:free",
+                "mistralai/mistral-7b-instruct:free",
+                "google/gemma-3-27b-it:free",
+                "deepseek/deepseek-r1:free",
+                "qwen/qwen3-8b:free",
+                "microsoft/phi-4-reasoning-plus:free",
                 // Last resort: OpenRouter auto-selects any available free model
                 "openrouter/free",
               ];
@@ -1028,7 +1026,8 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                 console.log(`[API Chat] Dispatching stream request directly to selected model: "${selectedModel}"`);
                 const { response: res, usedModel } = await openrouterFetchWithFallback(
                   [selectedModel],
-                  { messages: formattedMessages, stream: true, max_tokens: 3000 }
+                  { messages: formattedMessages, stream: true, max_tokens: 3000 },
+                  dbUser.id
                 );
                 response = res;
                 selectedModel = usedModel;

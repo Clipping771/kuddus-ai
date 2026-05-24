@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import Groq from "groq-sdk";
 import { openrouterFetchWithFallback } from "@/lib/openrouter";
+import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
   let agentDesc = "Business consultant";
   let isCustom = false;
   let instructions = "";
+  let dbUserId: string | undefined;
 
   try {
     const { userId } = await auth();
@@ -34,6 +36,11 @@ export async function POST(req: Request) {
     agentDesc = body.agentDesc || "Business consultant";
     isCustom = body.isCustom || false;
     instructions = body.instructions || "";
+
+    // Fetch DB user id for key rotation
+    const { data: dbUser } = await supabase
+      .from("users").select("id").eq("clerk_id", userId).single();
+    if (dbUser) dbUserId = dbUser.id;
   } catch (authError) {
     console.error("Auth/body read error:", authError);
   }
@@ -264,9 +271,8 @@ Each object in the array MUST have the exact following structure:
     const { response } = await openrouterFetchWithFallback(
       [
         "meta-llama/llama-3.3-70b-instruct:free",
-        "deepseek/deepseek-v4-flash:free",
-        "google/gemma-4-31b-it:free",
-        "openai/gpt-oss-20b:free",
+        "deepseek/deepseek-r1-0528:free",
+        "mistralai/mistral-7b-instruct:free",
         "openrouter/free",
       ],
       {
@@ -276,7 +282,8 @@ Each object in the array MUST have the exact following structure:
         ],
         temperature: 0.9,
         max_tokens: 700,
-      }
+      },
+      dbUserId
     );
 
     if (!response.ok) {

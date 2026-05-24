@@ -789,13 +789,13 @@ const TONES_LIST = [
 
 // Fallback models shown before dynamic list loads
 const FALLBACK_MODELS = [
-  { id: "google/gemma-4-31b-it", name: "Google Gemma 31B", icon: "💎", badge: "Primary", isFree: false },
-  { id: "arcee-ai/trinity-large-thinking:free", name: "Trinity Large", icon: "🔮", badge: "Free", isFree: true },
-  { id: "deepseek/deepseek-v4-flash", name: "DeepSeek V4 Flash", icon: "⚡", badge: "Fast", isFree: false },
   { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B", icon: "🦙", badge: "Free", isFree: true },
-  { id: "openai/gpt-oss-120b:free", name: "GPT OSS 120B", icon: "🤖", badge: "Free", isFree: true },
-  { id: "nousresearch/hermes-3-llama-3.1-405b", name: "Hermes 3 405B", icon: "🧠", badge: "Max Reasoning", isFree: false },
-  { id: "nvidia/nemotron-3-super-120b-a12b:free", name: "Nvidia Nemotron 120B", icon: "🐲", badge: "Free", isFree: true },
+  { id: "deepseek/deepseek-r1-0528:free", name: "DeepSeek R1", icon: "⚡", badge: "Free", isFree: true },
+  { id: "google/gemma-3-27b-it:free", name: "Google Gemma 27B", icon: "💎", badge: "Free", isFree: true },
+  { id: "mistralai/mistral-7b-instruct:free", name: "Mistral 7B", icon: "🌊", badge: "Free", isFree: true },
+  { id: "qwen/qwen3-8b:free", name: "Qwen3 8B", icon: "🤖", badge: "Free", isFree: true },
+  { id: "microsoft/phi-4-reasoning-plus:free", name: "Phi-4 Reasoning", icon: "🧠", badge: "Free", isFree: true },
+  { id: "nousresearch/hermes-3-llama-3.1-405b:free", name: "Hermes 3 405B", icon: "🧠", badge: "Max Reasoning", isFree: true },
   { id: "google/gemini-2.5-flash-preview", name: "Gemini 2.5 Flash", icon: "💎", badge: "Fast", isFree: false },
 ];
 
