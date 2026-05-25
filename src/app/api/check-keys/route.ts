@@ -48,8 +48,8 @@ export async function GET() {
                 }));
                 result.groq.ok = anyGroqOk;
                 if (!anyGroqOk) {
-                    result.needsAttention = true;
-                    result.reason = "All Groq API keys are invalid or expired. Add a new key in Settings.";
+                    // Don't set needsAttention here — wait for final cross-provider evaluation
+                    result.reason = "All Groq API keys are invalid or expired.";
                 }
             }
         }
@@ -65,7 +65,7 @@ export async function GET() {
                     });
                     result.groq.ok = groqRes.ok;
                     if (!groqRes.ok) {
-                        result.needsAttention = true;
+                        // Don't set needsAttention here — wait for final cross-provider evaluation
                         result.reason = groqRes.status === 401
                             ? "Groq API key is invalid or expired."
                             : `Groq returned status ${groqRes.status}.`;
@@ -117,10 +117,9 @@ export async function GET() {
                 result.openrouter.exhaustedKeys = exhausted;
 
                 if (!anyOk && exhausted > 0) {
-                    result.needsAttention = true;
-                    result.reason = `All ${exhausted} OpenRouter key${exhausted > 1 ? "s" : ""} are exhausted or invalid. Add a new key to continue.`;
+                    // Don't set needsAttention here — wait for final cross-provider evaluation
+                    result.reason = `All ${exhausted} OpenRouter key${exhausted > 1 ? "s" : ""} are exhausted or invalid.`;
                 } else if (exhausted > 0 && anyOk) {
-                    // Some keys exhausted but at least one works — soft warning
                     result.reason = `${exhausted} of ${activeKeys.length} OpenRouter key${exhausted > 1 ? "s" : ""} exhausted. Consider adding a fresh key.`;
                 }
             }
@@ -137,12 +136,45 @@ export async function GET() {
                     });
                     result.openrouter.ok = res.ok;
                     if (!res.ok) {
-                        result.needsAttention = true;
-                        result.reason = "OpenRouter API key is invalid or exhausted. Update it in your environment variables.";
+                        // Don't set needsAttention here — wait for final cross-provider evaluation
+                        result.reason = "OpenRouter API key is invalid or exhausted.";
                     }
                 } catch {
                     result.openrouter.ok = false;
                 }
+            }
+        }
+
+        // ── Final evaluation ───────────────────────────────────────────────────────
+        // Only show banner if ALL checked providers are failing.
+        // If OpenRouter is OK, the app works fine even without Groq.
+        const groqFailing = result.groq.checked && !result.groq.ok;
+        const openrouterFailing = result.openrouter.checked && !result.openrouter.ok;
+        const groqNotConfigured = !result.groq.checked;
+        const openrouterNotConfigured = !result.openrouter.checked;
+
+        // App is functional if at least one provider is OK
+        const appFunctional = result.groq.ok || result.openrouter.ok;
+
+        if (!appFunctional) {
+            result.needsAttention = true;
+            if (groqFailing && openrouterFailing) {
+                result.reason = "All API keys (Groq + OpenRouter) are exhausted or invalid. Add a new key to continue.";
+            } else if (openrouterFailing && groqNotConfigured) {
+                result.reason = "Your OpenRouter API keys are exhausted. Add a new key to continue.";
+            } else if (groqFailing && openrouterNotConfigured) {
+                result.reason = "Groq API key is invalid or expired. Add a new key or configure OpenRouter.";
+            } else {
+                result.reason = "No working API keys found. Add a key in Settings to continue.";
+            }
+        } else {
+            // App is functional — clear any previously set needsAttention flags from individual checks
+            result.needsAttention = false;
+            // Soft warning: some keys exhausted but app still works
+            if (result.openrouter.exhaustedKeys > 0 && result.openrouter.ok) {
+                result.reason = `${result.openrouter.exhaustedKeys} OpenRouter key${result.openrouter.exhaustedKeys > 1 ? "s" : ""} exhausted — consider adding a fresh key.`;
+            } else {
+                result.reason = "";
             }
         }
 
