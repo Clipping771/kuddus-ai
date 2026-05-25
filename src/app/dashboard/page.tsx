@@ -3111,7 +3111,7 @@ export default function Dashboard() {
                       text: <>● <strong>Performance Marketer Tip:</strong> Share your <strong>current ad budget, platform, and target CPA/ROAS</strong> for optimized campaigns.</>
                     },
                     "it-automation-consultant": {
-                      text: <>● <strong>Automation Tip:</strong> List the <strong>manual processes or tools you currently use</strong> — I'll find what to automate first.</>
+                      text: <>● <strong>Automation Tip:</strong> List the <strong>manual processes or tools you currently use</strong> — I&apos;ll find what to automate first.</>
                     },
                     "pain-point-scraper-agent": {
                       text: <>● <strong>Pain-Point Scraper Tip:</strong> Give me a <strong>specific niche or industry</strong> — the more specific, the more actionable the complaints I find.</>
