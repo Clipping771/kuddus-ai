@@ -229,12 +229,31 @@ export async function POST(req: Request) {
     // ⚡ Fast path: just generate a good agent name (used on PDF file select)
     if (nameOnly) {
       const isBangla = /[\u0980-\u09FF]/.test(idea);
+
+      // Extract file name and content preview if provided in format "File: X. Content preview: Y"
+      const fileMatch = idea.match(/^File:\s*"([^"]+)"\.\s*Content preview:\s*"([\s\S]*)"$/);
+      const fileName = fileMatch ? fileMatch[1] : idea;
+      const contentPreview = fileMatch ? fileMatch[2] : "";
+
       const namePrompt = isBangla
-        ? `"${idea}" বিষয়ক একটি AI এজেন্টের জন্য একটি সংক্ষিপ্ত, শক্তিশালী নাম দাও (২-৪ শব্দ)। শুধু নামটি লেখো, আর কিছু না।`
-        : `Give a short, punchy 2-4 word expert agent name for the topic: "${idea}". Reply with ONLY the name, nothing else.`;
+        ? `একটি PDF ডকুমেন্ট আপলোড করা হয়েছে।
+ফাইলের নাম: "${fileName}"
+${contentPreview ? `কন্টেন্ট প্রিভিউ: "${contentPreview}"` : ""}
+
+এই ডকুমেন্টের বিষয়বস্তু বিশ্লেষণ করে একটি স্মার্ট, সংক্ষিপ্ত AI এজেন্টের নাম দাও (২-৪ শব্দ)।
+নামটি হবে বিষয়ভিত্তিক ও অর্থবহ — শুধু ফাইলের নাম নয়।
+শুধু নামটি লেখো, আর কিছু না।`
+        : `A PDF document has been uploaded.
+File name: "${fileName}"
+${contentPreview ? `Content preview: "${contentPreview}"` : ""}
+
+Based on the document's actual subject matter, generate a smart, concise AI agent name (2-4 words).
+The name should reflect what the document is ABOUT — not just repeat the filename.
+Examples of good names: "ICT Design Advisor", "Financial Strategy Expert", "Legal Contract Analyst"
+Reply with ONLY the name, nothing else.`;
 
       if (!process.env.GROQ_API_KEY) {
-        return NextResponse.json({ name: idea });
+        return NextResponse.json({ name: fileName });
       }
       const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
       try {
@@ -242,12 +261,12 @@ export async function POST(req: Request) {
           messages: [{ role: "user", content: namePrompt }],
           model: "llama-3.1-8b-instant",
           temperature: 0.7,
-          max_tokens: 15,
+          max_tokens: 20,
         });
-        const name = completion.choices[0]?.message?.content?.trim().replace(/^["']|["']$/g, "") || idea;
+        const name = completion.choices[0]?.message?.content?.trim().replace(/^["']|["']$/g, "") || fileName;
         return NextResponse.json({ name });
       } catch {
-        return NextResponse.json({ name: idea });
+        return NextResponse.json({ name: fileName });
       }
     }
 

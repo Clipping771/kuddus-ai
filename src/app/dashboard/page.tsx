@@ -1300,12 +1300,26 @@ export default function Dashboard() {
     setNewPdfAgentName(cleanName);
     setIsGeneratingPdfName(true);
 
-    // Step 2: Fire a fast nameOnly LLM call in the background (~500ms)
+    // Step 2: Read a snippet of the PDF text for smarter name generation
     try {
+      let pdfSnippet = "";
+      try {
+        const { parseAnyFile } = await import("@/lib/fileParser");
+        const parsed = await parseAnyFile(file);
+        // Take first 400 chars of content as context for name generation
+        pdfSnippet = parsed.text?.slice(0, 400).replace(/\s+/g, " ").trim() || "";
+      } catch {
+        // If parsing fails, fall back to filename only
+      }
+
+      const ideaForName = pdfSnippet
+        ? `File: "${cleanName}". Content preview: "${pdfSnippet}"`
+        : cleanName;
+
       const res = await fetch("/api/agents/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idea: cleanName, nameOnly: true }),
+        body: JSON.stringify({ idea: ideaForName, nameOnly: true }),
       });
       if (res.ok) {
         const data = await res.json();
