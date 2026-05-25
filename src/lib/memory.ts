@@ -16,6 +16,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { groqChatWithFallback } from "@/lib/groq";
+import { openrouterFetchWithFallback } from "@/lib/openrouter";
 
 export interface MemoryEntry {
     id: string;
@@ -129,17 +130,55 @@ Return ONLY a JSON array. Example:
 
 If no facts to extract, return: []`;
 
-        const completion = await groqChatWithFallback(
-            {
-                model: "llama-3.1-8b-instant", // Fast, cheap model for extraction
-                messages: [{ role: "user", content: extractionPrompt }],
-                temperature: 0.1, // Low temperature for consistent extraction
-                max_tokens: 500,
-            },
-            userId
-        );
+        // Tier 1: Try Groq first — fast and cheap
+        let rawContent: string | null = null;
 
-        const rawContent = completion.choices[0]?.message?.content?.trim();
+        try {
+            const completion = await groqChatWithFallback(
+                {
+                    model: "llama-3.1-8b-instant",
+                    messages: [{ role: "user", content: extractionPrompt }],
+                    temperature: 0.1,
+                    max_tokens: 500,
+                },
+                userId
+            );
+            rawContent = completion.choices[0]?.message?.content?.trim() || null;
+            if (rawContent) {
+                console.log("[Memory] ✅ Groq extraction succeeded");
+            }
+        } catch (groqErr: any) {
+            console.warn("[Memory] Groq extraction failed, trying OpenRouter fallback:", groqErr?.message);
+        }
+
+        // Tier 2: OpenRouter fallback — if Groq failed or returned empty
+        if (!rawContent) {
+            try {
+                const { response: res } = await openrouterFetchWithFallback(
+                    [
+                        "meta-llama/llama-3.3-70b-instruct:free",
+                        "mistralai/mistral-7b-instruct:free",
+                        "qwen/qwen3-8b:free",
+                    ],
+                    {
+                        messages: [{ role: "user", content: extractionPrompt }],
+                        stream: false,
+                        max_tokens: 500,
+                        temperature: 0.1,
+                    },
+                    userId
+                );
+                const data = await res.json();
+                rawContent = data.choices?.[0]?.message?.content?.trim() || null;
+                if (rawContent) {
+                    console.log("[Memory] ✅ OpenRouter extraction fallback succeeded");
+                }
+            } catch (orErr: any) {
+                console.warn("[Memory] OpenRouter extraction fallback also failed:", orErr?.message);
+                return; // Both failed — skip silently, non-critical
+            }
+        }
+
         if (!rawContent) return;
 
         // Parse JSON — handle cases where model wraps in markdown code blocks
