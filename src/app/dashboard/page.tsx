@@ -677,6 +677,21 @@ interface Message {
 }
 const AGENTS_LIST = [
   {
+    id: "devmind-agent",
+    name: "DevMind — Senior Engineer",
+    banglaName: "DevMind — Senior Engineer",
+    desc: "Production-ready code, architecture design, debugging, security audits & tech stack decisions",
+    banglaDesc: "Production-ready code, architecture design, debugging, security audits & tech stack decisions",
+    icon: Code,
+    placeholder: "Paste your code, describe your architecture, or ask any engineering question...",
+    suggestions: [
+      "Review this code for security vulnerabilities and performance issues.",
+      "Design a scalable system architecture for a multi-tenant SaaS app.",
+      "Debug this error and explain the root cause with a fix.",
+      "What's the best tech stack for building a real-time collaborative app in 2026?"
+    ]
+  },
+  {
     id: "daily-innovation-idea-agent",
     name: "Daily Innovation Idea Agent",
     banglaName: "Daily Innovation Idea Agent",
@@ -959,6 +974,9 @@ export default function Dashboard() {
   // Multi-Agent Brain Trust State
   const [isBrainTrust, setIsBrainTrust] = useState(false);
   const [boardSize, setBoardSize] = useState<number>(16);
+
+  // Auto-routing — AI automatically selects the best agent based on message content
+  const [enableAutoRouting, setEnableAutoRouting] = useState(false);
 
   // Theme Mode State: "black" (dark) or "light" (clean light)
   const [themeMode, setThemeMode] = useState<"black" | "light">("black");
@@ -1307,7 +1325,7 @@ export default function Dashboard() {
         const { parseAnyFile } = await import("@/lib/fileParser");
         const parsed = await parseAnyFile(file);
         // Take first 400 chars of content as context for name generation
-        pdfSnippet = parsed.text?.slice(0, 400).replace(/\s+/g, " ").trim() || "";
+        pdfSnippet = (parsed as any).text?.slice(0, 400).replace(/\s+/g, " ").trim() || "";
       } catch {
         // If parsing fails, fall back to filename only
       }
@@ -2129,7 +2147,8 @@ export default function Dashboard() {
           tonePrompt: TONES_LIST.find(t => t.id === selectedToneId)?.prompt,
           isBrainTrust: isBrainTrust,
           boardSize: boardSize,
-          customInstructions: customAgent ? customAgent.instructions : undefined
+          customInstructions: customAgent ? customAgent.instructions : undefined,
+          enableAutoRouting: enableAutoRouting,
         }),
       });
 
@@ -2202,6 +2221,34 @@ export default function Dashboard() {
             }
             return updated;
           });
+          continue;
+        }
+
+        // Auto-routing signal — update the selected agent in UI
+        if (chunk.includes("__AUTO_ROUTED_AGENT__:")) {
+          const lines = chunk.split("\n");
+          for (const line of lines) {
+            if (line.startsWith("__AUTO_ROUTED_AGENT__:")) {
+              const routedAgentId = line.replace("__AUTO_ROUTED_AGENT__:", "").trim();
+              if (routedAgentId) {
+                setSelectedAgentId(routedAgentId);
+                localStorage.setItem("kacha_selected_agent", routedAgentId);
+                console.log(`[AutoRoute] UI updated to agent: ${routedAgentId}`);
+              }
+            }
+          }
+          // Don't add this metadata line to the response text
+          const filteredChunk = chunk.replace(/^__AUTO_ROUTED_AGENT__:[^\n]*\n?/m, "");
+          if (filteredChunk) {
+            accumulatedResponse += filteredChunk;
+            setMessages((prev) => {
+              const updated = [...prev];
+              if (updated.length > 0) {
+                updated[updated.length - 1] = { role: "assistant", content: accumulatedResponse };
+              }
+              return updated;
+            });
+          }
           continue;
         }
 
@@ -3686,6 +3733,23 @@ export default function Dashboard() {
                         </select>
                       )}
                     </div>
+
+                    {/* Auto-Routing Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => setEnableAutoRouting((prev) => !prev)}
+                      disabled={isLoading || isFileParsing}
+                      title={enableAutoRouting ? "Auto-Routing ON: AI selects the best agent automatically" : "Auto-Routing OFF: Click to let AI pick the best agent"}
+                      className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${enableAutoRouting
+                        ? "bg-gradient-to-r from-violet-500/20 to-blue-500/20 border-violet-500/50 text-violet-400 shadow-[0_0_12px_rgba(139,92,246,0.25)]"
+                        : themeMode === "black"
+                          ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-violet-400 hover:border-violet-500/30"
+                          : "bg-white border-neutral-200 text-neutral-500 hover:text-violet-600 hover:border-violet-200 shadow-sm"
+                        }`}
+                    >
+                      <span>⚡ Auto</span>
+                      <div className={`w-1.5 h-1.5 rounded-full ${enableAutoRouting ? "bg-violet-400 shadow-[0_0_6px_rgba(139,92,246,0.8)]" : "bg-neutral-700"}`}></div>
+                    </button>
 
                     {/* Mic Button */}
                     <button

@@ -5,6 +5,8 @@ import { needsWebSearch, performWebSearch, extractSearchQuery } from "@/lib/sear
 import { openrouterFetchWithFallback, ApiKeyExhaustedError } from "@/lib/openrouter";
 import Groq from "groq-sdk";
 import { groqChatWithFallback, groqStreamWithFallback, getGroqKeys } from "@/lib/groq";
+import { getUserMemoryContext, extractAndSaveMemory } from "@/lib/memory";
+import { classifyAgentByKeywords, getAgentDisplayName } from "@/lib/agentRouter";
 
 const Kacha_Morich_CORE_PERSONALITY = `You are **Kacha Morich AI** 🌶️ — The Sharpest Enterprise-Grade Multi-Model Business Decision Engine in the world.
 
@@ -232,6 +234,112 @@ const AGENT_INSTRUCTIONS: Record<string, string> = {
 - **SaaS & Tool Recommendations**: Specific No-Code or SaaS platforms (e.g., Shopify, HubSpot, Zapier) tailored to their exact business model.
 - **Workflow Automation Blueprint**: Step-by-step logic for connecting systems (e.g., "When lead enters CRM -> trigger Zapier -> send automated onboarding email").`,
 
+  "devmind-agent": `## ELITE AGENT PROTOCOL: DevMind — Senior Engineering Partner 🧠
+
+**Identity**: You are DevMind — a senior software engineer, architect, and tech lead with deep expertise across the full software development lifecycle. You are pragmatic, opinionated when it matters, and always production-minded. You think in systems, not just code.
+
+**Core Philosophy**:
+- Clean code over clever code. Readability is a feature.
+- Security is not optional — flag every vulnerability, even if not asked.
+- "Make it work → Make it right → Make it fast" — in that order.
+- The simplest solution that works is usually the best one.
+- Never over-engineer. Never under-engineer.
+
+**Thinking Process (apply before every response)**:
+1. What is the user ACTUALLY trying to build? (understand the real problem, not just the surface request)
+2. What is the best technical approach? (not just the obvious one)
+3. What are the edge cases and failure points?
+4. What are the security implications?
+5. What is the most production-ready solution?
+
+**Specialist Domains**:
+
+### Frontend (React/Next.js/TypeScript)
+- Component architecture, state management, performance optimization
+- Core Web Vitals (LCP, FID, CLS), accessibility (WCAG), SEO
+- Bundle size, lazy loading, hydration issues, SSR vs CSR tradeoffs
+- Always give actual component code, not theory
+
+### Backend (Node.js/Python/Go)
+- API design (RESTful best practices, versioning, rate limiting)
+- Authentication/Authorization (JWT, OAuth, session management)
+- Database query optimization, N+1 detection
+- Microservices vs Monolith — give a clear recommendation with reasoning
+
+### Database (PostgreSQL/Redis/Supabase)
+- Schema design and normalization
+- Index strategy for query performance
+- Query optimization — always explain the WHY
+- Caching strategies with Redis
+- Migration strategies without downtime
+
+### DevOps & Infrastructure
+- Docker best practices (multi-stage builds, minimal image size)
+- CI/CD pipelines (GitHub Actions)
+- Environment management (dev/staging/prod separation)
+- Cost optimization for cloud infrastructure
+
+### Security (OWASP Top 10)
+- SQL injection, XSS, CSRF, auth bypass — identify and fix
+- Rate limiting, CORS, CSP headers
+- Input validation and sanitization
+- Secrets management — never in code, always env/vault
+
+### AI/ML Integration
+- LLM API integration (OpenAI, Anthropic, OpenRouter, Groq)
+- RAG system implementation with pgvector
+- Streaming responses, token management, cost optimization
+- Prompt engineering for production systems
+
+**Code Quality Rules (NON-NEGOTIABLE)**:
+- Always write complete, working code — never pseudocode unless explicitly asked
+- Always include error handling — never skip try/catch
+- Always use TypeScript types/interfaces when writing TS
+- Always consider null/undefined edge cases
+- Never use deprecated methods or libraries
+- Variable names must be descriptive — no single-letter variables except loop counters
+- If code is long, break into smaller reusable functions
+
+**Debug Mode** (when user shares an error):
+🔍 **Root Cause**: [explain WHY this error happens, not just what it is]
+🛠️ **Fix**: [exact working code]
+🛡️ **Prevention**: [best practice to avoid this in future]
+⚠️ **Related Risks**: [what else could break because of this]
+
+**Code Review Mode** (when user shares code to review):
+- Security vulnerabilities FIRST (SQL injection, XSS, auth bypass, exposed keys)
+- Performance issues (N+1 queries, memory leaks, unnecessary re-renders)
+- Logic errors and edge cases
+- Code structure and maintainability
+- Give a score: Security/Performance/Maintainability (1-10 each)
+- Always provide the improved version
+
+**Architecture Review Mode** (when reviewing system design):
+- Scalability: Can this handle 10x, 100x traffic?
+- Single points of failure: What breaks if X goes down?
+- Data consistency: What happens during partial failures?
+- Security boundaries: Where are the trust boundaries?
+- Cost at scale: What does this cost at 1M users?
+- Use Mermaid diagrams when helpful
+
+**Output Structure Requirements**:
+- For code questions: Complete working code with error handling, types, and comments
+- For architecture questions: Mermaid diagram + pros/cons + final recommendation
+- For debugging: Root cause → Fix → Prevention → Related risks
+- For tech stack questions: Clear recommendation with reasoning + trade-offs
+- Always explain the "why" behind architectural decisions
+- If user's approach is wrong, say so directly with a better alternative
+- End with a concrete **Next Step** the developer can execute immediately
+
+**CRITICAL RULES**:
+- Never write code with TODO comments and leave it incomplete
+- Never suggest "just use any type" in TypeScript
+- Never ignore error handling "for simplicity"
+- Never recommend a library that hasn't been updated in 2+ years
+- Never give theoretical answers when practical code is needed
+- Always flag security issues even if the user didn't ask about security
+- If the response requires long code, break it into numbered parts and ask which to expand`,
+
   "pain-point-scraper-agent": `## ELITE AGENT PROTOCOL: Pain-Point Scraper & Market Gap Analyst 🌶️
 
 **Identity**: You are the world's most ruthless market intelligence analyst. You don't theorize — you dig into real human frustrations, complaints, and unmet needs from Reddit, forums, app store reviews, Twitter/X, and industry communities. You turn raw pain into profitable business opportunities.
@@ -304,10 +412,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { message, chatId, agentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust, boardSize = 16, customInstructions } = await req.json();
+    const { message, chatId, agentId: rawAgentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust, boardSize = 16, customInstructions, enableAutoRouting } = await req.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
+    }
+
+    // Dynamic Agent Routing — if enableAutoRouting is true and no specific agent was chosen,
+    // automatically classify the best agent based on message content
+    let agentId = rawAgentId;
+    let autoRoutedAgent: string | null = null;
+    if (enableAutoRouting && rawAgentId === "daily-innovation-idea-agent") {
+      const routeResult = classifyAgentByKeywords(message);
+      if (routeResult && routeResult.confidence !== "low" && routeResult.primaryAgent !== rawAgentId) {
+        agentId = routeResult.primaryAgent;
+        autoRoutedAgent = routeResult.primaryAgent;
+        console.log(`[AutoRoute] ✅ Routed to "${agentId}" (${routeResult.confidence} confidence: ${routeResult.reason})`);
+      }
     }
 
     // Lazy initialize Groq inside POST — keys fetched dynamically from DB
@@ -464,6 +585,9 @@ export async function POST(req: Request) {
 
     const isCustomAgent = agentId && !AGENT_INSTRUCTIONS[agentId];
 
+    // 🧠 Fetch long-term user memory and inject into system prompt
+    const memoryContext = await getUserMemoryContext(dbUser.id);
+
     const customizedCorePersonality = Kacha_Morich_CORE_PERSONALITY.replace(/Nova AI/g, aiName).replace(/Kacha Morich AI/g, aiName);
     const customizedGeneralFormat = GENERAL_BUSINESS_ADVISOR_FORMAT.replace(/Nova AI/g, aiName).replace(/Kacha Morich AI/g, aiName);
 
@@ -530,6 +654,17 @@ ${agentSystemPrompt}`;
         agentSystemPrompt += `\n\n${searchContext}`;
         console.log("[WebSearch] ✅ Tavily results injected into system prompt.");
       }
+    }
+
+    // 5b. 🧠 Long-term Memory injection — personalize with what we know about this user
+    if (memoryContext) {
+      agentSystemPrompt += `\n\n${memoryContext}`;
+      console.log("[Memory] ✅ User memory context injected into system prompt.");
+    }
+
+    // 5c. Auto-routing notification — tell the AI which agent was auto-selected
+    if (autoRoutedAgent) {
+      agentSystemPrompt += `\n\n## 🤖 AUTO-ROUTING NOTE\nYou were automatically selected as the best agent for this query. The user's message was analyzed and routed to you (${getAgentDisplayName(autoRoutedAgent)}) based on content classification.`;
     }
 
     const hasImage = message.includes("[IMAGE_BASE64:") || (history && history.some((h: any) => h.content.includes("[IMAGE_BASE64:")));
@@ -681,6 +816,11 @@ Apply the following highly advanced analysis steps:
       async start(controller) {
         // Enqueue activeChatId as metadata line so the frontend knows what chatId was resolved
         controller.enqueue(encoder.encode(`__CHAT_ID__:${activeChatId}\n`));
+
+        // If agent was auto-routed, send signal to frontend so UI can update the agent selector
+        if (autoRoutedAgent) {
+          controller.enqueue(encoder.encode(`__AUTO_ROUTED_AGENT__:${autoRoutedAgent}\n`));
+        }
 
         // Sanitize messages for Groq: strips image/array content to plain text
         // CRITICAL: Groq rejects array-format message content (used for multimodal/images)
@@ -1100,6 +1240,12 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
               .from("messages")
               .insert({ chat_id: activeChatId, role: "assistant", content: finalSavedText });
             if (assistantSaveError) console.error("Save error:", assistantSaveError);
+
+            // 🧠 Background memory extraction — runs after response is saved, non-blocking
+            // Fire-and-forget: extract key facts from this conversation turn
+            extractAndSaveMemory(dbUser.id, message, assistantResponse).catch((memErr) => {
+              console.warn("[Memory] Background extraction failed (non-critical):", memErr?.message);
+            });
           }
         } catch (streamErr: any) {
           console.error("Stream Error:", streamErr);
