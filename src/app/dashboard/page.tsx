@@ -3065,14 +3065,78 @@ export default function Dashboard() {
                   {(allAgents.find((a) => a.id === selectedAgentId) || allAgents[0])?.banglaDesc || "কুদ্দুস আলীর ২০+ বছরের বাস্তব বিজনেস অভিজ্ঞতার আলোকে যেকোনো আইডিয়া যাচাই করুন।"}
                 </p>
 
-                {/* Warning box */}
-                <div className={`mt-6 w-full p-4 rounded-xl border text-xs flex items-center gap-2.5 justify-center shadow-sm transition duration-300 ${themeMode === "black"
-                  ? "border-amber-500/25 bg-amber-500/5 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.04)]"
-                  : "border-amber-200 bg-amber-500/10 text-amber-955 shadow-[0_0_15px_rgba(245,158,11,0.05)] font-semibold"
-                  }`}>
-                  <Sparkles size={14} className={`flex-shrink-0 animate-pulse ${themeMode === "black" ? "text-neutral-200" : "text-amber-700"}`} />
-                  <span>● <strong>Operational Advisor Warning:</strong> Please specify your <strong>target country and primary market</strong> first for accurate feedback.</span>
-                </div>
+                {/* Warning box — agent-specific contextual hint */}
+                {(() => {
+                  const agentWarnings: Record<string, { text: React.ReactNode }> = {
+                    "daily-innovation-idea-agent": {
+                      text: <>● <strong>Idea Agent Tip:</strong> Specify your <strong>target country, industry, and budget range</strong> for highly relevant business ideas.</>
+                    },
+                    "personal-cfo-finance-agent": {
+                      text: <>● <strong>CFO Agent Tip:</strong> Share your <strong>current revenue, monthly expenses, and business stage</strong> for accurate financial advice.</>
+                    },
+                    "research-agent": {
+                      text: <>● <strong>Research Agent Tip:</strong> Mention the <strong>specific industry, geography, and time frame</strong> you want researched.</>
+                    },
+                    "competitor-spy-agent": {
+                      text: <>● <strong>Competitor Intel Tip:</strong> Paste <strong>competitor names or URLs</strong> and your target market for a sharp teardown.</>
+                    },
+                    "project-manager-agent": {
+                      text: <>● <strong>PM Agent Tip:</strong> Describe your <strong>project scope, team size, and deadline</strong> for a precise sprint plan.</>
+                    },
+                    "code-helper-developer-agent": {
+                      text: <>● <strong>CTO Agent Tip:</strong> Share your <strong>tech stack, codebase context, or paste the code</strong> you need reviewed or built.</>
+                    },
+                    "devmind-agent": {
+                      text: <>● <strong>DevMind Tip:</strong> Paste your <strong>code, error message, or describe the architecture</strong> — the more context, the sharper the analysis.</>
+                    },
+                    "sales-lead-generator": {
+                      text: <>● <strong>Sales Agent Tip:</strong> Describe your <strong>product, target buyer persona, and current sales channel</strong> for a custom pipeline.</>
+                    },
+                    "content-creator-agent": {
+                      text: <>● <strong>Content Agent Tip:</strong> Specify your <strong>platform (YouTube/TikTok/Blog), niche, and target audience</strong> for viral copy.</>
+                    },
+                    "social-media-manager": {
+                      text: <>● <strong>Social Media Tip:</strong> Tell me your <strong>brand name, platform, and content goal</strong> (awareness / sales / engagement).</>
+                    },
+                    "legal-compliance-agent": {
+                      text: <>● <strong>Legal Agent Tip:</strong> Specify your <strong>country/jurisdiction and contract type</strong> for legally accurate advice.</>
+                    },
+                    "hr-recruiting-agent": {
+                      text: <>● <strong>HR Agent Tip:</strong> Share the <strong>role, seniority level, and key skills required</strong> for a precise JD and interview kit.</>
+                    },
+                    "investor-pitch-agent": {
+                      text: <>● <strong>Pitch Agent Tip:</strong> Describe your <strong>startup, business model, traction, and target funding round</strong> for a VC-ready pitch.</>
+                    },
+                    "performance-marketer-agent": {
+                      text: <>● <strong>Performance Marketer Tip:</strong> Share your <strong>current ad budget, platform, and target CPA/ROAS</strong> for optimized campaigns.</>
+                    },
+                    "it-automation-consultant": {
+                      text: <>● <strong>Automation Tip:</strong> List the <strong>manual processes or tools you currently use</strong> — I'll find what to automate first.</>
+                    },
+                    "pain-point-scraper-agent": {
+                      text: <>● <strong>Pain-Point Scraper Tip:</strong> Give me a <strong>specific niche or industry</strong> — the more specific, the more actionable the complaints I find.</>
+                    },
+                  };
+
+                  const activeAgent = allAgents.find((a) => a.id === selectedAgentId);
+                  const warningData = agentWarnings[selectedAgentId];
+                  // For custom agents, show a generic helpful tip
+                  const warningText = warningData?.text ?? (
+                    activeAgent?.isCustom
+                      ? <>● <strong>Custom Agent Tip:</strong> Provide as much <strong>context about your specific situation</strong> as possible for the best results.</>
+                      : <>● <strong>Tip:</strong> The more context you provide, the sharper and more actionable the response will be.</>
+                  );
+
+                  return (
+                    <div className={`mt-6 w-full p-4 rounded-xl border text-xs flex items-center gap-2.5 justify-center shadow-sm transition duration-300 ${themeMode === "black"
+                      ? "border-amber-500/25 bg-amber-500/5 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.04)]"
+                      : "border-amber-200 bg-amber-500/10 text-amber-955 shadow-[0_0_15px_rgba(245,158,11,0.05)] font-semibold"
+                      }`}>
+                      <Sparkles size={14} className={`flex-shrink-0 animate-pulse ${themeMode === "black" ? "text-neutral-200" : "text-amber-700"}`} />
+                      <span>{warningText}</span>
+                    </div>
+                  );
+                })()}
 
                 {/* Prompt Suggestions Grid */}
                 <div className="mt-10 w-full text-left">
