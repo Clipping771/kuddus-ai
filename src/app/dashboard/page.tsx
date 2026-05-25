@@ -2189,7 +2189,7 @@ export default function Dashboard() {
             if (updated.length > 0) {
               updated[updated.length - 1] = {
                 role: "assistant",
-                content: accumulatedResponse || "⚠️ All API keys are exhausted. Please add a new OpenRouter key in Settings to continue.",
+                content: accumulatedResponse || "⚠️ Your OpenRouter API keys are exhausted. Please add a new OpenRouter key in Settings to continue.",
               };
             }
             return updated;

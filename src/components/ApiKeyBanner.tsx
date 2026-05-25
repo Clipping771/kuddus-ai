@@ -27,8 +27,8 @@ export default function ApiKeyBanner({ type, message, onDismiss }: ApiKeyBannerP
     const isRateLimit = type === "groq_rate_limit";
 
     const defaultMessage = isRateLimit
-        ? "Groq rate limit reached. Add more API keys if this keeps happening."
-        : "Your API keys are exhausted. Add a new key to continue.";
+        ? "Groq rate limit reached. Add more Groq API keys if this keeps happening."
+        : "Your OpenRouter API keys are exhausted. Add a new OpenRouter key to continue.";
 
     return (
         <div
@@ -45,7 +45,7 @@ export default function ApiKeyBanner({ type, message, onDismiss }: ApiKeyBannerP
                 {/* Message */}
                 <p className="flex-1 text-[11.5px] text-neutral-400 leading-snug">
                     <span className={`font-semibold mr-1 ${isRateLimit ? "text-orange-300" : "text-amber-300"}`}>
-                        {isRateLimit ? "Rate limit hit." : "API key exhausted."}
+                        {isRateLimit ? "Rate limit hit." : "OpenRouter key exhausted."}
                     </span>
                     {message || defaultMessage}
                 </p>
@@ -54,8 +54,8 @@ export default function ApiKeyBanner({ type, message, onDismiss }: ApiKeyBannerP
                 <a
                     href="/settings"
                     className={`shrink-0 flex items-center gap-1 text-[11px] font-semibold transition-colors ${isRateLimit
-                            ? "text-orange-400 hover:text-orange-300"
-                            : "text-amber-400 hover:text-amber-300"
+                        ? "text-orange-400 hover:text-orange-300"
+                        : "text-amber-400 hover:text-amber-300"
                         }`}
                 >
                     Add key
