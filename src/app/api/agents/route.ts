@@ -71,38 +71,46 @@ export async function POST(req: Request) {
     // 3. Generate Expert System Prompt via LLM
     let generatedInstructions = pdfText.substring(0, 12000); // Fallback
 
-    const systemPromptMsg = `You are an expert AI prompt engineer. Based on the document text below, write a concise but powerful system prompt for an AI agent that is a subject matter expert on this document's topic.
+    const systemPromptMsg = `You are a world-class AI prompt engineer specializing in building elite, production-grade AI agents from documents.
 
-The system prompt must include:
-- The agent's identity and expertise area (1-2 sentences)
-- 5-8 key knowledge areas from the document
-- How to answer questions: structured, cite document concepts, be specific
-- Tone: professional, direct, expert
+Based on the document text below, create a COMPREHENSIVE, POWERFUL system prompt for an AI agent that is a deep subject matter expert on this document's content.
 
-Keep it under 400 words. Return ONLY the system prompt text, no preamble.
+The system prompt MUST include ALL these sections (minimum 600 words):
+
+1. **IDENTITY & ROLE** — Who this agent is, what document they mastered, their exact expertise
+2. **CORE KNOWLEDGE AREAS** — 8-10 specific topics/concepts extracted directly from the document
+3. **HOW TO ANSWER** — Always cite specific sections/concepts from the document, be precise, structured
+4. **OPERATING PROTOCOL** — Step-by-step: understand question → find relevant doc section → give structured answer with document references
+5. **RESPONSE FORMAT** — Use headers, bullet points, quote document concepts directly
+6. **QUALITY STANDARDS** — Never hallucinate beyond the document, say "the document states..." when citing
+7. **GUARDRAILS** — If question is outside document scope, say so clearly
+
+Make this agent feel like talking to someone who has memorized and deeply understood every word of this document.
 
 Document Text:
 ====================
 ${pdfText.substring(0, 12000)}
-====================`;
+====================
+
+Return ONLY the system prompt text. No preamble, no explanation.`;
 
     // Try Groq first with key rotation
     let groqSuccess = false;
     try {
       const completion = await groqChatWithFallback(
         {
-          model: "llama-3.1-8b-instant",
+          model: "llama-3.3-70b-versatile",
           messages: [{ role: "user", content: systemPromptMsg }],
           temperature: 0.3,
-          max_tokens: 1000,
+          max_tokens: 2000,
         },
         dbUser.id
       );
       const content = completion.choices[0]?.message?.content?.trim();
-      if (content) {
+      if (content && content.length > 200) {
         generatedInstructions = content;
         groqSuccess = true;
-        console.log("[Agents] Groq success");
+        console.log("[Agents] Groq success — instructions length:", content.length);
       }
     } catch (groqError: any) {
       console.error("Groq Persona Generation Error:", groqError?.message || groqError);
@@ -115,20 +123,21 @@ ${pdfText.substring(0, 12000)}
           [
             "meta-llama/llama-3.3-70b-instruct:free",
             "deepseek/deepseek-r1-0528:free",
+            "qwen/qwen3-8b:free",
             "mistralai/mistral-7b-instruct:free",
           ],
           {
             messages: [{ role: "user", content: systemPromptMsg }],
             temperature: 0.3,
-            max_tokens: 1000,
+            max_tokens: 2000,
           },
           dbUser.id
         );
         const data = await res.json();
         const content = data.choices?.[0]?.message?.content?.trim();
-        if (content) {
+        if (content && content.length > 200) {
           generatedInstructions = content;
-          console.log("[Agents] OpenRouter success");
+          console.log("[Agents] OpenRouter success — instructions length:", content.length);
         }
       } catch (orErr: any) {
         console.warn("[Agents] OpenRouter fallback failed:", orErr?.message);
