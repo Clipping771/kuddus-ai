@@ -7,6 +7,8 @@ import Groq from "groq-sdk";
 import { groqChatWithFallback, groqStreamWithFallback, getGroqKeys } from "@/lib/groq";
 import { getUserMemoryContext, extractAndSaveMemory } from "@/lib/memory";
 import { classifyAgentByKeywords, getAgentDisplayName } from "@/lib/agentRouter";
+import { analyzeQueryComplexity, getMaxTokensForComplexity } from "@/lib/costControl";
+import { retrieveRelevantChunks } from "@/lib/rag";
 
 const Kacha_Morich_CORE_PERSONALITY = `You are **Kacha Morich AI** 🌶️ — The Sharpest Enterprise-Grade Multi-Model Business Decision Engine in the world.
 
@@ -662,12 +664,22 @@ ${agentSystemPrompt}`;
       console.log("[Memory] ✅ User memory context injected into system prompt.");
     }
 
-    // 5c. Auto-routing notification — tell the AI which agent was auto-selected
+    // hasImage must be declared before RAG and vision checks
+    const hasImage = message.includes("[IMAGE_BASE64:") || (history && history.some((h: any) => h.content.includes("[IMAGE_BASE64:")));
+
+    // 5c. 📄 RAG — retrieve relevant document chunks if user has uploaded documents
+    if (!hasImage) {
+      const ragContext = await retrieveRelevantChunks(dbUser.id, message, agentId);
+      if (ragContext) {
+        agentSystemPrompt += `\n\n${ragContext}`;
+        console.log("[RAG] ✅ Relevant document chunks injected into system prompt.");
+      }
+    }
+
+    // 5d. Auto-routing notification — tell the AI which agent was auto-selected
     if (autoRoutedAgent) {
       agentSystemPrompt += `\n\n## 🤖 AUTO-ROUTING NOTE\nYou were automatically selected as the best agent for this query. The user's message was analyzed and routed to you (${getAgentDisplayName(autoRoutedAgent)}) based on content classification.`;
     }
-
-    const hasImage = message.includes("[IMAGE_BASE64:") || (history && history.some((h: any) => h.content.includes("[IMAGE_BASE64:")));
 
     if (hasImage) {
       agentSystemPrompt += `
@@ -783,6 +795,14 @@ Apply the following highly advanced analysis steps:
       resolvedModelId = "nousresearch/hermes-3-llama-3.1-405b:free";
     } else if (resolvedModelId === "openai/gpt-oss-120b:free" || resolvedModelId === "openai/gpt-oss-20b:free") {
       resolvedModelId = "meta-llama/llama-3.3-70b-instruct:free";
+    }
+
+    // 💰 Cost Control — if user hasn't manually selected a model (default), auto-select based on complexity
+    const isDefaultModel = !modelId || modelId === "meta-llama/llama-3.3-70b-instruct:free" || modelId === "google/gemma-4-31b-it";
+    if (isDefaultModel) {
+      const costRec = analyzeQueryComplexity(message, Boolean(hasImage), !!isBrainTrust, agentId);
+      resolvedModelId = costRec.recommendedModel;
+      console.log(`[CostControl] Complexity: ${costRec.complexity} → Model: ${resolvedModelId} (${costRec.reason})`);
     }
 
     const primaryModel = resolvedModelId;
@@ -1235,6 +1255,46 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
 
           // 7. Save completed assistant response to Supabase
           if (assistantResponse) {
+            // 🔍 Self-Reflection Critic — runs only in Brain Trust mode
+            // A fast critic agent reviews the response and appends improvement notes
+            if (isBrainTrust && !hasImage && assistantResponse.length > 200) {
+              try {
+                const criticPrompt = `You are a ruthless quality critic reviewing an AI-generated business strategy response.
+
+Review this response and provide a BRIEF quality assessment (max 3 bullet points):
+- What is STRONG about this response?
+- What is MISSING or could be improved?
+- One specific actionable addition the user should request next
+
+Response to review (first 1000 chars):
+"${assistantResponse.substring(0, 1000)}"
+
+Keep your critique to 3 bullet points max. Be sharp and specific.`;
+
+                const criticResult = await groqChatWithFallback(
+                  {
+                    model: "llama-3.1-8b-instant",
+                    messages: [{ role: "user", content: criticPrompt }],
+                    temperature: 0.3,
+                    max_tokens: 300,
+                  },
+                  dbUser?.id
+                ).catch(() => null);
+
+                if (criticResult) {
+                  const criticText = criticResult.choices[0]?.message?.content?.trim();
+                  if (criticText) {
+                    const criticBlock = `\n\n---\n\n> 🔍 **Quality Review** *(Self-Reflection Critic)*\n${criticText.split("\n").map((l: string) => `> ${l}`).join("\n")}`;
+                    assistantResponse += criticBlock;
+                    controller.enqueue(encoder.encode(criticBlock));
+                    console.log("[SelfReflection] ✅ Critic review appended");
+                  }
+                }
+              } catch (criticErr) {
+                console.warn("[SelfReflection] Critic failed (non-critical):", criticErr);
+              }
+            }
+
             const finalSavedText = (isBrainTrust && !hasImage) ? `> 🧠 **BRAIN TRUST LOGS**\n> 📝 Trinity drafted -> 🕵️ Gemma critiqued -> ✨ ${synthModel.split("/")[1]} synthesized.\n\n---\n\n${assistantResponse}` : assistantResponse;
             const { error: assistantSaveError } = await supabase
               .from("messages")
@@ -1242,7 +1302,6 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
             if (assistantSaveError) console.error("Save error:", assistantSaveError);
 
             // 🧠 Background memory extraction — runs after response is saved, non-blocking
-            // Fire-and-forget: extract key facts from this conversation turn
             extractAndSaveMemory(dbUser.id, message, assistantResponse).catch((memErr) => {
               console.warn("[Memory] Background extraction failed (non-critical):", memErr?.message);
             });
