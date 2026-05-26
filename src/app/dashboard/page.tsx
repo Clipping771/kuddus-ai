@@ -1336,7 +1336,7 @@ export default function Dashboard() {
 
       const ideaForName = pdfSnippet
         ? `File: "${cleanName}". Content preview: "${pdfSnippet}"`
-        : cleanName;
+        : `File: "${cleanName}". No content preview available — generate a smart agent name based on the filename alone. Make it sound like an expert AI agent name, not just the filename repeated.`;
 
       const res = await fetch("/api/agents/generate", {
         method: "POST",

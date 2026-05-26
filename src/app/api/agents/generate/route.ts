@@ -24,13 +24,21 @@ function parseJSON(text: string) {
 function generateStaticFallback(idea: string) {
   const isBangla = /[\u0980-\u09FF]/.test(idea);
 
+  // Extract a smart short name from the concept description
+  // Take first meaningful line or first 5 words
+  const firstLine = idea.split(/[\n.]/)[0].trim();
+  const shortName = firstLine.length > 40
+    ? firstLine.split(/\s+/).slice(0, 4).join(" ")
+    : firstLine.substring(0, 40);
+  const cleanName = shortName.replace(/[^a-zA-Z0-9\u0980-\u09FF\s]/g, "").trim() || "Custom Expert";
+
   if (isBangla) {
     return {
-      name: `${idea} Expert`,
-      banglaName: idea,
-      banglaDesc: `আপনার ${idea} সংক্রান্ত কাজে সাহায্য করার জন্য ডেডিকেটেড এলিট এআই অ্যাসিস্ট্যান্ট।`,
+      name: `${cleanName} বিশেষজ্ঞ`,
+      banglaName: cleanName,
+      banglaDesc: `আপনার ${cleanName} সংক্রান্ত কাজে সাহায্য করার জন্য ডেডিকেটেড এলিট এআই অ্যাসিস্ট্যান্ট।`,
       icon: "🤖",
-      instructions: `# ${idea} — এলিট এআই বিশেষজ্ঞ প্রোটোকল
+      instructions: `# ${cleanName} — এলিট এআই বিশেষজ্ঞ প্রোটোকল
 
 ## পরিচয় ও ভূমিকা
 আপনি "${idea}" বিষয়ে একজন বিশ্বমানের বিশেষজ্ঞ এআই অ্যাসিস্ট্যান্ট। আপনার কাছে এই বিষয়ে গভীর জ্ঞান, ব্যবহারিক অভিজ্ঞতা এবং সর্বোচ্চ মানের পরামর্শ দেওয়ার ক্ষমতা রয়েছে। আপনি শুধু তথ্য দেন না — আপনি ব্যবহারকারীর প্রকৃত সমস্যা বুঝে সমাধান দেন।
@@ -72,14 +80,14 @@ function generateStaticFallback(idea: string) {
     };
   } else {
     return {
-      name: `${idea} Expert`,
-      banglaName: idea,
-      banglaDesc: `Your dedicated elite AI specialist for ${idea} — deep analysis, expert strategy, and actionable execution.`,
+      name: `${cleanName} Expert`,
+      banglaName: cleanName,
+      banglaDesc: `Your dedicated elite AI specialist for ${cleanName} — deep analysis, expert strategy, and actionable execution.`,
       icon: "🎓",
-      instructions: `# ${idea} — Elite AI Specialist Protocol
+      instructions: `# ${cleanName} — Elite AI Specialist Protocol
 
 ## Identity & Role
-You are a world-class AI specialist with deep, battle-tested expertise in "${idea}". You operate at the intersection of theory and practice, combining academic rigor with real-world execution experience. You think like a senior consultant who has solved hundreds of complex problems in this domain. You don't just answer questions — you understand what the user truly needs and deliver transformative results.
+You are a world-class AI specialist with deep, battle-tested expertise in "${cleanName}". You operate at the intersection of theory and practice, combining academic rigor with real-world execution experience. You think like a senior consultant who has solved hundreds of complex problems in this domain. You don't just answer questions — you understand what the user truly needs and deliver transformative results.
 
 ## Core Mission
 Your primary objective is to understand the user's TRUE underlying need — not just their surface-level request — and deliver the highest-quality, most actionable guidance possible. Every response should move the user meaningfully forward toward their actual goal.
@@ -264,9 +272,12 @@ export async function POST(req: Request) {
     if (nameOnly) {
       const isBangla = /[\u0980-\u09FF]/.test(idea);
 
-      // Extract file name and content preview if provided in format "File: X. Content preview: Y"
+      // Extract file name and content preview — supports both formats:
+      // "File: X. Content preview: Y"  (with content)
+      // "File: X. No content preview..." (filename only)
       const fileMatch = idea.match(/^File:\s*"([^"]+)"\.\s*Content preview:\s*"([\s\S]*)"$/);
-      const fileName = fileMatch ? fileMatch[1] : idea;
+      const fileMatchNoContent = idea.match(/^File:\s*"([^"]+)"\./);
+      const fileName = fileMatch ? fileMatch[1] : (fileMatchNoContent ? fileMatchNoContent[1] : idea);
       const contentPreview = fileMatch ? fileMatch[2] : "";
 
       const namePrompt = isBangla
@@ -283,8 +294,9 @@ ${contentPreview ? `Content preview: "${contentPreview}"` : ""}
 
 Based on the document's actual subject matter, generate a smart, concise AI agent name (2-4 words).
 The name should reflect what the document is ABOUT — not just repeat the filename.
-Examples of good names: "ICT Design Advisor", "Financial Strategy Expert", "Legal Contract Analyst"
-Reply with ONLY the name, nothing else.`;
+${!contentPreview ? "Since no content preview is available, infer the topic from the filename and create a professional agent name." : ""}
+Examples of good names: "ICT Design Advisor", "Financial Strategy Expert", "Legal Contract Analyst", "Machiavellian Strategy Advisor", "Power Dynamics Expert"
+CRITICAL: Return ONLY the name (2-4 words), nothing else. No quotes, no explanation.`;
 
       // Tier 1: Try Groq (env key)
       if (process.env.GROQ_API_KEY) {
@@ -348,27 +360,42 @@ Reply with ONLY the name, nothing else.`;
     }
 
     // If generating a single field (e.g. just instructions or just name)
-    const fieldPrompt = field ? `Generate ONLY the "${field}" field for this agent concept: "${idea}". Return a JSON object with just that field.` : null;
+    const fieldPrompt = field ? `Generate ONLY the "${field}" field for this agent concept: "${idea.substring(0, 500)}". Return a JSON object with just that field.` : null;
 
-    const fullPrompt = `You are a world-class AI Agent Architect and Prompt Engineer with deep expertise in building elite, production-grade AI systems. The user wants to create a custom AI agent based on this concept: "${idea}"
+    // Truncate idea for the prompt — long descriptions confuse the name generation
+    // Extract a concise concept summary from the first 300 chars
+    const ideaSummary = idea.length > 300
+      ? idea.substring(0, 300).replace(/\n/g, " ").trim() + "..."
+      : idea;
 
-Your mission: Design an ELITE, DEEPLY SPECIALIZED AI agent with a comprehensive, battle-tested system prompt that makes it genuinely powerful and useful.
+    const fullPrompt = `You are a world-class AI Agent Architect and Prompt Engineer with deep expertise in building elite, production-grade AI systems. The user wants to create a custom AI agent based on this concept:
+
+<concept>
+${idea.substring(0, 2000)}
+</concept>
+
+Your mission: Design an ELITE, DEEPLY SPECIALIZED AI agent with a comprehensive, battle-tested system prompt.
+
+CRITICAL RULES FOR THE "name" FIELD:
+- The name MUST be SHORT: 2-4 words maximum
+- Extract the CORE ROLE from the concept (e.g. "Machiavellian Strategy Advisor", "Power Dynamics Expert", "Strategic Influence Agent")
+- NEVER use the full concept description as the name
+- Think: what would you call this agent in a menu? That's the name.
 
 CRITICAL LANGUAGE RULE:
 - If the concept is in English → ALL fields in English
 - If the concept is in Bengali → banglaName + banglaDesc in Bengali, instructions in Bengali
-- Match the user's input language exactly
 
 Respond ONLY with a raw valid JSON object (no markdown, no backticks, no explanation):
 {
-  "name": "Short punchy name (2-4 words max)",
+  "name": "Short punchy name (2-4 words MAX — e.g. 'Strategy Mastermind' or 'Power Dynamics Expert')",
   "banglaName": "Display name in detected language",
   "banglaDesc": "One powerful line describing what this agent does",
   "icon": "Single most fitting emoji",
   "instructions": "THE FULL ELITE SYSTEM PROMPT — see requirements below"
 }
 
-REQUIREMENTS FOR THE INSTRUCTIONS FIELD (most important — minimum 600 words):
+REQUIREMENTS FOR THE INSTRUCTIONS FIELD (minimum 600 words):
 The instructions must be a comprehensive, production-grade system prompt with ALL these sections:
 
 1. IDENTITY & ROLE — Who this agent is, exact specialization, what makes them uniquely powerful vs generic AI
