@@ -990,6 +990,9 @@ export default function Dashboard() {
   const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
   const [editingMessageText, setEditingMessageText] = useState("");
 
+  // Message quality ratings
+  const [messageRatings, setMessageRatings] = useState<Record<number, "up" | "down">>({});
+
   // Theme Mode State: "black" (dark) or "light" (clean light)
   const [themeMode, setThemeMode] = useState<"black" | "light">("black");
 
@@ -2178,10 +2181,25 @@ export default function Dashboard() {
     }, 50);
   };
 
+  // ⭐ Rate a message — 👍 saves rating, 👎 saves rating + offers to regenerate
+  const handleRateMessage = (index: number, rating: "up" | "down") => {
+    setMessageRatings(prev => ({ ...prev, [index]: rating }));
+
+    if (rating === "down" && index === messages.length - 1) {
+      // Auto-suggest regeneration on thumbs down for last message
+      setTimeout(() => {
+        if (window.confirm("Response wasn't helpful? Regenerate with a different approach?")) {
+          handleRegenerate();
+        }
+      }, 300);
+    }
+  };
+
   // 3. Create a New Chat Thread
   const handleNewChat = () => {
     setActiveChatId(null);
     setMessages([]);
+    setMessageRatings({});
     setSidebarOpen(false);
   };
 
@@ -2242,6 +2260,7 @@ export default function Dashboard() {
     setInputMessage("");
     setIsLoading(true);
     setSmartSuggestions([]); // Clear previous suggestions when new message is sent
+    setMessageRatings({}); // Clear ratings on new message
     isStreamingRef.current = true;
 
     // Format the final message sent to AI with attached file contents if present
@@ -3643,6 +3662,24 @@ export default function Dashboard() {
                                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>
                                   <span>REGENERATE</span>
                                 </button>
+                              )}
+
+                              {/* 👍👎 Quality Rating */}
+                              {!isLoading && msg.content && msg.content.length > 50 && (
+                                <div className="flex items-center gap-0.5 mt-1 ml-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRateMessage(index, "up")}
+                                    title="Good response"
+                                    className={`p-1 rounded transition-all text-[13px] hover:scale-110 active:scale-95 ${messageRatings[index] === "up" ? "opacity-100" : "opacity-35 hover:opacity-80"}`}
+                                  >👍</button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRateMessage(index, "down")}
+                                    title="Poor response — will trigger regeneration"
+                                    className={`p-1 rounded transition-all text-[13px] hover:scale-110 active:scale-95 ${messageRatings[index] === "down" ? "opacity-100" : "opacity-35 hover:opacity-80"}`}
+                                  >👎</button>
+                                </div>
                               )}
                             </div>
                           )}

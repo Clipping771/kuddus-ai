@@ -9,6 +9,7 @@ import { getUserMemoryContext, extractAndSaveMemory } from "@/lib/memory";
 import { classifyAgentByKeywords, getAgentDisplayName } from "@/lib/agentRouter";
 import { analyzeQueryComplexity, getMaxTokensForComplexity } from "@/lib/costControl";
 import { retrieveRelevantChunks } from "@/lib/rag";
+import { getOrCreateSummary, formatSummaryForContext } from "@/lib/summarizer";
 
 const Kacha_Morich_CORE_PERSONALITY = `You are **Kacha Morich AI** 🌶️ — The Sharpest Enterprise-Grade Multi-Model Business Decision Engine in the world.
 
@@ -414,7 +415,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { message, chatId, agentId: rawAgentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust, boardSize = 16, customInstructions, enableAutoRouting } = await req.json();
+    const { message, chatId, agentId: rawAgentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust, boardSize = 16, customInstructions, enableAutoRouting, isCollabMode } = await req.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
@@ -676,6 +677,18 @@ ${agentSystemPrompt}`;
       }
     }
 
+    // 5d. 🎯 Proactive Follow-up — for complex strategy questions, AI asks clarifying questions first
+    const isComplexStrategyQuestion = message.length > 80 && (
+      /plan|strategy|startup|business|launch|build|create|develop|grow|scale|fund|invest|market|pitch/i.test(message) ||
+      /পরিকল্পনা|কৌশল|স্টার্টআপ|ব্যবসা|তৈরি|বিনিয়োগ|বাজার/i.test(message)
+    );
+    const isFirstMessage = !history || history.length <= 2;
+
+    if (isComplexStrategyQuestion && isFirstMessage) {
+      agentSystemPrompt += `\n\n## 🎯 PROACTIVE INTELLIGENCE PROTOCOL
+For this complex strategic question, if critical information is missing (budget, target market, timeline, team size, current stage), ask 1-2 focused clarifying questions BEFORE giving the full answer. Format: briefly acknowledge the question, ask the clarifying questions, then say you'll provide the full strategy once they answer. Keep clarifying questions to maximum 2.`;
+    }
+
     // 5d. Auto-routing notification — tell the AI which agent was auto-selected
     if (autoRoutedAgent) {
       agentSystemPrompt += `\n\n## 🤖 AUTO-ROUTING NOTE\nYou were automatically selected as the best agent for this query. The user's message was analyzed and routed to you (${getAgentDisplayName(autoRoutedAgent)}) based on content classification.`;
@@ -741,15 +754,29 @@ Apply the following highly advanced analysis steps:
     };
 
     if (history && history.length > 0) {
-      // Keep only the last 15 messages to prevent context window token limits (500 Invalid Request Error)
-      const maxHistory = 15;
-      const truncatedHistory = history.slice(-maxHistory);
+      // 🧠 Conversation Summarization — compress old messages when history is long
+      const { summary, trimmedHistory } = await getOrCreateSummary(
+        activeChatId,
+        history,
+        dbUser.id
+      );
 
-      truncatedHistory.forEach((msg, idx) => {
+      // Inject summary as a system context block if it exists
+      if (summary) {
+        const summaryBlock = formatSummaryForContext(summary);
+        // Add summary as a user→assistant exchange so it fits the alternating role format
+        formattedMessages.push({ role: "user", content: "[CONTEXT SUMMARY REQUEST]" });
+        formattedMessages.push({ role: "assistant", content: summaryBlock });
+        console.log("[Summarizer] ✅ Summary injected into context");
+      }
+
+      const historyToUse = summary ? trimmedHistory : history.slice(-15);
+
+      historyToUse.forEach((msg, idx) => {
         let msgContent = parseMessageContent(msg.role, msg.content);
 
-        // Safe role reminder injected directly into user's latest query to respect Alternating Roles Chat Template rule
-        if (idx === truncatedHistory.length - 1 && agentId && msg.role === "user") {
+        // Safe role reminder injected directly into user's latest query
+        if (idx === historyToUse.length - 1 && agentId && msg.role === "user") {
           if (Array.isArray(msgContent)) {
             const textObj = msgContent.find((item: any) => item.type === "text");
             if (textObj) {
@@ -1216,9 +1243,12 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
               selectedModel = fallbackModels[i];
               try {
                 console.log(`[API Chat] Dispatching stream request directly to selected model: "${selectedModel}"`);
+                const maxTok = getMaxTokensForComplexity(
+                  analyzeQueryComplexity(message, Boolean(hasImage), false, agentId).complexity
+                );
                 const { response: res, usedModel } = await openrouterFetchWithFallback(
                   [selectedModel],
-                  { messages: formattedMessages, stream: true, max_tokens: 3000 },
+                  { messages: formattedMessages, stream: true, max_tokens: maxTok },
                   dbUser.id
                 );
                 response = res;
