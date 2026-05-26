@@ -37,3 +37,12 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# Local binary tools (not needed in repo)
+/poppler-26.02.0/
+
+# Kiro IDE files
+/.kiro/
+
+# VSCode settings
+/.vscode/
