@@ -1321,7 +1321,7 @@ export default function Dashboard() {
     // Step 1: Instantly show cleaned filename so UI is never empty
     const cleanName = file.name
       .replace(/\.pdf$/i, "")
-      .replace(/[-_]/g, " ")
+      .replace(/[-_,،]/g, " ")   // also strip commas (common in Bangla filenames)
       .replace(/\s+/g, " ")
       .trim()
       .split(" ")

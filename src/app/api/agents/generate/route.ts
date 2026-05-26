@@ -285,18 +285,28 @@ export async function POST(req: Request) {
 ফাইলের নাম: "${fileName}"
 ${contentPreview ? `কন্টেন্ট প্রিভিউ: "${contentPreview}"` : ""}
 
-এই ডকুমেন্টের বিষয়বস্তু বিশ্লেষণ করে একটি স্মার্ট, সংক্ষিপ্ত AI এজেন্টের নাম দাও (২-৪ শব্দ)।
-নামটি হবে বিষয়ভিত্তিক ও অর্থবহ — শুধু ফাইলের নাম নয়।
-শুধু নামটি লেখো, আর কিছু না।`
+এই ডকুমেন্টের বিষয়বস্তু বিশ্লেষণ করে একটি স্মার্ট AI এজেন্টের নাম তৈরি করো।
+
+নিয়ম:
+- নামটি হবে ২-৪ শব্দের
+- ফাইলের নাম হুবহু কপি করবে না — বিষয়বস্তু বুঝে নতুন নাম দাও
+- নামটি হবে একটি AI বিশেষজ্ঞের পরিচয় (যেমন: "যোগাযোগ দক্ষতা বিশেষজ্ঞ", "Communication Skills Expert", "Business Strategy Advisor")
+- শুধু নামটি লেখো, আর কিছু না
+
+উদাহরণ ভালো নাম: "যোগাযোগ বিশেষজ্ঞ", "Communication Expert", "ব্যবসায়িক কৌশল উপদেষ্টা"`
         : `A PDF document has been uploaded.
 File name: "${fileName}"
 ${contentPreview ? `Content preview: "${contentPreview}"` : ""}
 
-Based on the document's actual subject matter, generate a smart, concise AI agent name (2-4 words).
-The name should reflect what the document is ABOUT — not just repeat the filename.
-${!contentPreview ? "Since no content preview is available, infer the topic from the filename and create a professional agent name." : ""}
-Examples of good names: "ICT Design Advisor", "Financial Strategy Expert", "Legal Contract Analyst", "Machiavellian Strategy Advisor", "Power Dynamics Expert"
-CRITICAL: Return ONLY the name (2-4 words), nothing else. No quotes, no explanation.`;
+Generate a smart, professional AI agent name (2-4 words) based on what this document is about.
+
+Rules:
+- DO NOT copy the filename — infer the topic and create a new descriptive name
+- The name should sound like an expert AI agent (e.g. "Communication Skills Expert", "Business Strategy Advisor")
+- ${!contentPreview ? "Infer the topic from the filename keywords." : "Use the content preview to understand the topic."}
+- Return ONLY the name, nothing else. No quotes, no punctuation.
+
+Good examples: "Communication Skills Expert", "Financial Strategy Advisor", "Legal Compliance Expert", "Marketing Growth Expert"`;
 
       // Tier 1: Try Groq (env key)
       if (process.env.GROQ_API_KEY) {
@@ -339,10 +349,10 @@ CRITICAL: Return ONLY the name (2-4 words), nothing else. No quotes, no explanat
               "HTTP-Referer": "https://kachamorich.vercel.app",
             },
             body: JSON.stringify({
-              model: "qwen/qwen3-8b:free",
+              model: "meta-llama/llama-3.3-70b-instruct:free",
               messages: [{ role: "user", content: namePrompt }],
               temperature: 0.7,
-              max_tokens: 20,
+              max_tokens: 25,
             }),
           });
           if (res.ok) {
