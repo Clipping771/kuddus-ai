@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useUser, UserButton } from "@clerk/nextjs";
-import { Key, Plus, Trash2, Power, PowerOff, ArrowLeft, Copy, Check, Zap } from "lucide-react";
+import { Key, Plus, Trash2, Power, PowerOff, ArrowLeft, Copy, Check, Zap, AlertTriangle, Brain, FileText } from "lucide-react";
 import Link from "next/link";
 
 interface ApiKey {
@@ -13,7 +13,7 @@ interface ApiKey {
     created_at: string;
 }
 
-type Tab = "openrouter" | "groq";
+type Tab = "openrouter" | "groq" | "danger";
 
 // ── Moved outside component to prevent remount on every keystroke ──
 const AddModal = ({
@@ -85,6 +85,13 @@ export default function SettingsPage() {
     const [groqTableReady, setGroqTableReady] = useState(true);
 
     const [copiedId, setCopiedId] = useState<string | null>(null);
+
+    // Danger zone state
+    const [deletingChats, setDeletingChats] = useState(false);
+    const [deletingMemory, setDeletingMemory] = useState(false);
+    const [deletingRag, setDeletingRag] = useState(false);
+    const [deletingAgents, setDeletingAgents] = useState(false);
+    const [dangerConfirm, setDangerConfirm] = useState<string | null>(null);
 
     useEffect(() => {
         fetchOrKeys();
@@ -184,6 +191,47 @@ export default function SettingsPage() {
         if (res.ok) setGroqKeys(groqKeys.map(k => k.id === id ? { ...k, is_active: !current } : k));
     };
 
+    // ── Danger Zone Handlers ────────────────────────────────────────────────────
+    const handleDeleteAllChats = async () => {
+        if (dangerConfirm !== "delete-chats") return;
+        try {
+            setDeletingChats(true);
+            const res = await fetch("/api/chats", { method: "DELETE" });
+            if (res.ok) { alert("✅ All chats and messages deleted."); setDangerConfirm(null); }
+            else alert("Failed to delete chats.");
+        } catch { alert("Error deleting chats."); } finally { setDeletingChats(false); }
+    };
+
+    const handleDeleteMemory = async () => {
+        if (dangerConfirm !== "delete-memory") return;
+        try {
+            setDeletingMemory(true);
+            const res = await fetch("/api/memory", { method: "DELETE" });
+            if (res.ok) { alert("✅ All memory data cleared."); setDangerConfirm(null); }
+            else alert("Failed to clear memory.");
+        } catch { alert("Error clearing memory."); } finally { setDeletingMemory(false); }
+    };
+
+    const handleDeleteRagFiles = async () => {
+        if (dangerConfirm !== "delete-rag") return;
+        try {
+            setDeletingRag(true);
+            const res = await fetch("/api/rag/documents", { method: "DELETE" });
+            if (res.ok) { alert("✅ All uploaded documents and embeddings deleted."); setDangerConfirm(null); }
+            else alert("Failed to delete documents.");
+        } catch { alert("Error deleting documents."); } finally { setDeletingRag(false); }
+    };
+
+    const handleDeleteAllAgents = async () => {
+        if (dangerConfirm !== "delete-agents") return;
+        try {
+            setDeletingAgents(true);
+            const res = await fetch("/api/agents/all", { method: "DELETE" });
+            if (res.ok) { alert("✅ All custom agents deleted."); setDangerConfirm(null); }
+            else alert("Failed to delete agents.");
+        } catch { alert("Error deleting agents."); } finally { setDeletingAgents(false); }
+    };
+
     // ── Shared ──────────────────────────────────────────────────────────────────
     const copyToClipboard = (text: string, id: string) => {
         navigator.clipboard.writeText(text);
@@ -246,6 +294,7 @@ export default function SettingsPage() {
                     {([
                         { id: "openrouter", label: "OpenRouter", icon: <Key size={13} />, color: "text-amber-400" },
                         { id: "groq", label: "Groq", icon: <Zap size={13} />, color: "text-purple-400" },
+                        { id: "danger", label: "Data", icon: <AlertTriangle size={13} />, color: "text-red-400" },
                     ] as { id: Tab; label: string; icon: React.ReactNode; color: string }[]).map(tab => (
                         <button
                             key={tab.id}
@@ -257,9 +306,11 @@ export default function SettingsPage() {
                         >
                             <span className={activeTab === tab.id ? tab.color : ""}>{tab.icon}</span>
                             {tab.label}
-                            <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === tab.id ? "bg-white/10" : "bg-white/5"}`}>
-                                {tab.id === "openrouter" ? orKeys.filter(k => k.is_active).length : groqKeys.filter(k => k.is_active).length}
-                            </span>
+                            {tab.id !== "danger" && (
+                                <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === tab.id ? "bg-white/10" : "bg-white/5"}`}>
+                                    {tab.id === "openrouter" ? orKeys.filter(k => k.is_active).length : groqKeys.filter(k => k.is_active).length}
+                                </span>
+                            )}
                         </button>
                     ))}
                 </div>
@@ -390,6 +441,81 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_groq_keys_unique ON groq_keys(user_id, api
                                 <li className="flex gap-2"><span className="text-purple-400 font-bold">4.</span> Add all keys here — auto-rotates on rate limit</li>
                             </ol>
                         </div>
+                    </div>
+                )}
+
+                {/* ── Danger Zone Tab ── */}
+                {activeTab === "danger" && (
+                    <div className="space-y-4">
+                        <div className="p-4 rounded-2xl bg-red-500/5 border border-red-500/20 mb-6">
+                            <div className="flex items-center gap-2 mb-1">
+                                <AlertTriangle size={15} className="text-red-400" />
+                                <span className="text-sm font-bold text-red-400">Danger Zone</span>
+                            </div>
+                            <p className="text-xs text-neutral-400">These actions are permanent and cannot be undone. Click once to arm, click again within 5 seconds to confirm.</p>
+                        </div>
+
+                        {[
+                            {
+                                key: "delete-chats",
+                                icon: <Trash2 size={16} className="text-red-400" />,
+                                title: "Delete All Chats",
+                                desc: "Permanently deletes all your chat history and messages.",
+                                loading: deletingChats,
+                                onConfirm: handleDeleteAllChats,
+                            },
+                            {
+                                key: "delete-memory",
+                                icon: <Brain size={16} className="text-orange-400" />,
+                                title: "Clear AI Memory",
+                                desc: "Removes all long-term memory the AI has learned about you.",
+                                loading: deletingMemory,
+                                onConfirm: handleDeleteMemory,
+                            },
+                            {
+                                key: "delete-rag",
+                                icon: <FileText size={16} className="text-yellow-400" />,
+                                title: "Delete All Uploaded Files",
+                                desc: "Removes all uploaded documents and their vector embeddings from RAG.",
+                                loading: deletingRag,
+                                onConfirm: handleDeleteRagFiles,
+                            },
+                            {
+                                key: "delete-agents",
+                                icon: <Zap size={16} className="text-purple-400" />,
+                                title: "Delete All Custom Agents",
+                                desc: "Permanently deletes all your custom PDF agents.",
+                                loading: deletingAgents,
+                                onConfirm: handleDeleteAllAgents,
+                            },
+                        ].map((item) => (
+                            <div key={item.key} className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between gap-4">
+                                <div className="flex items-start gap-3 flex-1 min-w-0">
+                                    <div className="p-2 rounded-lg bg-white/5 mt-0.5 flex-shrink-0">{item.icon}</div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-bold text-white">{item.title}</p>
+                                        <p className="text-xs text-neutral-500 mt-0.5">{item.desc}</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        if (dangerConfirm === item.key) {
+                                            item.onConfirm();
+                                        } else {
+                                            setDangerConfirm(item.key);
+                                            setTimeout(() => setDangerConfirm(null), 5000);
+                                        }
+                                    }}
+                                    disabled={item.loading}
+                                    className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${dangerConfirm === item.key
+                                            ? "bg-red-500 hover:bg-red-400 text-white animate-pulse"
+                                            : "bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400"
+                                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
+                                    {item.loading ? "Deleting..." : dangerConfirm === item.key ? "⚠️ Confirm" : "Delete"}
+                                </button>
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>
