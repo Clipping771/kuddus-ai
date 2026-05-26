@@ -983,6 +983,13 @@ export default function Dashboard() {
   const [smartSuggestions, setSmartSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
+  // Chat search in sidebar
+  const [chatSearch, setChatSearch] = useState("");
+
+  // Message edit & regenerate
+  const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
+  const [editingMessageText, setEditingMessageText] = useState("");
+
   // Theme Mode State: "black" (dark) or "light" (clean light)
   const [themeMode, setThemeMode] = useState<"black" | "light">("black");
 
@@ -2126,6 +2133,51 @@ export default function Dashboard() {
     }
   };
 
+  // ✏️ Edit a user message — truncates messages after that index and re-sends
+  const handleEditMessage = async (index: number, newText: string) => {
+    if (!newText.trim() || isLoading) return;
+    setEditingMessageIndex(null);
+    setEditingMessageText("");
+
+    // Keep messages up to (not including) the edited message
+    const messagesBeforeEdit = messages.slice(0, index);
+    setMessages(messagesBeforeEdit);
+
+    // Re-send with the new text — this will append user + assistant messages
+    setInputMessage(newText);
+    // Small delay to let state settle, then trigger send
+    setTimeout(() => {
+      const form = document.getElementById("chat-form") as HTMLFormElement;
+      if (form) form.requestSubmit();
+    }, 50);
+  };
+
+  // 🔄 Regenerate the last assistant response
+  const handleRegenerate = async () => {
+    if (isLoading || messages.length < 2) return;
+
+    // Find the last user message
+    let lastUserIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") { lastUserIdx = i; break; }
+    }
+    if (lastUserIdx === -1) return;
+
+    const lastUserMsg = messages[lastUserIdx];
+    // Remove the last assistant response
+    const messagesWithoutLastAssistant = messages.slice(0, lastUserIdx + 1);
+    // Remove the last assistant message if it exists after the user message
+    const trimmed = messagesWithoutLastAssistant.filter((_, i) => i <= lastUserIdx);
+    setMessages(trimmed);
+
+    // Re-send the last user message
+    setInputMessage(lastUserMsg.content);
+    setTimeout(() => {
+      const form = document.getElementById("chat-form") as HTMLFormElement;
+      if (form) form.requestSubmit();
+    }, 50);
+  };
+
   // 3. Create a New Chat Thread
   const handleNewChat = () => {
     setActiveChatId(null);
@@ -2503,49 +2555,104 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {/* Chats History List */}
-            <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-              {isSyncing ? (
-                <div className={`p-4 text-center text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>Syncing consultations...</div>
-              ) : chats.length === 0 ? (
-                <div className={`p-4 text-center text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>No previous consultations</div>
-              ) : (
-                chats.map((chat) => (
-                  <div
-                    key={chat.id}
-                    onClick={() => {
-                      setActiveChatId(chat.id);
-                      setSidebarOpen(false);
-                    }}
-                    className={`group w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition duration-300 text-xs ${activeChatId === chat.id
-                      ? themeMode === "black"
-                        ? "bg-white/[0.04] border border-white/[0.06] text-white font-medium shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
-                        : "bg-amber-500/10 border border-amber-500/20 text-amber-955 font-bold shadow-sm"
-                      : themeMode === "black"
-                        ? "border border-transparent text-neutral-400 hover:bg-white/[0.02] hover:text-neutral-200"
-                        : "border border-transparent text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
-                      }`}
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      {activeChatId === chat.id ? (
-                        <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse flex-shrink-0" />
-                      ) : (
-                        <MessageSquare size={13} className="text-neutral-550 flex-shrink-0" />
-                      )}
-                      <span className="truncate pr-2 font-medium">{parseChatTitle(chat.title).title}</span>
-                    </div>
-                    <button
-                      onClick={(e) => handleDeleteChat(e, chat.id)}
-                      className={`p-1 rounded opacity-0 group-hover:opacity-100 transition duration-300 ${themeMode === "black"
-                        ? "text-neutral-600 hover:text-red-400 hover:bg-red-950/20"
-                        : "text-neutral-400 hover:text-red-500 hover:bg-red-50"
-                        }`}
-                    >
-                      <Trash2 size={13} />
+            {/* Chats History List — with search + date grouping */}
+            <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
+              {/* Search box */}
+              <div className="px-3 pb-2 pt-1">
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs ${themeMode === "black" ? "bg-white/[0.02] border-white/[0.06] text-neutral-400" : "bg-neutral-50 border-neutral-200 text-neutral-500"}`}>
+                  <Search size={11} className="flex-shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search chats..."
+                    value={chatSearch}
+                    onChange={(e) => setChatSearch(e.target.value)}
+                    className="bg-transparent outline-none w-full placeholder:text-neutral-600 text-[11px]"
+                  />
+                  {chatSearch && (
+                    <button onClick={() => setChatSearch("")} className="flex-shrink-0 hover:text-white transition-colors">
+                      <X size={10} />
                     </button>
-                  </div>
-                ))
-              )}
+                  )}
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-3 py-1 space-y-0.5">
+                {isSyncing ? (
+                  <div className={`p-4 text-center text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>Syncing consultations...</div>
+                ) : chats.length === 0 ? (
+                  <div className={`p-4 text-center text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>No previous consultations</div>
+                ) : (() => {
+                  // Filter by search
+                  const filtered = chatSearch.trim()
+                    ? chats.filter(c => parseChatTitle(c.title).title.toLowerCase().includes(chatSearch.toLowerCase()))
+                    : chats;
+
+                  if (filtered.length === 0) {
+                    return <div className={`p-4 text-center text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>No chats found</div>;
+                  }
+
+                  // Group by date
+                  const now = new Date();
+                  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                  const yesterdayStart = new Date(todayStart.getTime() - 86400000);
+                  const weekStart = new Date(todayStart.getTime() - 6 * 86400000);
+                  const monthStart = new Date(todayStart.getTime() - 29 * 86400000);
+
+                  const groups: { label: string; chats: typeof chats }[] = [
+                    { label: "Today", chats: [] },
+                    { label: "Yesterday", chats: [] },
+                    { label: "This Week", chats: [] },
+                    { label: "This Month", chats: [] },
+                    { label: "Older", chats: [] },
+                  ];
+
+                  for (const chat of filtered) {
+                    const d = new Date(chat.created_at);
+                    if (d >= todayStart) groups[0].chats.push(chat);
+                    else if (d >= yesterdayStart) groups[1].chats.push(chat);
+                    else if (d >= weekStart) groups[2].chats.push(chat);
+                    else if (d >= monthStart) groups[3].chats.push(chat);
+                    else groups[4].chats.push(chat);
+                  }
+
+                  return groups.filter(g => g.chats.length > 0).map(group => (
+                    <div key={group.label} className="mb-2">
+                      <div className={`px-2 py-1 text-[9px] font-black uppercase tracking-widest mb-1 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
+                        {group.label}
+                      </div>
+                      {group.chats.map((chat) => (
+                        <div
+                          key={chat.id}
+                          onClick={() => { setActiveChatId(chat.id); setSidebarOpen(false); }}
+                          className={`group w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition duration-200 text-xs mb-0.5 ${activeChatId === chat.id
+                            ? themeMode === "black"
+                              ? "bg-white/[0.04] border border-white/[0.06] text-white font-medium shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
+                              : "bg-amber-500/10 border border-amber-500/20 text-amber-955 font-bold shadow-sm"
+                            : themeMode === "black"
+                              ? "border border-transparent text-neutral-400 hover:bg-white/[0.02] hover:text-neutral-200"
+                              : "border border-transparent text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
+                            }`}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            {activeChatId === chat.id ? (
+                              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse flex-shrink-0" />
+                            ) : (
+                              <MessageSquare size={12} className="text-neutral-600 flex-shrink-0" />
+                            )}
+                            <span className="truncate pr-2 font-medium">{parseChatTitle(chat.title).title}</span>
+                          </div>
+                          <button
+                            onClick={(e) => handleDeleteChat(e, chat.id)}
+                            className={`p-1 rounded opacity-0 group-hover:opacity-100 transition duration-200 flex-shrink-0 ${themeMode === "black" ? "text-neutral-600 hover:text-red-400 hover:bg-red-950/20" : "text-neutral-400 hover:text-red-500 hover:bg-red-50"}`}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ));
+                })()}
+              </div>
             </div>
 
             {/* Sidebar User Footer */}
@@ -3499,7 +3606,7 @@ export default function Dashboard() {
                             )}
                           </div>
                           {msg.content && (
-                            <div className="flex justify-start items-center gap-1">
+                            <div className="flex justify-start items-center gap-1 flex-wrap">
                               <button
                                 type="button"
                                 onClick={() => copyToClipboard(msg.content, `msg-${index}`)}
@@ -3521,6 +3628,22 @@ export default function Dashboard() {
                                   </>
                                 )}
                               </button>
+
+                              {/* Regenerate — only on last assistant message */}
+                              {index === messages.length - 1 && !isLoading && (
+                                <button
+                                  type="button"
+                                  onClick={handleRegenerate}
+                                  className={`opacity-75 hover:opacity-100 transition-opacity p-1 mt-1 rounded-md border flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 shadow-inner ${themeMode === "black"
+                                    ? "bg-[#0F0F0F] border-white/5 text-neutral-400 hover:text-violet-400 hover:border-violet-500/20"
+                                    : "bg-white border-neutral-200 text-neutral-500 hover:text-violet-600 shadow-sm"
+                                    }`}
+                                  title="Regenerate response"
+                                >
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>
+                                  <span>REGENERATE</span>
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -3648,7 +3771,22 @@ export default function Dashboard() {
                           )}
                         </div>
                         {cleanContent && (
-                          <div className="flex justify-end w-full">
+                          <div className="flex justify-end w-full gap-1">
+                            {/* Edit button — only on user messages, not while loading */}
+                            {!isLoading && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingMessageIndex(index);
+                                  setEditingMessageText(cleanContent);
+                                }}
+                                className="opacity-70 hover:opacity-100 transition-opacity p-1 mt-1 rounded hover:bg-white/5 text-neutral-500 hover:text-amber-400 flex items-center gap-1 text-[10px] font-bold"
+                                title="Edit message"
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                <span>Edit</span>
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => copyToClipboard(cleanContent, `msg-${index}`)}
@@ -3667,6 +3805,35 @@ export default function Dashboard() {
                                 </>
                               )}
                             </button>
+                          </div>
+                        )}
+
+                        {/* Inline edit box */}
+                        {editingMessageIndex === index && (
+                          <div className="mt-2 w-full">
+                            <textarea
+                              value={editingMessageText}
+                              onChange={(e) => setEditingMessageText(e.target.value)}
+                              className={`w-full text-xs rounded-xl border p-3 resize-none outline-none transition-colors ${themeMode === "black" ? "bg-neutral-900 border-white/10 text-neutral-200 focus:border-emerald-500/40" : "bg-white border-neutral-200 text-neutral-800 focus:border-emerald-400"}`}
+                              rows={3}
+                              autoFocus
+                            />
+                            <div className="flex gap-2 mt-1.5 justify-end">
+                              <button
+                                type="button"
+                                onClick={() => { setEditingMessageIndex(null); setEditingMessageText(""); }}
+                                className={`text-[10px] px-3 py-1 rounded-lg border font-bold transition-colors ${themeMode === "black" ? "border-white/10 text-neutral-400 hover:text-white" : "border-neutral-200 text-neutral-500 hover:text-neutral-800"}`}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleEditMessage(index, editingMessageText)}
+                                className="text-[10px] px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-black transition-colors"
+                              >
+                                Send Edit
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -3740,6 +3907,7 @@ export default function Dashboard() {
               )}
 
               <form
+                id="chat-form"
                 onSubmit={handleSubmit}
                 className={`w-full relative rounded-2xl border transition-all duration-300 overflow-hidden backdrop-blur-md ${themeMode === "black"
                   ? "border-white/[0.04] bg-[#0A0A0C]/80 shadow-[0_4px_30px_rgba(0,0,0,0.7)] focus-within:border-emerald-500/30 focus-within:shadow-[0_0_40px_rgba(16,185,129,0.08)]"

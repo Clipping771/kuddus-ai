@@ -966,15 +966,47 @@ Apply the following highly advanced analysis steps:
               "microsoft/phi-4-reasoning-plus:free",
             ];
 
+            // Expert name display map
+            const expertDisplayNames: Record<string, string> = {
+              "daily-innovation-idea-agent": "💡 Innovation Expert",
+              "personal-cfo-finance-agent": "💰 CFO Expert",
+              "research-agent": "🔍 Research Expert",
+              "competitor-spy-agent": "🕵️ Competitor Intel",
+              "project-manager-agent": "📋 Project Manager",
+              "code-helper-developer-agent": "⚙️ CTO Expert",
+              "sales-lead-generator": "🎯 Sales Expert",
+              "content-creator-agent": "✍️ Content Expert",
+              "social-media-manager": "📱 Social Media Expert",
+              "legal-compliance-agent": "⚖️ Legal Expert",
+              "hr-recruiting-agent": "👥 HR Expert",
+              "investor-pitch-agent": "💼 Investor Expert",
+              "performance-marketer-agent": "📈 Marketing Expert",
+              "it-automation-consultant": "🤖 Automation Expert",
+              "devmind-agent": "🧠 DevMind Expert",
+              "pain-point-scraper-agent": "🌶️ Pain-Point Expert",
+            };
+
+            // Live-streaming expert panel — each expert streams its key insight as it completes
+            const completedExperts: number[] = [];
+            let expertCompletedCount = 0;
+
             const safeFetch = async (model: string, msgs: any[], roleName: string) => {
               try {
-                // 25s timeout per expert to avoid hanging
                 const expertPromise = fetchSyncAI(model, msgs, roleName);
                 const expertTimeout = new Promise<string>((_, reject) => setTimeout(() => reject(new Error("Expert timeout")), 25000));
                 const text = await Promise.race([expertPromise, expertTimeout]);
+
+                // Stream a live preview of this expert's key insight immediately
+                expertCompletedCount++;
+                const displayName = expertDisplayNames[roleName] || `🔬 ${roleName}`;
+                const previewLines = text.split("\n").filter((l: string) => l.trim().length > 20).slice(0, 2).join(" ").substring(0, 120);
+                const liveUpdate = `> ${displayName} *(${expertCompletedCount}/${totalExpertsCount})* → ${previewLines}...\n`;
+                controller.enqueue(encoder.encode(liveUpdate));
+
                 return { roleName, text };
               } catch (e: any) {
-                console.error(`Expert ${model} (${roleName}) failed:`, e.message || e);
+                expertCompletedCount++;
+                controller.enqueue(encoder.encode(`> ⚠️ Expert ${expertCompletedCount}/${totalExpertsCount} timed out — using fallback.\n`));
                 return {
                   roleName,
                   text: `(Expert analysis for ${roleName}: Prioritize strong customer acquisition channels, lean cost structure, high conversion rate optimization, and a solid operational plan to scale efficiently.)`
@@ -998,16 +1030,11 @@ Apply the following highly advanced analysis steps:
               ];
 
               expertPromises.push(safeFetch(assignedModel, msgs, agentId));
-
-              // Simulate UI logging dynamically
-              if (modelIndex === slicedAgents.length || modelIndex % 3 === 0) {
-                controller.enqueue(encoder.encode(`  ┣ ⚙️ Firing expert panel requests... (${modelIndex}/${slicedAgents.length})\n`));
-              }
             }
 
             const expertResults = await Promise.all(expertPromises);
 
-            controller.enqueue(encoder.encode(`> ✅ **Ultimate Expert Panel** → All ${totalExpertsCount} Deep Reviews Completed.\n\n`));
+            controller.enqueue(encoder.encode(`\n> ✅ **Ultimate Expert Panel** → All ${totalExpertsCount} Deep Reviews Completed.\n\n`));
 
             // Step 3: Synthesis Stream by the CEO (Main Brain)
             const synthModelName = synthModel.includes("trinity") ? "Trinity Large (Thinking)" : synthModel.includes("deepseek-r1") ? "DeepSeek R1 (Thinking)" : synthModel.includes("gemma") ? "Google Gemma 4 31B" : synthModel.includes("deepseek-v4") ? "DeepSeek V4 Flash" : synthModel.includes("owl-alpha") ? "OpenRouter Owl Alpha" : synthModel.includes("hermes") ? "Hermes 3 405B" : synthModel.includes("cobuddy") ? "Baidu Cobuddy" : synthModel.includes("lfm") ? "Liquid LFM Thinking" : synthModel.split("/")[1];
