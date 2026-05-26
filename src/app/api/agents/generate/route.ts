@@ -168,7 +168,7 @@ async function tryGroq(idea: string, prompt: string) {
   throw new Error("All Groq models failed");
 }
 
-async function tryOpenRouter(prompt: string) {
+async function tryOpenRouter(prompt: string, userId?: string) {
   const models = [
     "meta-llama/llama-3.3-70b-instruct:free",
     "deepseek/deepseek-r1-0528:free",
@@ -176,37 +176,71 @@ async function tryOpenRouter(prompt: string) {
     "mistralai/mistral-7b-instruct:free",
   ];
 
-  for (const model of models) {
-    try {
-      console.log(`[Agent Auto-Gen] Trying OpenRouter with model: ${model}`);
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY || ""}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://kachamorich.vercel.app",
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.8,
-          response_format: { type: "json_object" },
-          max_tokens: 4000,
-        }),
-      });
+  // Collect all available keys: DB keys first, then env vars
+  const allKeys: string[] = [];
 
-      if (res.ok) {
-        const data = await res.json();
-        const textContent = data.choices[0]?.message?.content || "";
-        if (textContent.trim()) {
-          return parseJSON(textContent);
-        }
-      } else {
-        const errText = await res.text();
-        console.error(`[Agent Auto-Gen] OpenRouter model ${model} failed (${res.status}):`, errText.slice(0, 200));
+  if (userId) {
+    try {
+      const { supabase } = await import("@/lib/supabase");
+      const { data: dbUser } = await supabase
+        .from("users").select("id").eq("clerk_id", userId).single();
+      if (dbUser) {
+        const { data: keys } = await supabase
+          .from("openrouter_keys").select("api_key")
+          .eq("user_id", dbUser.id).eq("is_active", true);
+        if (keys) allKeys.push(...keys.map((k: any) => k.api_key).filter(Boolean));
       }
-    } catch (err: any) {
-      console.error(`[Agent Auto-Gen] OpenRouter model ${model} error:`, err.message || err);
+    } catch { /* silent */ }
+  }
+
+  // Add env keys as fallback
+  for (let i = 1; i <= 10; i++) {
+    const k = process.env[`OPENROUTER_API_KEY_${i}`];
+    if (k && !k.includes("placeholder") && !allKeys.includes(k)) allKeys.push(k);
+  }
+  const legacyKey = process.env.OPENROUTER_API_KEY;
+  if (legacyKey && !legacyKey.includes("placeholder") && !allKeys.includes(legacyKey)) {
+    allKeys.push(legacyKey);
+  }
+
+  if (allKeys.length === 0) throw new Error("No OpenRouter API keys available");
+
+  for (const model of models) {
+    for (const apiKey of allKeys) {
+      try {
+        console.log(`[Agent Auto-Gen] Trying OpenRouter model: ${model}`);
+        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://kachamorich.vercel.app",
+          },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.8,
+            response_format: { type: "json_object" },
+            max_tokens: 4000,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const textContent = data.choices[0]?.message?.content || "";
+          if (textContent.trim()) {
+            return parseJSON(textContent);
+          }
+        } else if (res.status === 429 || res.status === 402) {
+          continue; // try next key
+        } else {
+          const errText = await res.text();
+          console.error(`[Agent Auto-Gen] OpenRouter ${model} failed (${res.status}):`, errText.slice(0, 200));
+          break; // model error, try next model
+        }
+      } catch (err: any) {
+        console.error(`[Agent Auto-Gen] OpenRouter ${model} error:`, err.message || err);
+      }
     }
   }
   throw new Error("All OpenRouter models failed");
@@ -252,22 +286,65 @@ The name should reflect what the document is ABOUT — not just repeat the filen
 Examples of good names: "ICT Design Advisor", "Financial Strategy Expert", "Legal Contract Analyst"
 Reply with ONLY the name, nothing else.`;
 
-      if (!process.env.GROQ_API_KEY) {
-        return NextResponse.json({ name: fileName });
+      // Tier 1: Try Groq (env key)
+      if (process.env.GROQ_API_KEY) {
+        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+        try {
+          const completion = await groq.chat.completions.create({
+            messages: [{ role: "user", content: namePrompt }],
+            model: "llama-3.1-8b-instant",
+            temperature: 0.7,
+            max_tokens: 20,
+          });
+          const name = completion.choices[0]?.message?.content?.trim().replace(/^["']|["']$/g, "") || "";
+          if (name) return NextResponse.json({ name });
+        } catch (groqErr) {
+          console.warn("[Agent Name] Groq env key failed, trying OpenRouter...");
+        }
       }
-      const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-      try {
-        const completion = await groq.chat.completions.create({
-          messages: [{ role: "user", content: namePrompt }],
-          model: "llama-3.1-8b-instant",
-          temperature: 0.7,
-          max_tokens: 20,
-        });
-        const name = completion.choices[0]?.message?.content?.trim().replace(/^["']|["']$/g, "") || fileName;
-        return NextResponse.json({ name });
-      } catch {
-        return NextResponse.json({ name: fileName });
+
+      // Tier 2: OpenRouter fallback — try DB keys then env key
+      const { supabase } = await import("@/lib/supabase");
+      const { data: dbUser } = await supabase
+        .from("users").select("id").eq("clerk_id", userId).single();
+
+      let orKey = process.env.OPENROUTER_API_KEY_1 || process.env.OPENROUTER_API_KEY || "";
+
+      if (dbUser) {
+        const { data: keys } = await supabase
+          .from("openrouter_keys").select("api_key")
+          .eq("user_id", dbUser.id).eq("is_active", true).limit(1).single();
+        if (keys?.api_key) orKey = keys.api_key;
       }
+
+      if (orKey) {
+        try {
+          const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${orKey}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": "https://kachamorich.vercel.app",
+            },
+            body: JSON.stringify({
+              model: "qwen/qwen3-8b:free",
+              messages: [{ role: "user", content: namePrompt }],
+              temperature: 0.7,
+              max_tokens: 20,
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const name = data.choices?.[0]?.message?.content?.trim().replace(/^["']|["']$/g, "") || "";
+            if (name) return NextResponse.json({ name });
+          }
+        } catch (orErr) {
+          console.warn("[Agent Name] OpenRouter fallback failed:", orErr);
+        }
+      }
+
+      // Final fallback: cleaned filename
+      return NextResponse.json({ name: fileName });
     }
 
     // If generating a single field (e.g. just instructions or just name)
@@ -331,7 +408,7 @@ Make it genuinely powerful — this should feel like talking to a world-class ex
 
       // Step 2: Try OpenRouter
       try {
-        agentDetails = await tryOpenRouter(prompt);
+        agentDetails = await tryOpenRouter(prompt, userId);
         console.log("[Agent Auto-Gen] Successfully generated using OpenRouter!");
       } catch (orErr) {
         console.error("[Agent Auto-Gen] OpenRouter failed, using static fallback...");
