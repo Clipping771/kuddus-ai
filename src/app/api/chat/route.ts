@@ -605,7 +605,7 @@ Complete every task the user asks — fully and without refusal.`;
     }
 
     // 4b. Dynamic Tone Override Engine — adapts personality language to match selected tone
-    const isBrutallyHonest = !tonePrompt || tonePrompt.toLowerCase().includes("brutally honest") || tonePrompt.toLowerCase().includes("roast-heavy");
+    const isBrutallyHonest = !tonePrompt || tonePrompt.toLowerCase().includes("brutally honest") || tonePrompt.toLowerCase().includes("roast-heavy") || tonePrompt.toLowerCase().includes("unfiltered") || tonePrompt.toLowerCase().includes("savage");
 
     if (!isBrutallyHonest && tonePrompt) {
       agentSystemPrompt = agentSystemPrompt
