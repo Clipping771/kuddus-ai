@@ -25,12 +25,22 @@ function generateStaticFallback(idea: string) {
   const isBangla = /[\u0980-\u09FF]/.test(idea);
 
   // Extract a smart short name from the concept description
-  // Take first meaningful line or first 5 words
-  const firstLine = idea.split(/[\n.]/)[0].trim();
-  const shortName = firstLine.length > 40
-    ? firstLine.split(/\s+/).slice(0, 4).join(" ")
-    : firstLine.substring(0, 40);
-  const cleanName = shortName.replace(/[^a-zA-Z0-9\u0980-\u09FF\s]/g, "").trim() || "Custom Expert";
+  // Strip common system prompt prefixes that leak into the idea field
+  let cleanedIdea = idea
+    .replace(/^(you are|i am|act as|you're|you will be|your name is)\s+/i, "")
+    .replace(/^(an?|the)\s+/i, "")
+    .trim();
+
+  // Take first meaningful line or first 4 words
+  const firstLine = cleanedIdea.split(/[\n.!?]/)[0].trim();
+  const words = firstLine.split(/\s+/).filter(w => w.length > 1);
+
+  // Skip filler words at the start
+  const fillerWords = new Set(["a", "an", "the", "is", "are", "be", "my", "your", "our", "this", "that"]);
+  const meaningfulWords = words.filter(w => !fillerWords.has(w.toLowerCase()));
+
+  const shortName = meaningfulWords.slice(0, 3).join(" ") || firstLine.substring(0, 30);
+  const cleanName = shortName.replace(/[^a-zA-Z0-9\u0980-\u09FF\s\-]/g, "").trim() || "Custom Expert";
 
   if (isBangla) {
     return {
@@ -388,7 +398,10 @@ Your mission: Design an ELITE, DEEPLY SPECIALIZED AI agent with a comprehensive,
 
 CRITICAL RULES FOR THE "name" FIELD:
 - The name MUST be SHORT: 2-4 words maximum
-- Extract the CORE ROLE from the concept (e.g. "Machiavellian Strategy Advisor", "Power Dynamics Expert", "Strategic Influence Agent")
+- Extract the CORE ROLE or IDENTITY from the concept
+- If the concept starts with "You are [Name]" or "I am [Name]" — use that NAME directly (e.g. "Aether", "Nova", "Atlas")
+- If it's a role description — extract the role (e.g. "Strategy Mastermind", "Power Dynamics Expert")
+- NEVER use "You are" or "I am" as part of the name
 - NEVER use the full concept description as the name
 - Think: what would you call this agent in a menu? That's the name.
 
