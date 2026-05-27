@@ -2416,27 +2416,41 @@ export default function Dashboard() {
         }
 
         accumulatedResponse += chunk;
-        setMessages((prev) => {
-          const updated = [...prev];
-          if (updated.length > 0) {
-            updated[updated.length - 1] = {
-              role: "assistant",
-              content: accumulatedResponse,
-            };
-          }
-          return updated;
-        });
+        // Throttle UI updates — batch every 3 chunks to reduce React re-renders
+        // This makes streaming feel smoother and faster on slow devices
+        if (accumulatedResponse.length % 60 === 0 || chunk.includes("\n")) {
+          setMessages((prev) => {
+            const updated = [...prev];
+            if (updated.length > 0) {
+              updated[updated.length - 1] = {
+                role: "assistant",
+                content: accumulatedResponse,
+              };
+            }
+            return updated;
+          });
+        }
       }
 
+      // Final flush — ensure last partial chunk is always shown
+      setMessages((prev) => {
+        const updated = [...prev];
+        if (updated.length > 0 && accumulatedResponse) {
+          updated[updated.length - 1] = { role: "assistant", content: accumulatedResponse };
+        }
+        return updated;
+      });
 
-      // Refresh chats sidebar list to capture auto-generated title
-      const chatsRes = await fetch("/api/chats");
-      const chatsData = await chatsRes.json();
-      if (chatsData.chats) {
-        setChats(chatsData.chats);
-      }
 
-      // 💡 Smart Suggestions — fetch context-aware follow-up questions in background
+      // ⚡ Non-blocking background tasks — don't delay UI
+      // Refresh sidebar + fetch suggestions in parallel, fire-and-forget
+      Promise.all([
+        fetch("/api/chats").then(r => r.json()).then(data => {
+          if (data.chats) setChats(data.chats);
+        }).catch(() => { }),
+      ]);
+
+      // 💡 Smart Suggestions — background, non-blocking
       setSmartSuggestions([]);
       setSuggestionsLoading(true);
       fetch("/api/suggestions", {

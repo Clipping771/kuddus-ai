@@ -588,8 +588,32 @@ export async function POST(req: Request) {
 
     const isCustomAgent = agentId && !AGENT_INSTRUCTIONS[agentId];
 
-    // 🧠 Fetch long-term user memory and inject into system prompt
-    const memoryContext = await getUserMemoryContext(dbUser.id);
+    // hasImage must be declared early — needed for parallel fetch decisions
+    const hasImage = message.includes("[IMAGE_BASE64:") || (history && history.some((h: any) => h.content.includes("[IMAGE_BASE64:")));
+
+    // ⚡ PARALLEL FETCH — run all context enrichment simultaneously
+    // Instead of sequential awaits (~1.5s), all run at once (~300ms)
+    const needsSearch = needsWebSearch(message, agentId);
+    const searchQuery = needsSearch ? extractSearchQuery(message, agentId) : "";
+
+    const [memoryContext, ragContext, webSearchContext] = await Promise.all([
+      // 1. Long-term memory
+      getUserMemoryContext(dbUser.id).catch(() => null),
+
+      // 2. RAG document chunks (skip for images)
+      hasImage ? Promise.resolve(null) : retrieveRelevantChunks(dbUser.id, message, agentId).catch(() => null),
+
+      // 3. Web search (only if needed)
+      needsSearch
+        ? performWebSearch(searchQuery, agentId).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    if (needsSearch && webSearchContext) {
+      console.log("[WebSearch] ✅ Tavily results ready (parallel).");
+    }
+    if (memoryContext) console.log("[Memory] ✅ Memory context ready (parallel).");
+    if (ragContext) console.log("[RAG] ✅ RAG chunks ready (parallel).");
 
     const customizedCorePersonality = Kacha_Morich_CORE_PERSONALITY.replace(/Nova AI/g, aiName).replace(/Kacha Morich AI/g, aiName);
     const customizedGeneralFormat = GENERAL_BUSINESS_ADVISOR_FORMAT.replace(/Nova AI/g, aiName).replace(/Kacha Morich AI/g, aiName);
@@ -648,33 +672,19 @@ ${agentSystemPrompt}`;
       agentSystemPrompt = `${toneBlock}${agentSystemPrompt}`;
     }
 
-    // 5a. 🔍 Tavily Web Search — inject real-time data if query is time-sensitive
-    if (needsWebSearch(message, agentId)) {
-      const searchQuery = extractSearchQuery(message, agentId);
-      console.log(`[WebSearch] Searching Tavily for: "${searchQuery}"`);
-      const searchContext = await performWebSearch(searchQuery, agentId);
-      if (searchContext) {
-        agentSystemPrompt += `\n\n${searchContext}`;
-        console.log("[WebSearch] ✅ Tavily results injected into system prompt.");
-      }
+    // 5a. Inject all pre-fetched context into system prompt
+    if (webSearchContext) {
+      agentSystemPrompt += `\n\n${webSearchContext}`;
     }
 
-    // 5b. 🧠 Long-term Memory injection — personalize with what we know about this user
+    // 5b. 🧠 Long-term Memory injection
     if (memoryContext) {
       agentSystemPrompt += `\n\n${memoryContext}`;
-      console.log("[Memory] ✅ User memory context injected into system prompt.");
     }
 
-    // hasImage must be declared before RAG and vision checks
-    const hasImage = message.includes("[IMAGE_BASE64:") || (history && history.some((h: any) => h.content.includes("[IMAGE_BASE64:")));
-
-    // 5c. 📄 RAG — retrieve relevant document chunks if user has uploaded documents
-    if (!hasImage) {
-      const ragContext = await retrieveRelevantChunks(dbUser.id, message, agentId);
-      if (ragContext) {
-        agentSystemPrompt += `\n\n${ragContext}`;
-        console.log("[RAG] ✅ Relevant document chunks injected into system prompt.");
-      }
+    // 5c. 📄 RAG chunks injection
+    if (ragContext) {
+      agentSystemPrompt += `\n\n${ragContext}`;
     }
 
     // 5d. 🎯 Proactive Follow-up — for complex strategy questions, AI asks clarifying questions first
@@ -754,23 +764,25 @@ Apply the following highly advanced analysis steps:
     };
 
     if (history && history.length > 0) {
-      // 🧠 Conversation Summarization — compress old messages when history is long
-      const { summary, trimmedHistory } = await getOrCreateSummary(
-        activeChatId,
-        history,
-        dbUser.id
-      );
+      // 🧠 Conversation Summarization — only for long chats (skip for short ones = faster)
+      let summary: string | null = null;
+      let historyToUse = history.slice(-15);
 
-      // Inject summary as a system context block if it exists
+      if (history.length > 16) {
+        const summaryResult = await getOrCreateSummary(activeChatId, history, dbUser.id);
+        summary = summaryResult.summary;
+        if (summaryResult.summary) {
+          historyToUse = summaryResult.trimmedHistory;
+        }
+      }
+
+      // Inject summary as context block if it exists
       if (summary) {
         const summaryBlock = formatSummaryForContext(summary);
-        // Add summary as a user→assistant exchange so it fits the alternating role format
         formattedMessages.push({ role: "user", content: "[CONTEXT SUMMARY REQUEST]" });
         formattedMessages.push({ role: "assistant", content: summaryBlock });
         console.log("[Summarizer] ✅ Summary injected into context");
       }
-
-      const historyToUse = summary ? trimmedHistory : history.slice(-15);
 
       historyToUse.forEach((msg, idx) => {
         let msgContent = parseMessageContent(msg.role, msg.content);
