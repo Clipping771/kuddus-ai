@@ -29,24 +29,49 @@ export interface MemoryEntry {
 
 /**
  * Fetch all memory entries for a user and format as system prompt context block.
- * Returns null if no memories exist (avoids adding empty block to prompt).
+ * Uses importance scoring — high-score memories first, decayed ones filtered.
+ * Returns null if no memories exist.
  */
 export async function getUserMemoryContext(userId: string): Promise<string | null> {
     try {
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+        // Fetch with scoring — importance_score column may not exist yet (graceful fallback)
         const { data: memories, error } = await supabase
             .from("user_memory")
-            .select("key, value, category")
+            .select("key, value, category, importance_score, access_count, last_accessed, updated_at")
             .eq("user_id", userId)
             .order("updated_at", { ascending: false })
-            .limit(40);
+            .limit(50);
 
         if (error || !memories || memories.length === 0) {
             return null;
         }
 
+        // Apply importance scoring + time decay
+        const scoredMemories = memories.map((mem: any) => {
+            const baseScore = mem.importance_score ?? 0.5;
+            const accessBoost = Math.log1p(mem.access_count ?? 0) * 0.1;
+            const lastAccessed = mem.last_accessed || mem.updated_at;
+            const daysSince = lastAccessed
+                ? (Date.now() - new Date(lastAccessed).getTime()) / (1000 * 60 * 60 * 24)
+                : 30;
+            const decayFactor = Math.max(0.1, 1 - daysSince / 90);
+            const effectiveScore = (baseScore + accessBoost) * decayFactor;
+            return { ...mem, effectiveScore };
+        });
+
+        // Sort by effective score, filter out very low-score memories
+        const topMemories = scoredMemories
+            .filter((m: any) => m.effectiveScore > 0.05)
+            .sort((a: any, b: any) => b.effectiveScore - a.effectiveScore)
+            .slice(0, 30);
+
+        if (topMemories.length === 0) return null;
+
         // Group by category for cleaner prompt injection
         const grouped: Record<string, string[]> = {};
-        for (const mem of memories) {
+        for (const mem of topMemories) {
             const cat = mem.category || "general";
             if (!grouped[cat]) grouped[cat] = [];
             grouped[cat].push(`• ${mem.key}: ${mem.value}`);

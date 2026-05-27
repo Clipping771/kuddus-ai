@@ -12,6 +12,8 @@ import { retrieveRelevantChunks } from "@/lib/rag";
 import { getOrCreateSummary, formatSummaryForContext } from "@/lib/summarizer";
 import { detectLanguage } from "@/lib/languageDetect";
 import { trackAgentUsage } from "@/lib/userBehavior";
+import { orchestrateAgents, buildCollaborativePrompt } from "@/lib/orchestrator";
+import { checkResponseConfidence } from "@/lib/confidenceCheck";
 
 const Kacha_Morich_CORE_PERSONALITY = `You are **Kacha Morich AI** 🌶️ — The Sharpest Enterprise-Grade Multi-Model Business Decision Engine in the world.
 
@@ -436,6 +438,9 @@ export async function POST(req: Request) {
       }
     }
 
+    // 🧠 Intelligent Orchestration — analyze intent and find best agent(s)
+    // Runs in background while user data is being fetched
+
     // Lazy initialize Groq inside POST — keys fetched dynamically from DB
     // (groqStreamWithFallback handles key rotation internally)
 
@@ -597,29 +602,30 @@ export async function POST(req: Request) {
     // hasImage must be declared early — needed for parallel fetch decisions
     const hasImage = message.includes("[IMAGE_BASE64:") || (history && history.some((h: any) => h.content.includes("[IMAGE_BASE64:")));
 
-    // ⚡ PARALLEL FETCH — run all context enrichment simultaneously
-    // Instead of sequential awaits (~1.5s), all run at once (~300ms)
+    // ⚡ PARALLEL FETCH — orchestration + context enrichment simultaneously
     const needsSearch = needsWebSearch(message, agentId);
     const searchQuery = needsSearch ? extractSearchQuery(message, agentId) : "";
 
-    const [memoryContext, ragContext, webSearchContext] = await Promise.all([
-      // 1. Long-term memory
+    const [memoryContext, ragContext, webSearchContext, orchestrationResult] = await Promise.all([
       getUserMemoryContext(dbUser.id).catch(() => null),
-
-      // 2. RAG document chunks (skip for images)
       hasImage ? Promise.resolve(null) : retrieveRelevantChunks(dbUser.id, message, agentId).catch(() => null),
+      needsSearch ? performWebSearch(searchQuery, agentId).catch(() => null) : Promise.resolve(null),
+      // 🧠 Orchestration — runs in parallel with context fetching
+      enableAutoRouting ? orchestrateAgents(message, agentId, dbUser.id).catch(() => null) : Promise.resolve(null) as Promise<null>,
+    ] as const);
 
-      // 3. Web search (only if needed)
-      needsSearch
-        ? performWebSearch(searchQuery, agentId).catch(() => null)
-        : Promise.resolve(null),
-    ]);
-
-    if (needsSearch && webSearchContext) {
-      console.log("[WebSearch] ✅ Tavily results ready (parallel).");
+    // Apply orchestration result — upgrade agent routing if confidence is high
+    if (orchestrationResult && orchestrationResult.confidence !== "low") {
+      if (orchestrationResult.primaryAgent !== agentId) {
+        agentId = orchestrationResult.primaryAgent;
+        autoRoutedAgent = orchestrationResult.primaryAgent;
+        console.log(`[Orchestrator] ✅ Upgraded route to "${agentId}" — intent: "${orchestrationResult.intent}"`);
+      }
     }
-    if (memoryContext) console.log("[Memory] ✅ Memory context ready (parallel).");
-    if (ragContext) console.log("[RAG] ✅ RAG chunks ready (parallel).");
+
+    if (needsSearch && webSearchContext) console.log("[WebSearch] ✅ Tavily results ready.");
+    if (memoryContext) console.log("[Memory] ✅ Memory context ready.");
+    if (ragContext) console.log("[RAG] ✅ RAG chunks ready.");
 
     const customizedCorePersonality = Kacha_Morich_CORE_PERSONALITY.replace(/Nova AI/g, aiName).replace(/Kacha Morich AI/g, aiName);
     const customizedGeneralFormat = GENERAL_BUSINESS_ADVISOR_FORMAT.replace(/Nova AI/g, aiName).replace(/Kacha Morich AI/g, aiName);
@@ -708,6 +714,16 @@ For this complex strategic question, if critical information is missing (budget,
     // 5e. 🌐 Language instruction — inject precise language rule based on detection
     if (langDetection.langInstruction) {
       agentSystemPrompt += `\n\n${langDetection.langInstruction}`;
+    }
+
+    // 5f. 🤝 Collaborative mode — if orchestrator found collaborating agents
+    if (orchestrationResult && orchestrationResult.collaboratingAgents.length > 0 && !isBrainTrust) {
+      agentSystemPrompt = buildCollaborativePrompt(
+        agentSystemPrompt,
+        orchestrationResult.collaboratingAgents,
+        AGENT_INSTRUCTIONS
+      );
+      console.log(`[Orchestrator] 🤝 Collaborative mode: ${orchestrationResult.collaboratingAgents.join(", ")}`);
     }
 
     // 5d. Auto-routing notification — tell the AI which agent was auto-selected
@@ -1336,7 +1352,6 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
           // 7. Save completed assistant response to Supabase
           if (assistantResponse) {
             // 🔍 Self-Reflection Critic — runs only in Brain Trust mode
-            // A fast critic agent reviews the response and appends improvement notes
             if (isBrainTrust && !hasImage && assistantResponse.length > 200) {
               try {
                 const criticPrompt = `You are a ruthless quality critic reviewing an AI-generated business strategy response.
@@ -1372,6 +1387,27 @@ Keep your critique to 3 bullet points max. Be sharp and specific.`;
                 }
               } catch (criticErr) {
                 console.warn("[SelfReflection] Critic failed (non-critical):", criticErr);
+              }
+            }
+
+            // 🎯 Confidence Check — for normal (non-Brain Trust) responses
+            if (!isBrainTrust && !hasImage && assistantResponse.length > 150) {
+              const confidence = await checkResponseConfidence(
+                message,
+                assistantResponse,
+                agentId || "general",
+                dbUser?.id
+              ).catch(() => null);
+
+              if (confidence) {
+                console.log(`[Confidence] Score: ${confidence.score}/10, Weak: ${confidence.isWeak}`);
+
+                if (confidence.isWeak && confidence.issues.length > 0) {
+                  // Append a subtle improvement note to the response
+                  const issueNote = `\n\n---\n*💡 Note: ${confidence.issues.slice(0, 2).join(", ")}. Feel free to ask for more specific details.*`;
+                  assistantResponse += issueNote;
+                  controller.enqueue(encoder.encode(issueNote));
+                }
               }
             }
 
