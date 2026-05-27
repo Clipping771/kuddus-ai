@@ -1308,6 +1308,9 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
             const decoder = new TextDecoder();
             let buffer = "";
             let isThinking = false;
+            let streamBuffer = ""; // Buffer to detect untagged thinking at stream start
+            let untaggedThinkingChecked = false;
+
             while (reader) {
               const { done, value } = await reader.read();
               if (done) {
@@ -1340,6 +1343,41 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                         isThinking = false;
                         controller.enqueue(encoder.encode("\n</thought>\n"));
                       }
+
+                      // Detect untagged thinking at stream start (Qwen3, some models)
+                      if (!untaggedThinkingChecked) {
+                        streamBuffer += text;
+                        // Wait until we have enough text to detect pattern
+                        if (streamBuffer.length >= 30) {
+                          untaggedThinkingChecked = true;
+                          const untaggedPatterns = [
+                            /^(Okay,?\s+let['']s\s+see)/i,
+                            /^(Okay,?\s+I\s+need)/i,
+                            /^(First,?\s+I\s+need)/i,
+                            /^(Let\s+me\s+(think|analyze))/i,
+                            /^(The\s+user\s+(is\s+asking|wants))/i,
+                            /^(I\s+need\s+to\s+(adhere|follow))/i,
+                            /^(Wait,\s)/i,
+                            /^(Hmm,\s)/i,
+                          ];
+                          const isUntaggedThinking = untaggedPatterns.some(p => p.test(streamBuffer));
+                          if (isUntaggedThinking) {
+                            // Wrap in thought tags
+                            isThinking = true;
+                            controller.enqueue(encoder.encode("<thought>\n" + streamBuffer));
+                            assistantResponse += streamBuffer;
+                          } else {
+                            // Normal content — flush buffer
+                            controller.enqueue(encoder.encode(streamBuffer));
+                            assistantResponse += streamBuffer;
+                          }
+                          streamBuffer = "";
+                          continue;
+                        }
+                        // Still buffering — don't enqueue yet
+                        continue;
+                      }
+
                       assistantResponse += text;
                       controller.enqueue(encoder.encode(text));
                     }

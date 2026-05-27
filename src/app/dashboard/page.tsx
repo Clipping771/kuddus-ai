@@ -256,6 +256,30 @@ const parseThoughtAndContent = (text: string): { thought: string; content: strin
     }
   }
 
+  // 3. Detect untagged thinking patterns (Qwen3, some OpenRouter models)
+  // These models output their reasoning as plain text before the actual answer
+  const untaggedThinkingPatterns = [
+    /^(Okay,?\s+let['']s\s+see[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##|\n\nYes\.|\n\nNo\.)/i,
+    /^(Okay,?\s+I\s+need[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
+    /^(First,?\s+I\s+need[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
+    /^(Let\s+me\s+(think|analyze|consider)[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
+    /^(The\s+user\s+(is\s+asking|wants|said)[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
+    /^(I\s+need\s+to\s+(adhere|follow|check)[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
+    /^(Wait,[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
+    /^(Hmm,[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
+  ];
+
+  for (const pattern of untaggedThinkingPatterns) {
+    const match = text.match(pattern);
+    if (match && match[1] && match[1].length > 50) {
+      const thought = match[1].trim();
+      const content = text.substring(match[1].length).trim();
+      if (content.length > 10) {
+        return { thought, content };
+      }
+    }
+  }
+
   return { thought: "", content: text };
 };
 
@@ -4269,10 +4293,10 @@ export default function Dashboard() {
                   {/* 🎯 Adaptive complexity indicator */}
                   {adaptiveProfile && (
                     <span className={`text-[9px] select-none hidden lg:inline-flex items-center gap-1 ml-2 px-2 py-0.5 rounded-full border ${adaptiveProfile.complexityLevel === "complex"
-                        ? themeMode === "black" ? "border-violet-500/20 text-violet-500 bg-violet-500/5" : "border-violet-200 text-violet-600 bg-violet-50"
-                        : adaptiveProfile.complexityLevel === "simple"
-                          ? themeMode === "black" ? "border-emerald-500/20 text-emerald-500 bg-emerald-500/5" : "border-emerald-200 text-emerald-600 bg-emerald-50"
-                          : themeMode === "black" ? "border-neutral-700 text-neutral-500" : "border-neutral-200 text-neutral-400"
+                      ? themeMode === "black" ? "border-violet-500/20 text-violet-500 bg-violet-500/5" : "border-violet-200 text-violet-600 bg-violet-50"
+                      : adaptiveProfile.complexityLevel === "simple"
+                        ? themeMode === "black" ? "border-emerald-500/20 text-emerald-500 bg-emerald-500/5" : "border-emerald-200 text-emerald-600 bg-emerald-50"
+                        : themeMode === "black" ? "border-neutral-700 text-neutral-500" : "border-neutral-200 text-neutral-400"
                       }`}>
                       {adaptiveProfile.complexityLevel === "complex" ? "⚡ Expert mode" : adaptiveProfile.complexityLevel === "simple" ? "✓ Quick mode" : "◎ Standard"}
                     </span>
