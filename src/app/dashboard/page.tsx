@@ -993,6 +993,13 @@ export default function Dashboard() {
   // Message quality ratings
   const [messageRatings, setMessageRatings] = useState<Record<number, "up" | "down">>({});
 
+  // Adaptive UI — personalized based on user behavior
+  const [adaptiveProfile, setAdaptiveProfile] = useState<{
+    topAgents: Array<{ agentId: string; useCount: number }>;
+    preferredTone: string;
+    complexityLevel: string;
+  } | null>(null);
+
   // Theme Mode State: "black" (dark) or "light" (clean light)
   const [themeMode, setThemeMode] = useState<"black" | "light">("black");
 
@@ -1989,6 +1996,23 @@ export default function Dashboard() {
           })
           .catch(() => { /* silent — don't block UI */ });
 
+        // 🎯 Fetch adaptive behavior profile — personalize UI
+        fetch("/api/user/profile")
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (data?.profile) {
+              setAdaptiveProfile(data.profile);
+              // Auto-apply preferred tone if user has a strong preference
+              if (data.profile.preferredTone && data.profile.topAgents?.length > 2) {
+                const savedTone = localStorage.getItem("kacha_selected_tone");
+                if (!savedTone) {
+                  setSelectedToneId(data.profile.preferredTone);
+                }
+              }
+            }
+          })
+          .catch(() => { /* silent */ });
+
       } catch (err) {
         console.error("Initialization error:", err);
       } finally {
@@ -2920,6 +2944,37 @@ export default function Dashboard() {
                         </div>
 
                         <div className="pt-1.5 space-y-0.5 font-sans">
+                          {/* 🎯 Adaptive: Your Top Agents — shown if user has behavior data */}
+                          {adaptiveProfile && adaptiveProfile.topAgents.length >= 2 && (
+                            <div className="mb-2">
+                              <div className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-violet-500" : "text-violet-600"}`}>
+                                ⚡ Your Top Agents
+                              </div>
+                              {adaptiveProfile.topAgents.slice(0, 3).map(({ agentId: topId }) => {
+                                const topAgent = allAgents.find(a => a.id === topId);
+                                if (!topAgent) return null;
+                                const isSelected = selectedAgentId === topId;
+                                const AgentIcon = topAgent.icon as any;
+                                return (
+                                  <button
+                                    key={`top-${topId}`}
+                                    type="button"
+                                    onClick={() => { handleAgentChange(topId); setAgentDropdownOpen(false); }}
+                                    className={`w-[calc(100%-8px)] mx-1 flex items-center gap-2.5 px-3 py-2 rounded-lg transition duration-150 text-xs ${isSelected
+                                      ? themeMode === "black" ? "bg-violet-500/15 text-violet-300" : "bg-violet-50 text-violet-700"
+                                      : themeMode === "black" ? "text-neutral-300 hover:bg-white/[0.04]" : "text-neutral-700 hover:bg-neutral-50"
+                                      }`}
+                                  >
+                                    {AgentIcon ? <AgentIcon size={13} className="flex-shrink-0 text-violet-400" /> : <span className="text-sm">{topAgent.customIcon || "🤖"}</span>}
+                                    <span className="truncate font-semibold">{topAgent.name}</span>
+                                    {isSelected && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-400 flex-shrink-0" />}
+                                  </button>
+                                );
+                              })}
+                              <div className={`mx-3 my-1.5 border-t ${themeMode === "black" ? "border-neutral-800" : "border-neutral-100"}`} />
+                            </div>
+                          )}
+
                           {/* "+ Create Custom Agent" Button */}
                           <button
                             type="button"
@@ -4210,6 +4265,18 @@ export default function Dashboard() {
                     }`}>
                     <CornerDownLeft size={10} /> Press Enter to send consultation
                   </span>
+
+                  {/* 🎯 Adaptive complexity indicator */}
+                  {adaptiveProfile && (
+                    <span className={`text-[9px] select-none hidden lg:inline-flex items-center gap-1 ml-2 px-2 py-0.5 rounded-full border ${adaptiveProfile.complexityLevel === "complex"
+                        ? themeMode === "black" ? "border-violet-500/20 text-violet-500 bg-violet-500/5" : "border-violet-200 text-violet-600 bg-violet-50"
+                        : adaptiveProfile.complexityLevel === "simple"
+                          ? themeMode === "black" ? "border-emerald-500/20 text-emerald-500 bg-emerald-500/5" : "border-emerald-200 text-emerald-600 bg-emerald-50"
+                          : themeMode === "black" ? "border-neutral-700 text-neutral-500" : "border-neutral-200 text-neutral-400"
+                      }`}>
+                      {adaptiveProfile.complexityLevel === "complex" ? "⚡ Expert mode" : adaptiveProfile.complexityLevel === "simple" ? "✓ Quick mode" : "◎ Standard"}
+                    </span>
+                  )}
 
                   <button
                     type="submit"

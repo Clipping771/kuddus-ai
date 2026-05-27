@@ -10,6 +10,8 @@ import { classifyAgentByKeywords, getAgentDisplayName } from "@/lib/agentRouter"
 import { analyzeQueryComplexity, getMaxTokensForComplexity } from "@/lib/costControl";
 import { retrieveRelevantChunks } from "@/lib/rag";
 import { getOrCreateSummary, formatSummaryForContext } from "@/lib/summarizer";
+import { detectLanguage } from "@/lib/languageDetect";
+import { trackAgentUsage } from "@/lib/userBehavior";
 
 const Kacha_Morich_CORE_PERSONALITY = `You are **Kacha Morich AI** 🌶️ — The Sharpest Enterprise-Grade Multi-Model Business Decision Engine in the world.
 
@@ -588,6 +590,10 @@ export async function POST(req: Request) {
 
     const isCustomAgent = agentId && !AGENT_INSTRUCTIONS[agentId];
 
+    // 🌐 Advanced Language Detection — Bangla / Banglish / Mixed / English
+    const langDetection = detectLanguage(message);
+    console.log(`[Lang] Detected: ${langDetection.primary} (confidence: ${langDetection.confidence}, banglaRatio: ${langDetection.banglaRatio.toFixed(2)})`);
+
     // hasImage must be declared early — needed for parallel fetch decisions
     const hasImage = message.includes("[IMAGE_BASE64:") || (history && history.some((h: any) => h.content.includes("[IMAGE_BASE64:")));
 
@@ -697,6 +703,11 @@ ${agentSystemPrompt}`;
     if (isComplexStrategyQuestion && isFirstMessage) {
       agentSystemPrompt += `\n\n## 🎯 PROACTIVE INTELLIGENCE PROTOCOL
 For this complex strategic question, if critical information is missing (budget, target market, timeline, team size, current stage), ask 1-2 focused clarifying questions BEFORE giving the full answer. Format: briefly acknowledge the question, ask the clarifying questions, then say you'll provide the full strategy once they answer. Keep clarifying questions to maximum 2.`;
+    }
+
+    // 5e. 🌐 Language instruction — inject precise language rule based on detection
+    if (langDetection.langInstruction) {
+      agentSystemPrompt += `\n\n${langDetection.langInstruction}`;
     }
 
     // 5d. Auto-routing notification — tell the AI which agent was auto-selected
@@ -966,11 +977,11 @@ Apply the following highly advanced analysis steps:
               } catch (_) { }
             }
 
-            // Detect user's language from their message
-            const hasBangla = /[\u0980-\u09FF]/.test(message);
-            const langInstruction = hasBangla
-              ? "CRITICAL: You MUST respond entirely in Bengali (Bangla) script. Do NOT use English in your response."
-              : "CRITICAL: Detect the language of the user's original message and respond ENTIRELY in that exact same language. Do NOT switch to English or any other language.";
+            // Detect user's language from their message — use advanced detection
+            const langInstruction = langDetection.langInstruction ||
+              (langDetection.hasBanglaScript
+                ? "CRITICAL: You MUST respond entirely in Bengali (Bangla) script. Do NOT use English in your response."
+                : "CRITICAL: Detect the language of the user's original message and respond ENTIRELY in that exact same language.");
 
             // Cap experts at 5 max to avoid rate limit timeouts on free tier
             const totalExpertsCount = Math.max(1, Math.min(5, boardSize - 2));
@@ -1374,6 +1385,9 @@ Keep your critique to 3 bullet points max. Be sharp and specific.`;
             extractAndSaveMemory(dbUser.id, message, assistantResponse).catch((memErr) => {
               console.warn("[Memory] Background extraction failed (non-critical):", memErr?.message);
             });
+
+            // 📊 Track agent usage for adaptive UI — fire-and-forget
+            trackAgentUsage(dbUser.id, agentId || "daily-innovation-idea-agent", message.length, toneId || "brutally-honest").catch(() => { });
           }
         } catch (streamErr: any) {
           console.error("Stream Error:", streamErr);
