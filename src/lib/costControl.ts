@@ -87,7 +87,7 @@ export function analyzeQueryComplexity(
     if (agentId === "devmind-agent") {
         return {
             complexity: "complex",
-            recommendedModel: "deepseek/deepseek-r1-0528:free",
+            recommendedModel: "meta-llama/llama-3.3-70b-instruct:free",
             useGroq: true,
             groqModel: "llama-3.3-70b-versatile",
             reason: "DevMind agent — engineering precision required",
@@ -99,7 +99,7 @@ export function analyzeQueryComplexity(
     if (msgLen < 40 || SIMPLE_SIGNALS.some((r) => r.test(message))) {
         return {
             complexity: "simple",
-            recommendedModel: "qwen/qwen3-8b:free",
+            recommendedModel: "mistralai/mistral-7b-instruct:free", // Non-thinking, fast
             useGroq: true,
             groqModel: "llama-3.1-8b-instant",
             reason: "Short/simple query — fast model sufficient",
@@ -112,7 +112,7 @@ export function analyzeQueryComplexity(
     if (hasComplexKeyword || msgLen > 500) {
         return {
             complexity: "complex",
-            recommendedModel: "deepseek/deepseek-r1-0528:free",
+            recommendedModel: "meta-llama/llama-3.3-70b-instruct:free", // Non-thinking, powerful
             useGroq: true,
             groqModel: "llama-3.3-70b-versatile",
             reason: hasComplexKeyword ? "Complex domain keywords detected" : "Long message — detailed response needed",

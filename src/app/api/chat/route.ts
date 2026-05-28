@@ -792,37 +792,15 @@ Apply the following highly advanced analysis steps:
 
       historyToUse.forEach((msg, idx) => {
         let msgContent = parseMessageContent(msg.role, msg.content);
-
-        // Safe role reminder injected directly into user's latest query
-        if (idx === historyToUse.length - 1 && agentId && msg.role === "user") {
-          if (Array.isArray(msgContent)) {
-            const textObj = msgContent.find((item: any) => item.type === "text");
-            if (textObj) {
-              textObj.text = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}".${toneReminder ? toneReminder : " Keep your responses direct and professional."}]\n\n${textObj.text}`;
-            }
-          } else {
-            msgContent = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}".${toneReminder ? toneReminder : " Keep your responses direct and professional."}]\n\n${msgContent}`;
-          }
-        }
-
+        // No SYSTEM REMINDER injection into user messages — it triggers thinking in models
         formattedMessages.push({
           role: msg.role === "user" ? "user" : "assistant",
           content: msgContent,
         });
       });
     } else {
-      // Fallback if history query returns empty but we know we just saved the user message
-      let msgContent = parseMessageContent("user", message);
-      if (agentId) {
-        if (Array.isArray(msgContent)) {
-          const textObj = msgContent.find((item: any) => item.type === "text");
-          if (textObj) {
-            textObj.text = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}".${toneReminder ? toneReminder : " Do NOT fall back to your general persona."}]\n\n${textObj.text}`;
-          }
-        } else {
-          msgContent = `[SYSTEM REMINDER: You are ${aiName} currently acting strictly in your specialized role: "${agentId}".${toneReminder ? toneReminder : " Do NOT fall back to your general persona."}]\n\n${msgContent}`;
-        }
-      }
+      // Fallback if history query returns empty
+      const msgContent = parseMessageContent("user", message);
       formattedMessages.push({
         role: "user",
         content: msgContent,
@@ -831,11 +809,26 @@ Apply the following highly advanced analysis steps:
 
     // 6. Call OpenRouter API with Streaming OR Brain Trust Pipeline
     let resolvedModelId = modelId || "meta-llama/llama-3.3-70b-instruct:free";
-    // Fix stale model IDs from old fallback lists
+
+    // Fix stale/thinking model IDs — redirect to non-thinking models for normal chat
+    // DeepSeek R1, Qwen3 = thinking models that show reasoning text
     if (resolvedModelId === "google/gemma-4-31b-it" || resolvedModelId === "google/gemma-4-31b-it:free") {
       resolvedModelId = "google/gemma-3-27b-it:free";
-    } else if (resolvedModelId === "deepseek/deepseek-v4-flash" || resolvedModelId === "deepseek/deepseek-v4-flash:free") {
-      resolvedModelId = "deepseek/deepseek-r1-0528:free";
+    } else if (
+      resolvedModelId === "deepseek/deepseek-v4-flash" ||
+      resolvedModelId === "deepseek/deepseek-v4-flash:free" ||
+      resolvedModelId === "deepseek/deepseek-r1-0528:free" ||
+      resolvedModelId === "deepseek/deepseek-r1:free" ||
+      resolvedModelId === "deepseek/deepseek-r1-0528"
+    ) {
+      // DeepSeek R1 is a thinking model — redirect to non-thinking for normal chat
+      // Brain Trust still uses it (thinking is useful there)
+      if (!isBrainTrust) {
+        resolvedModelId = "meta-llama/llama-3.3-70b-instruct:free";
+      }
+    } else if (resolvedModelId === "qwen/qwen3-8b:free" || resolvedModelId === "qwen/qwen3-8b") {
+      // Qwen3 outputs uncontrollable thinking text
+      resolvedModelId = "mistralai/mistral-7b-instruct:free";
     } else if (resolvedModelId === "nousresearch/hermes-3-llama-3.1-405b") {
       resolvedModelId = "nousresearch/hermes-3-llama-3.1-405b:free";
     } else if (resolvedModelId === "openai/gpt-oss-120b:free" || resolvedModelId === "openai/gpt-oss-20b:free") {
@@ -861,14 +854,15 @@ Apply the following highly advanced analysis steps:
     ];
 
     // OpenRouter free models pool for Brain Trust (valid as of 2026)
+    // NOTE: Qwen3 removed — outputs uncontrollable thinking text even with system prompt suppression
     const BRAIN_TRUST_OR_POOL = [
       "deepseek/deepseek-r1-0528:free",
       "meta-llama/llama-3.3-70b-instruct:free",
       "mistralai/mistral-7b-instruct:free",
       "google/gemma-3-27b-it:free",
       "deepseek/deepseek-r1:free",
-      "qwen/qwen3-8b:free",
       "microsoft/phi-4-reasoning-plus:free",
+      "nousresearch/hermes-3-llama-3.1-405b:free",
       "openrouter/free",
     ];
 
@@ -1243,15 +1237,14 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
               ]
               : [
                 primaryModel,
-                // Top free text models (valid as of 2026)
+                // Top free text models — Qwen3 excluded (outputs uncontrollable thinking text)
                 "deepseek/deepseek-r1-0528:free",
                 "meta-llama/llama-3.3-70b-instruct:free",
                 "mistralai/mistral-7b-instruct:free",
                 "google/gemma-3-27b-it:free",
                 "deepseek/deepseek-r1:free",
-                "qwen/qwen3-8b:free",
                 "microsoft/phi-4-reasoning-plus:free",
-                // Last resort: OpenRouter auto-selects any available free model
+                "nousresearch/hermes-3-llama-3.1-405b:free",
                 "openrouter/free",
               ];
 

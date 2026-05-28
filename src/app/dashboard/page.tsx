@@ -932,14 +932,13 @@ const TONES_LIST = [
 ];
 
 // Fallback models shown before dynamic list loads
+// NOTE: Thinking models (DeepSeek R1, Qwen3) excluded — they show internal reasoning text
 const FALLBACK_MODELS = [
   { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B", icon: "🦙", badge: "Free", isFree: true },
-  { id: "deepseek/deepseek-r1-0528:free", name: "DeepSeek R1", icon: "⚡", badge: "Free", isFree: true },
   { id: "google/gemma-3-27b-it:free", name: "Google Gemma 27B", icon: "💎", badge: "Free", isFree: true },
   { id: "mistralai/mistral-7b-instruct:free", name: "Mistral 7B", icon: "🌊", badge: "Free", isFree: true },
-  { id: "qwen/qwen3-8b:free", name: "Qwen3 8B", icon: "🤖", badge: "Free", isFree: true },
   { id: "microsoft/phi-4-reasoning-plus:free", name: "Phi-4 Reasoning", icon: "🧠", badge: "Free", isFree: true },
-  { id: "nousresearch/hermes-3-llama-3.1-405b:free", name: "Hermes 3 405B", icon: "🧠", badge: "Max Reasoning", isFree: true },
+  { id: "nousresearch/hermes-3-llama-3.1-405b:free", name: "Hermes 3 405B", icon: "🧠", badge: "Max Power", isFree: true },
   { id: "google/gemini-2.5-flash-preview", name: "Gemini 2.5 Flash", icon: "💎", badge: "Fast", isFree: false },
 ];
 
