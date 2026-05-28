@@ -259,7 +259,8 @@ const parseThoughtAndContent = (text: string): { thought: string; content: strin
   // 3. Detect untagged thinking patterns (Qwen3, some OpenRouter models)
   // These models output their reasoning as plain text before the actual answer
   const untaggedThinkingPatterns = [
-    /^(Okay,?\s+let['']s\s+see[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##|\n\nYes\.|\n\nNo\.)/i,
+    // With double newline separator
+    /^(Okay,?\s+let['']s\s+see[\s\S]*?)(?=\n\n[A-Z🌶✅❌💡]|\n\n##|\n\nYes\.|\n\nNo\.|\n\nHi\.)/i,
     /^(Okay,?\s+I\s+need[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
     /^(First,?\s+I\s+need[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
     /^(Let\s+me\s+(think|analyze|consider)[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
@@ -267,6 +268,9 @@ const parseThoughtAndContent = (text: string): { thought: string; content: strin
     /^(I\s+need\s+to\s+(adhere|follow|check)[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
     /^(Wait,[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
     /^(Hmm,[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
+    // Without separator — entire response is thinking + short answer at end
+    /^(Okay,?\s+let['']s\s+see[\s\S]{50,}?)\n([A-Z][a-z].{0,50}$)/m,
+    /^(The\s+user\s+(is\s+asking|wants)[\s\S]{50,}?)\n([A-Z][a-z].{0,50}$)/m,
   ];
 
   for (const pattern of untaggedThinkingPatterns) {
