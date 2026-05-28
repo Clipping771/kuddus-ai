@@ -2464,20 +2464,18 @@ export default function Dashboard() {
         }
 
         accumulatedResponse += chunk;
-        // Throttle UI updates — batch every 3 chunks to reduce React re-renders
-        // This makes streaming feel smoother and faster on slow devices
-        if (accumulatedResponse.length % 60 === 0 || chunk.includes("\n")) {
-          setMessages((prev) => {
-            const updated = [...prev];
-            if (updated.length > 0) {
-              updated[updated.length - 1] = {
-                role: "assistant",
-                content: accumulatedResponse,
-              };
-            }
-            return updated;
-          });
-        }
+        // Update UI on every chunk — modern browsers handle this fine
+        // Removing throttle gives fastest perceived streaming speed
+        setMessages((prev) => {
+          const updated = [...prev];
+          if (updated.length > 0) {
+            updated[updated.length - 1] = {
+              role: "assistant",
+              content: accumulatedResponse,
+            };
+          }
+          return updated;
+        });
       }
 
       // Final flush — ensure last partial chunk is always shown

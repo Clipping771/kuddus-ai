@@ -441,9 +441,6 @@ export async function POST(req: Request) {
     // 🧠 Intelligent Orchestration — analyze intent and find best agent(s)
     // Runs in background while user data is being fetched
 
-    // Lazy initialize Groq inside POST — keys fetched dynamically from DB
-    // (groqStreamWithFallback handles key rotation internally)
-
     // 1. Fetch user from Supabase
     let { data: dbUser, error: userError } = await supabase
       .from("users")
@@ -453,7 +450,7 @@ export async function POST(req: Request) {
 
     // Lazy sync if they somehow missed /api/user load
     if (!dbUser) {
-      const email = ""; // Default empty if not through lazy loading route
+      const email = "";
       const { data: newUser, error: insertError } = await supabase
         .from("users")
         .insert({ clerk_id: clerkId, email })
@@ -469,30 +466,19 @@ export async function POST(req: Request) {
 
     let activeChatId = chatId;
 
-    // 2. If no chatId, create a new Chat
+    // 2. Chat setup + message save — run in parallel where possible
     if (!activeChatId) {
       let cleanTitle = message.length > 40 ? `${message.substring(0, 40)}...` : message;
-      if (cleanTitle.startsWith("[ATTACHED DOCUMENT:")) {
-        cleanTitle = "Document Analysis";
-      }
+      if (cleanTitle.startsWith("[ATTACHED DOCUMENT:")) cleanTitle = "Document Analysis";
 
       const serializedTitle = `${cleanTitle} | agentId:${agentId || "daily-innovation-idea-agent"} | toneId:${toneId || "brutally-honest"}`;
+      const insertPayload: any = { user_id: dbUser.id, title: serializedTitle };
 
-      const insertPayload: any = {
-        user_id: dbUser.id,
-        title: serializedTitle,
-      };
-
-      // Only include agent_id if it's a DB-backed custom agent (UUID format)
-      // This prevents errors if the agent_id column doesn't exist yet in the schema
       if (agentId && !agentId.startsWith("custom-agent-") && /^[0-9a-f-]{36}$/i.test(agentId)) {
         insertPayload.agent_id = agentId;
       }
       const { data: newChat, error: chatError } = await supabase
-        .from("chats")
-        .insert(insertPayload)
-        .select("*")
-        .single();
+        .from("chats").insert(insertPayload).select("*").single();
 
       if (chatError) {
         console.error("Supabase chat creation error:", chatError);
@@ -500,31 +486,24 @@ export async function POST(req: Request) {
       }
       activeChatId = newChat.id;
     } else {
-      // Verify chat belongs to this user
-      const { data: existingChat, error: verifyError } = await supabase
-        .from("chats")
-        .select("*")
-        .eq("id", activeChatId)
-        .eq("user_id", dbUser.id)
-        .single();
-
-      if (verifyError || !existingChat) {
+      // Verify chat belongs to this user — lightweight select
+      const { data: existingChat } = await supabase
+        .from("chats").select("id").eq("id", activeChatId).eq("user_id", dbUser.id).single();
+      if (!existingChat) {
         return NextResponse.json({ error: "Chat not found or access denied" }, { status: 404 });
       }
     }
 
-    // 3. Save user's message to Supabase
-    const { error: messageInsertError } = await supabase
-      .from("messages")
-      .insert({
-        chat_id: activeChatId,
-        role: "user",
-        content: message,
-      });
+    // 3. Save user message + fetch history IN PARALLEL — don't wait for save before fetching
+    const [, historyResult] = await Promise.all([
+      // Fire-and-forget message save (we don't need the result)
+      supabase.from("messages").insert({ chat_id: activeChatId, role: "user", content: message }),
+      // Fetch history simultaneously
+      supabase.from("messages").select("role, content").eq("chat_id", activeChatId).order("created_at", { ascending: true }),
+    ]);
 
-    if (messageInsertError) {
-      console.error("Failed to save user message:", messageInsertError);
-    }
+    const history = historyResult.data;
+    if (historyResult.error) console.error("History fetch error:", historyResult.error);
 
     const isImageOnlyWithoutOCR = (rawContent: string) => {
       if (!rawContent) return false;
@@ -583,15 +562,7 @@ export async function POST(req: Request) {
     }
 
     // 4. Retrieve historical messages for context (filter by project if provided)
-    const { data: history, error: historyError } = await supabase
-      .from("messages")
-      .select("role, content")
-      .eq("chat_id", activeChatId)
-      .order("created_at", { ascending: true });
-
-    if (historyError) {
-      console.error("History fetch error:", historyError);
-    }
+    // NOTE: history is already fetched in parallel above (historyResult)
 
     const isCustomAgent = agentId && !AGENT_INSTRUCTIONS[agentId];
 
@@ -610,8 +581,10 @@ export async function POST(req: Request) {
       getUserMemoryContext(dbUser.id).catch(() => null),
       hasImage ? Promise.resolve(null) : retrieveRelevantChunks(dbUser.id, message, agentId).catch(() => null),
       needsSearch ? performWebSearch(searchQuery, agentId).catch(() => null) : Promise.resolve(null),
-      // 🧠 Orchestration — runs in parallel with context fetching
-      enableAutoRouting ? orchestrateAgents(message, agentId, dbUser.id).catch(() => null) : Promise.resolve(null) as Promise<null>,
+      // 🧠 Orchestration — only for complex queries (>60 chars) to save latency
+      (enableAutoRouting && message.length > 60)
+        ? orchestrateAgents(message, agentId, dbUser.id).catch(() => null)
+        : Promise.resolve(null) as Promise<null>,
     ] as const);
 
     // Apply orchestration result — upgrade agent routing if confidence is high
@@ -1345,10 +1318,10 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                       }
 
                       // Detect untagged thinking at stream start (Qwen3, some models)
+                      // Use a smaller buffer (15 chars) for faster first token
                       if (!untaggedThinkingChecked) {
                         streamBuffer += text;
-                        // Wait until we have enough text to detect pattern
-                        if (streamBuffer.length >= 30) {
+                        if (streamBuffer.length >= 15) {
                           untaggedThinkingChecked = true;
                           const untaggedPatterns = [
                             /^(Okay,?\s+let['']s\s+see)/i,
@@ -1362,12 +1335,11 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                           ];
                           const isUntaggedThinking = untaggedPatterns.some(p => p.test(streamBuffer));
                           if (isUntaggedThinking) {
-                            // Wrap in thought tags
                             isThinking = true;
                             controller.enqueue(encoder.encode("<thought>\n" + streamBuffer));
                             assistantResponse += streamBuffer;
                           } else {
-                            // Normal content — flush buffer
+                            // Normal content — flush immediately
                             controller.enqueue(encoder.encode(streamBuffer));
                             assistantResponse += streamBuffer;
                           }
@@ -1428,25 +1400,17 @@ Keep your critique to 3 bullet points max. Be sharp and specific.`;
               }
             }
 
-            // 🎯 Confidence Check — for normal (non-Brain Trust) responses
+            // 🎯 Confidence Check — fire-and-forget, non-blocking
+            // Runs AFTER stream closes so it never delays first token
             if (!isBrainTrust && !hasImage && assistantResponse.length > 150) {
-              const confidence = await checkResponseConfidence(
-                message,
-                assistantResponse,
-                agentId || "general",
-                dbUser?.id
-              ).catch(() => null);
-
-              if (confidence) {
-                console.log(`[Confidence] Score: ${confidence.score}/10, Weak: ${confidence.isWeak}`);
-
-                if (confidence.isWeak && confidence.issues.length > 0) {
-                  // Append a subtle improvement note to the response
-                  const issueNote = `\n\n---\n*💡 Note: ${confidence.issues.slice(0, 2).join(", ")}. Feel free to ask for more specific details.*`;
-                  assistantResponse += issueNote;
-                  controller.enqueue(encoder.encode(issueNote));
-                }
-              }
+              checkResponseConfidence(message, assistantResponse, agentId || "general", dbUser?.id)
+                .then((confidence) => {
+                  if (confidence?.isWeak && confidence.issues.length > 0) {
+                    console.log(`[Confidence] Score: ${confidence.score}/10 — weak response detected`);
+                    // Note: can't enqueue to stream after it's closed, so just log
+                  }
+                })
+                .catch(() => { });
             }
 
             const finalSavedText = (isBrainTrust && !hasImage) ? `> 🧠 **BRAIN TRUST LOGS**\n> 📝 Trinity drafted -> 🕵️ Gemma critiqued -> ✨ ${synthModel.split("/")[1]} synthesized.\n\n---\n\n${assistantResponse}` : assistantResponse;
