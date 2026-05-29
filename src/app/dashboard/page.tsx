@@ -2332,13 +2332,15 @@ export default function Dashboard() {
     const messagesBeforeEdit = messages.slice(0, index);
     setMessages(messagesBeforeEdit);
 
-    // Re-send with the new text — this will append user + assistant messages
+    // Directly call handleSubmit logic with the new text instead of using form submit
     setInputMessage(newText);
+    setIsLoading(false); // ensure clean state
+    isStreamingRef.current = false;
     // Small delay to let state settle, then trigger send
     setTimeout(() => {
       const form = document.getElementById("chat-form") as HTMLFormElement;
       if (form) form.requestSubmit();
-    }, 50);
+    }, 80);
   };
 
   // 🔄 Regenerate the last assistant response
@@ -2353,18 +2355,16 @@ export default function Dashboard() {
     if (lastUserIdx === -1) return;
 
     const lastUserMsg = messages[lastUserIdx];
-    // Remove the last assistant response
-    const messagesWithoutLastAssistant = messages.slice(0, lastUserIdx + 1);
-    // Remove the last assistant message if it exists after the user message
-    const trimmed = messagesWithoutLastAssistant.filter((_, i) => i <= lastUserIdx);
+    const trimmed = messages.filter((_, i) => i <= lastUserIdx);
     setMessages(trimmed);
 
-    // Re-send the last user message
     setInputMessage(lastUserMsg.content);
+    setIsLoading(false); // ensure clean state
+    isStreamingRef.current = false;
     setTimeout(() => {
       const form = document.getElementById("chat-form") as HTMLFormElement;
       if (form) form.requestSubmit();
-    }, 50);
+    }, 80);
   };
 
   // ⭐ Rate a message — 👍 saves rating, 👎 saves rating + offers to regenerate
@@ -3846,7 +3846,10 @@ export default function Dashboard() {
                                 </div>
                               );
                             })() : (
-                              <DynamicLoadingIndicator themeMode={themeMode} agentId={selectedAgentId} />
+                              // Only show loading indicator if this is the last message AND still loading
+                              (index === messages.length - 1 && isLoading)
+                                ? <DynamicLoadingIndicator themeMode={themeMode} agentId={selectedAgentId} />
+                                : null
                             )}
                           </div>
                           {msg.content && (
