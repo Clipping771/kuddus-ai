@@ -2388,44 +2388,24 @@ export default function Dashboard() {
     if (!newText.trim() || isLoading) return;
     setEditingMessageIndex(null);
     setEditingMessageText("");
-
-    // Keep messages up to (not including) the edited message
     const messagesBeforeEdit = messages.slice(0, index);
     setMessages(messagesBeforeEdit);
-
-    // Directly call handleSubmit logic with the new text instead of using form submit
-    setInputMessage(newText);
-    setIsLoading(false); // ensure clean state
-    isStreamingRef.current = false;
-    // Small delay to let state settle, then trigger send
-    setTimeout(() => {
-      const form = document.getElementById("chat-form") as HTMLFormElement;
-      if (form) form.requestSubmit();
-    }, 80);
+    // Directly trigger send with the new text — bypass form state
+    await sendMessageDirectly(newText);
   };
 
   // 🔄 Regenerate the last assistant response
   const handleRegenerate = async () => {
     if (isLoading || messages.length < 2) return;
-
-    // Find the last user message
     let lastUserIdx = -1;
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === "user") { lastUserIdx = i; break; }
     }
     if (lastUserIdx === -1) return;
-
     const lastUserMsg = messages[lastUserIdx];
     const trimmed = messages.filter((_, i) => i <= lastUserIdx);
     setMessages(trimmed);
-
-    setInputMessage(lastUserMsg.content);
-    setIsLoading(false); // ensure clean state
-    isStreamingRef.current = false;
-    setTimeout(() => {
-      const form = document.getElementById("chat-form") as HTMLFormElement;
-      if (form) form.requestSubmit();
-    }, 80);
+    await sendMessageDirectly(lastUserMsg.content);
   };
 
   // ⭐ Rate a message — 👍 saves rating, 👎 saves rating + offers to regenerate
@@ -2493,6 +2473,88 @@ export default function Dashboard() {
   };
 
   // 5. Submit Message to Kacha Morich AI (with Real-time Streaming!)
+  // sendMessageDirectly — called by edit/regenerate, bypasses form state
+  const sendMessageDirectly = async (text: string) => {
+    if (!text.trim() || isLoading) return;
+    setInputMessage("");
+    setIsLoading(true);
+    setSmartSuggestions([]);
+    setMessageRatings({});
+    isStreamingRef.current = true;
+
+    const newUserMessage: Message = { role: "user", content: text };
+    setMessages((prev) => [...prev, newUserMessage]);
+    const assistantPlaceholder: Message = { role: "assistant", content: "" };
+    setMessages((prev) => [...prev, assistantPlaceholder]);
+
+    try {
+      abortControllerRef.current = new AbortController();
+      const customAgent = customAgents.find((ca) => ca.id === selectedAgentId);
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: abortControllerRef.current.signal,
+        body: JSON.stringify({
+          message: text,
+          chatId: activeChatId,
+          agentId: selectedAgentId,
+          toneId: selectedToneId,
+          modelId: selectedModelId,
+          aiName: aiName,
+          tonePrompt: TONES_LIST.find(t => t.id === selectedToneId)?.prompt,
+          isBrainTrust: isBrainTrust,
+          boardSize: boardSize,
+          customInstructions: customAgent ? customAgent.instructions : undefined,
+          enableAutoRouting: enableAutoRouting,
+        }),
+      });
+
+      if (!response.ok || !response.body) throw new Error("API call failed");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedResponse = "";
+      let hasHeaderIdParsed = false;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+
+        if (!hasHeaderIdParsed && chunk.includes("__CHAT_ID__:")) {
+          const lines = chunk.split("\n");
+          const resolvedId = lines[0].replace("__CHAT_ID__:", "").trim();
+          if (resolvedId) { setActiveChatId(resolvedId); hasHeaderIdParsed = true; }
+          const restText = lines.slice(1).join("\n");
+          accumulatedResponse += restText;
+        } else {
+          accumulatedResponse += chunk;
+        }
+
+        setMessages((prev) => {
+          const updated = [...prev];
+          if (updated.length > 0) updated[updated.length - 1] = { role: "assistant", content: accumulatedResponse };
+          return updated;
+        });
+      }
+
+      setMessages((prev) => {
+        const updated = [...prev];
+        if (updated.length > 0 && accumulatedResponse) updated[updated.length - 1] = { role: "assistant", content: accumulatedResponse };
+        return updated;
+      });
+
+      Promise.all([
+        fetch("/api/chats").then(r => r.json()).then(data => { if (data.chats) setChats(data.chats); }).catch(() => { }),
+      ]);
+    } catch (err) {
+      console.error("sendMessageDirectly error:", err);
+    } finally {
+      setIsLoading(false);
+      isStreamingRef.current = false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!inputMessage.trim() && attachedFiles.length === 0) || isLoading) return;
@@ -3434,89 +3496,67 @@ export default function Dashboard() {
                           />
                         </div>
 
-                        {/* Categorized Model List */}
+                        {/* Dynamic Categorized Model List — from OpenRouter */}
                         <div className="max-h-[420px] overflow-y-auto p-2 space-y-3">
-                          {CATEGORIZED_MODELS.map((group) => {
-                            const filteredModels = group.models.filter(m =>
+                          {(() => {
+                            const allModels = modelsList.length > 0 ? modelsList : FALLBACK_MODELS;
+                            const filtered = allModels.filter((m: any) =>
                               !modelsSearch ||
                               m.name.toLowerCase().includes(modelsSearch.toLowerCase()) ||
-                              m.provider.toLowerCase().includes(modelsSearch.toLowerCase())
+                              m.id.toLowerCase().includes(modelsSearch.toLowerCase())
                             );
-                            if (filteredModels.length === 0) return null;
 
-                            const colorMap: Record<string, string> = {
-                              emerald: themeMode === "black" ? "text-emerald-400" : "text-emerald-600",
-                              violet: themeMode === "black" ? "text-violet-400" : "text-violet-600",
-                              amber: themeMode === "black" ? "text-amber-400" : "text-amber-600",
-                              blue: themeMode === "black" ? "text-blue-400" : "text-blue-600",
-                            };
-                            const badgeColorMap: Record<string, string> = {
-                              emerald: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
-                              violet: "bg-violet-500/15 text-violet-400 border-violet-500/20",
-                              amber: "bg-amber-500/15 text-amber-400 border-amber-500/20",
-                              blue: "bg-blue-500/15 text-blue-400 border-blue-500/20",
-                            };
+                            if (filtered.length === 0) {
+                              return <div className={`text-center py-6 text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>No models found</div>;
+                            }
 
-                            return (
-                              <div key={group.category}>
-                                {/* Category header */}
-                                <div className="px-2 mb-1.5">
-                                  <span className={`text-[10px] font-black ${colorMap[group.color]}`}>{group.category}</span>
-                                  <span className={`text-[9px] ml-2 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>{group.desc}</span>
+                            const isThinking = (id: string) => id.includes("deepseek-r1") || id.includes("qwen3") || id.includes("thinking") || id.includes("-r1");
+                            const cats = [
+                              { label: "🚀 Fast & Free", desc: "Quick answers", color: "emerald", filter: (m: any) => m.isFree && !isThinking(m.id) && (m.id.includes("llama") || m.id.includes("mistral") || m.id.includes("gemma") || m.id.includes("hermes") || m.id.includes("phi") || m.id.includes("command")) },
+                              { label: "⚡ Reasoning", desc: "Shows thinking — use with Brain Trust", color: "amber", filter: (m: any) => isThinking(m.id) },
+                              { label: "🌐 Other Free", desc: "More free models", color: "violet", filter: (m: any) => m.isFree && !isThinking(m.id) && !m.id.includes("llama") && !m.id.includes("mistral") && !m.id.includes("gemma") && !m.id.includes("hermes") && !m.id.includes("phi") && !m.id.includes("command") },
+                              { label: "💎 Premium", desc: "Paid — fastest & most capable", color: "blue", filter: (m: any) => !m.isFree },
+                            ];
+                            const cMap: Record<string, string> = { emerald: themeMode === "black" ? "text-emerald-400" : "text-emerald-600", amber: themeMode === "black" ? "text-amber-400" : "text-amber-600", violet: themeMode === "black" ? "text-violet-400" : "text-violet-600", blue: themeMode === "black" ? "text-blue-400" : "text-blue-600" };
+                            const bMap: Record<string, string> = { emerald: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20", amber: "bg-amber-500/15 text-amber-400 border-amber-500/20", violet: "bg-violet-500/15 text-violet-400 border-violet-500/20", blue: "bg-blue-500/15 text-blue-400 border-blue-500/20" };
+
+                            return cats.map(cat => {
+                              const catModels = filtered.filter(cat.filter);
+                              if (catModels.length === 0) return null;
+                              return (
+                                <div key={cat.label}>
+                                  <div className="px-2 mb-1">
+                                    <span className={`text-[10px] font-black ${cMap[cat.color]}`}>{cat.label}</span>
+                                    <span className={`text-[9px] ml-1.5 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>{cat.desc}</span>
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    {catModels.map((model: any) => {
+                                      const isSel = selectedModelId === model.id;
+                                      return (
+                                        <button key={model.id} type="button"
+                                          onClick={() => { handleModelChange(model.id); setModelDropdownOpen(false); setModelsSearch(""); }}
+                                          className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg transition duration-150 text-left ${isSel ? (themeMode === "black" ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-300" : "bg-emerald-50 border border-emerald-200 text-emerald-700") : (themeMode === "black" ? "text-neutral-400 hover:bg-white/[0.04] hover:text-white" : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900")}`}
+                                        >
+                                          <div className="flex items-center gap-2 min-w-0">
+                                            <span className="text-sm flex-shrink-0">{model.icon || "✨"}</span>
+                                            <div className="min-w-0">
+                                              <div className="text-[11px] font-bold truncate">{model.name}</div>
+                                              <div className={`text-[9px] truncate ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>{model.id}</div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-1 flex-shrink-0">
+                                            <span className={`text-[8px] px-1.5 py-0.5 rounded-full border font-bold ${bMap[cat.color]}`}>{model.badge}</span>
+                                            {!model.isFree && <span className="text-[9px]">💳</span>}
+                                            {isSel && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                                          </div>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-
-                                {/* Models in category */}
-                                <div className="space-y-0.5">
-                                  {filteredModels.map((model) => {
-                                    const isSelected = selectedModelId === model.id;
-                                    return (
-                                      <button
-                                        key={model.id}
-                                        type="button"
-                                        onClick={() => {
-                                          handleModelChange(model.id);
-                                          setModelDropdownOpen(false);
-                                          setModelsSearch("");
-                                        }}
-                                        className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg transition duration-150 text-left ${isSelected
-                                          ? themeMode === "black"
-                                            ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-300"
-                                            : "bg-emerald-50 border border-emerald-200 text-emerald-700"
-                                          : themeMode === "black"
-                                            ? "text-neutral-400 hover:bg-white/[0.04] hover:text-white"
-                                            : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
-                                          }`}
-                                      >
-                                        <div className="flex flex-col min-w-0">
-                                          <span className="text-xs font-bold truncate">{model.name}</span>
-                                          <span className={`text-[10px] ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>{model.provider}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold ${badgeColorMap[group.color]}`}>
-                                            {model.badge}
-                                          </span>
-                                          {!model.isFree && (
-                                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 font-bold">💳</span>
-                                          )}
-                                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />}
-                                        </div>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            );
-                          })}
-
-                          {/* No results */}
-                          {modelsSearch && CATEGORIZED_MODELS.every(g => g.models.filter(m =>
-                            m.name.toLowerCase().includes(modelsSearch.toLowerCase()) ||
-                            m.provider.toLowerCase().includes(modelsSearch.toLowerCase())
-                          ).length === 0) && (
-                              <div className={`text-center py-6 text-xs ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
-                                No models found for &quot;{modelsSearch}&quot;
-                              </div>
-                            )}
+                              );
+                            });
+                          })()}
                         </div>
 
                         {/* Footer hint */}
