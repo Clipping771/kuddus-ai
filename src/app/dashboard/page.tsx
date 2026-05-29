@@ -227,6 +227,124 @@ function resolveCustomIcon(iconName: string) {
 function agentsForStorage(agents: CustomAgent[]) {
   return agents.map(({ instructions: _instructions, ...rest }) => rest);
 }
+
+// ── Dynamic Loading Indicator ──────────────────────────────────────────────
+const LOADING_MESSAGES: Record<string, string[]> = {
+  "devmind-agent": [
+    "🧠 Analyzing your code architecture...",
+    "⚙️ Running security checks...",
+    "🔍 Identifying edge cases...",
+    "💡 Crafting production-ready solution...",
+  ],
+  "personal-cfo-finance-agent": [
+    "💰 Crunching the numbers...",
+    "📊 Analyzing cash flow patterns...",
+    "🧮 Running financial models...",
+    "📈 Calculating ROI projections...",
+  ],
+  "research-agent": [
+    "🔍 Scanning market data...",
+    "📊 Building SWOT analysis...",
+    "🌐 Analyzing industry trends...",
+    "📋 Synthesizing research findings...",
+  ],
+  "competitor-spy-agent": [
+    "🕵️ Infiltrating competitor data...",
+    "🔎 Mapping market positioning...",
+    "⚔️ Finding their Achilles heel...",
+    "🎯 Crafting attack strategy...",
+  ],
+  "investor-pitch-agent": [
+    "💼 Structuring your pitch deck...",
+    "📊 Calculating valuation multiples...",
+    "🎯 Anticipating investor questions...",
+    "✨ Polishing the narrative...",
+  ],
+  "daily-innovation-idea-agent": [
+    "💡 Scanning global market gaps...",
+    "🚀 Generating breakthrough ideas...",
+    "🌊 Finding blue ocean opportunities...",
+    "⚡ Validating business models...",
+  ],
+  "pain-point-scraper-agent": [
+    "🌶️ Scraping Reddit complaints...",
+    "😤 Finding real frustrations...",
+    "💰 Mapping market gaps...",
+    "🎯 Building business models...",
+  ],
+  "brain-trust": [
+    "🧠 Assembling Executive Board...",
+    "📝 Architect drafting master plan...",
+    "🕵️ Expert panel reviewing...",
+    "✨ CEO synthesizing final strategy...",
+  ],
+};
+
+const DEFAULT_LOADING_MESSAGES = [
+  "🌶️ Sharpening the analysis...",
+  "⚡ Processing your request...",
+  "🧠 Thinking strategically...",
+  "✨ Crafting the perfect response...",
+  "🎯 Focusing on what matters...",
+];
+
+const DynamicLoadingIndicator = ({ themeMode, agentId }: { themeMode: string; agentId: string }) => {
+  const [msgIndex, setMsgIndex] = React.useState(0);
+  const [visible, setVisible] = React.useState(true);
+
+  const messages = LOADING_MESSAGES[agentId] || DEFAULT_LOADING_MESSAGES;
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setMsgIndex((prev) => (prev + 1) % messages.length);
+        setVisible(true);
+      }, 300);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [messages.length]);
+
+  return (
+    <div className="py-3 px-1">
+      {/* Animated bar */}
+      <div className={`h-0.5 w-full rounded-full mb-3 overflow-hidden ${themeMode === "black" ? "bg-white/5" : "bg-neutral-100"}`}>
+        <div
+          className="h-full rounded-full animate-pulse"
+          style={{
+            background: "linear-gradient(90deg, #10b981, #6366f1, #f59e0b, #ef4444)",
+            backgroundSize: "200% 100%",
+            animation: "shimmer 2s linear infinite",
+            width: "60%",
+          }}
+        />
+      </div>
+
+      {/* Rotating message */}
+      <div
+        className={`flex items-center gap-2 text-xs font-medium transition-all duration-300 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"} ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}
+      >
+        <span>{messages[msgIndex]}</span>
+      </div>
+
+      {/* Subtle pulsing dots */}
+      <div className="flex gap-1 mt-2.5">
+        {[0, 1, 2, 3].map((i) => (
+          <span
+            key={i}
+            className={`rounded-full ${themeMode === "black" ? "bg-emerald-500/40" : "bg-emerald-400/60"}`}
+            style={{
+              width: i === 0 ? "20px" : i === 1 ? "8px" : i === 2 ? "5px" : "3px",
+              height: "3px",
+              animation: `pulse 1.5s ease-in-out ${i * 0.15}s infinite`,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const parseThoughtAndContent = (text: string): { thought: string; content: string } => {
   if (!text) return { thought: "", content: "" };
 
@@ -3728,11 +3846,7 @@ export default function Dashboard() {
                                 </div>
                               );
                             })() : (
-                              <div className="flex gap-1 items-center py-2">
-                                <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:-0.3s] ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
-                                <span className={`w-2 h-2 rounded-full animate-bounce [animation-delay:-0.15s] ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
-                                <span className={`w-2 h-2 rounded-full animate-bounce ${themeMode === "black" ? "bg-neutral-200" : "bg-neutral-500"}`}></span>
-                              </div>
+                              <DynamicLoadingIndicator themeMode={themeMode} agentId={selectedAgentId} />
                             )}
                           </div>
                           {msg.content && (
