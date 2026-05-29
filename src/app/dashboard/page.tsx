@@ -844,7 +844,7 @@ const AGENTS_LIST = [
     name: "General Purpose AI",
     banglaName: "General Purpose AI",
     desc: "Versatile AI for writing, coding, translation, Q&A, math, research — anything",
-    banglaDesc: "লেখা, কোডিং, অনুবাদ, প্রশ্নোত্তর, গণিত, গবেষণা — সব কিছুর জন্য",
+    banglaDesc: "Versatile AI for writing, coding, translation, Q&A, math, research — anything",
     icon: Sparkles,
     placeholder: "Ask me anything — write, code, translate, explain, summarize...",
     suggestions: [
