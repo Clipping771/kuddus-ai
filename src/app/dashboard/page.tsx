@@ -1566,15 +1566,20 @@ export default function Dashboard() {
 
   const handlePdfFileSelect = async (file: File) => {
     setPdfFile(file);
-    // Step 1: Instantly show cleaned filename so UI is never empty
-    const cleanName = file.name
-      .replace(/\.pdf$/i, "")
-      .replace(/[-_,،]/g, " ")   // also strip commas (common in Bangla filenames)
+
+    // Step 1: Smart filename cleaning — strip numbers, edition, year, copy info
+    const rawName = file.name.replace(/\.pdf$/i, "");
+    const cleanName = rawName
+      .replace(/^\d+/g, "")                          // strip leading numbers (e.g. "82050xford" → "xford")
+      .replace(/[-_,،]/g, " ")
+      .replace(/\b(copy|edition|ed|vol|volume|part|chapter|10th|9th|8th|7th|6th|5th|4th|3rd|2nd|1st|\d{4}|\d+)\b/gi, "")
       .replace(/\s+/g, " ")
       .trim()
       .split(" ")
+      .filter(w => w.length > 1)
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" ");
+      .join(" ") || "Document Expert";
+
     setNewPdfAgentName(cleanName);
     setIsGeneratingPdfName(true);
 
