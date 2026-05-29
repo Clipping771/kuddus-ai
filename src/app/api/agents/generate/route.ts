@@ -293,30 +293,20 @@ export async function POST(req: Request) {
       const namePrompt = isBangla
         ? `একটি PDF ডকুমেন্ট আপলোড করা হয়েছে।
 ফাইলের নাম: "${fileName}"
-${contentPreview ? `কন্টেন্ট প্রিভিউ: "${contentPreview}"` : ""}
+${contentPreview ? `কন্টেন্ট: "${contentPreview.substring(0, 800)}"` : ""}
 
-এই ডকুমেন্টের বিষয়বস্তু বিশ্লেষণ করে একটি স্মার্ট AI এজেন্টের নাম তৈরি করো।
+${contentPreview ? "এই ডকুমেন্টের CONTENT বিশ্লেষণ করে" : "ফাইলের নাম দেখে"} একটি স্মার্ট AI এজেন্টের নাম তৈরি করো।
+নামটি হবে ২-৪ শব্দের, বিষয়ভিত্তিক ও অর্থবহ।
+শুধু নামটি লেখো।`
+        : `Analyze this PDF and generate a smart 2-4 word AI agent name based on its THEME.
 
-নিয়ম:
-- নামটি হবে ২-৪ শব্দের
-- ফাইলের নাম হুবহু কপি করবে না — বিষয়বস্তু বুঝে নতুন নাম দাও
-- নামটি হবে একটি AI বিশেষজ্ঞের পরিচয় (যেমন: "যোগাযোগ দক্ষতা বিশেষজ্ঞ", "Communication Skills Expert", "Business Strategy Advisor")
-- শুধু নামটি লেখো, আর কিছু না
+File: "${fileName}"
+${contentPreview ? `Content (read this to understand the theme): "${contentPreview.substring(0, 800)}"` : ""}
 
-উদাহরণ ভালো নাম: "যোগাযোগ বিশেষজ্ঞ", "Communication Expert", "ব্যবসায়িক কৌশল উপদেষ্টা"`
-        : `A PDF document has been uploaded.
-File name: "${fileName}"
-${contentPreview ? `Content preview: "${contentPreview}"` : ""}
-
-Generate a smart, professional AI agent name (2-4 words) based on what this document is about.
-
-Rules:
-- DO NOT copy the filename — infer the topic and create a new descriptive name
-- The name should sound like an expert AI agent (e.g. "Communication Skills Expert", "Business Strategy Advisor")
-- ${!contentPreview ? "Infer the topic from the filename keywords." : "Use the content preview to understand the topic."}
-- Return ONLY the name, nothing else. No quotes, no punctuation.
-
-Good examples: "Communication Skills Expert", "Financial Strategy Advisor", "Legal Compliance Expert", "Marketing Growth Expert"`;
+- Identify the subject domain and target audience from the content
+- Generate a name like: "Clinical Medicine Expert", "Oxford Medicine Advisor", "Business Law Guide"
+- DO NOT repeat the filename
+- Return ONLY the 2-4 word name`;
 
       // Tier 1: Try Groq (env key)
       if (process.env.GROQ_API_KEY) {

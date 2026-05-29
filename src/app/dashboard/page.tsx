@@ -1583,21 +1583,33 @@ export default function Dashboard() {
     setNewPdfAgentName(cleanName);
     setIsGeneratingPdfName(true);
 
-    // Step 2: Read a snippet of the PDF text for smarter name generation
+    // Step 2: Read PDF content deeply for theme-based name generation
     try {
       let pdfSnippet = "";
       try {
         const { parseAnyFile } = await import("@/lib/fileParser");
         const parsed = await parseAnyFile(file);
-        // Take first 400 chars of content as context for name generation
-        pdfSnippet = (parsed as any).text?.slice(0, 400).replace(/\s+/g, " ").trim() || "";
+        // Take first 1500 chars — enough to understand the book's theme
+        pdfSnippet = (parsed as any).text?.slice(0, 1500).replace(/\s+/g, " ").trim() || "";
       } catch {
         // If parsing fails, fall back to filename only
       }
 
       const ideaForName = pdfSnippet
-        ? `File: "${cleanName}". Content preview: "${pdfSnippet}"`
-        : `File: "${cleanName}". No content preview available — generate a smart agent name based on the filename alone. Make it sound like an expert AI agent name, not just the filename repeated.`;
+        ? `A PDF document has been uploaded. Analyze its CONTENT to determine the theme and generate a smart agent name.
+
+File name: "${cleanName}"
+Content (first 1500 chars): "${pdfSnippet}"
+
+Based on the ACTUAL CONTENT (not just the filename), identify:
+1. What is this document about? (subject/domain)
+2. Who is the target audience? (students, doctors, engineers, etc.)
+3. What expertise would an AI agent need to answer questions about this?
+
+Generate a smart 2-4 word agent name that reflects the document's THEME and PURPOSE.
+Examples: "Clinical Medicine Expert", "Oxford Medicine Advisor", "Surgical Techniques Guide", "Business Strategy Coach"
+Return ONLY the name, nothing else.`
+        : `File: "${cleanName}". Generate a smart 2-4 word expert agent name based on the filename topic. Return ONLY the name.`;
 
       const res = await fetch("/api/agents/generate", {
         method: "POST",
