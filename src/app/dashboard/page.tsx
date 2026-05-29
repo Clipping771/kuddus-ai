@@ -840,6 +840,21 @@ interface Message {
 }
 const AGENTS_LIST = [
   {
+    id: "general-purpose-agent",
+    name: "General Purpose AI",
+    banglaName: "General Purpose AI",
+    desc: "Versatile AI for writing, coding, translation, Q&A, math, research — anything",
+    banglaDesc: "লেখা, কোডিং, অনুবাদ, প্রশ্নোত্তর, গণিত, গবেষণা — সব কিছুর জন্য",
+    icon: Sparkles,
+    placeholder: "Ask me anything — write, code, translate, explain, summarize...",
+    suggestions: [
+      "Write a professional email declining a meeting request.",
+      "Explain quantum computing in simple terms.",
+      "Translate this to Bangla: 'The early bird catches the worm'",
+      "Write a Python function to sort a list of dictionaries by a key."
+    ]
+  },
+  {
     id: "devmind-agent",
     name: "DevMind — Senior Engineer",
     banglaName: "DevMind — Senior Engineer",
@@ -3711,6 +3726,9 @@ export default function Dashboard() {
                     },
                     "devmind-agent": {
                       text: <>● <strong>DevMind Tip:</strong> Paste your <strong>code, error message, or describe the architecture</strong> — the more context, the sharper the analysis.</>
+                    },
+                    "general-purpose-agent": {
+                      text: <>● <strong>General AI:</strong> Ask <strong>anything</strong> — write, code, translate, explain, summarize, brainstorm. No topic limits.</>
                     },
                     "sales-lead-generator": {
                       text: <>● <strong>Sales Agent Tip:</strong> Describe your <strong>product, target buyer persona, and current sales channel</strong> for a custom pipeline.</>
