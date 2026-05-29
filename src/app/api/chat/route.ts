@@ -810,8 +810,28 @@ Apply the following highly advanced analysis steps:
     // 6. Call OpenRouter API with Streaming OR Brain Trust Pipeline
     let resolvedModelId = modelId || "meta-llama/llama-3.3-70b-instruct:free";
 
-    // Fix stale/thinking model IDs — redirect to non-thinking models for normal chat
-    // DeepSeek R1, Qwen3 = thinking models that show reasoning text
+    // THINKING MODEL BLOCKLIST — these models show internal reasoning text to users
+    // Redirect ALL thinking models to non-thinking equivalents (except Brain Trust)
+    const THINKING_MODELS = new Set([
+      "deepseek/deepseek-r1-0528:free",
+      "deepseek/deepseek-r1-0528",
+      "deepseek/deepseek-r1:free",
+      "deepseek/deepseek-r1",
+      "deepseek/deepseek-v4-flash",
+      "deepseek/deepseek-v4-flash:free",
+      "qwen/qwen3-8b:free",
+      "qwen/qwen3-8b",
+      "qwen/qwen3-14b:free",
+      "qwen/qwen3-32b:free",
+      "microsoft/phi-4-reasoning-plus:free", // also shows reasoning
+    ]);
+
+    if (THINKING_MODELS.has(resolvedModelId) && !isBrainTrust) {
+      console.log(`[ModelGuard] Blocked thinking model "${resolvedModelId}" → redirecting to llama-3.3-70b`);
+      resolvedModelId = "meta-llama/llama-3.3-70b-instruct:free";
+    }
+
+    // Fix other stale model IDs
     if (resolvedModelId === "google/gemma-4-31b-it" || resolvedModelId === "google/gemma-4-31b-it:free") {
       resolvedModelId = "google/gemma-3-27b-it:free";
     } else if (

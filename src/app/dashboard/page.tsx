@@ -1164,7 +1164,24 @@ export default function Dashboard() {
 
       if (savedTone) setSelectedToneId(savedTone);
       if (savedAgent) setSelectedAgentId(savedAgent);
-      if (savedModel) setSelectedModelId(savedModel);
+
+      // Clear stale/thinking model IDs from localStorage
+      const THINKING_MODEL_IDS = new Set([
+        "deepseek/deepseek-r1-0528:free", "deepseek/deepseek-r1:free",
+        "deepseek/deepseek-v4-flash", "deepseek/deepseek-v4-flash:free",
+        "qwen/qwen3-8b:free", "qwen/qwen3-8b",
+        "google/gemma-4-31b-it", "google/gemma-4-31b-it:free",
+        "microsoft/phi-4-reasoning-plus:free",
+      ]);
+      if (savedModel && !THINKING_MODEL_IDS.has(savedModel)) {
+        setSelectedModelId(savedModel);
+      } else if (savedModel && THINKING_MODEL_IDS.has(savedModel)) {
+        // Reset to safe default and clear localStorage
+        const safeDefault = "meta-llama/llama-3.3-70b-instruct:free";
+        setSelectedModelId(safeDefault);
+        localStorage.setItem("kacha_selected_model", safeDefault);
+        console.log(`[ModelGuard] Cleared stale thinking model "${savedModel}" → reset to llama-3.3-70b`);
+      }
       if (savedBrainTrust) setIsBrainTrust(savedBrainTrust === "true");
       if (savedSidebarFolded) setIsSidebarFolded(savedSidebarFolded === "true");
 
