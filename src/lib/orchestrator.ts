@@ -84,29 +84,21 @@ export async function orchestrateAgents(
             .map(([id, cap]) => `- ${id}: ${cap}`)
             .join("\n");
 
-        const prompt = `You are an AI agent orchestrator. Analyze this user message and decide which agent(s) should handle it.
+        const prompt = `You are an AI agent orchestrator. Analyze this user message and decide which agent(s) should handle it. Respond ONLY with JSON — no thinking, no explanation, no preamble.
 
 User message: "${message.substring(0, 500)}"
 
 Available agents:
 ${agentList}
 
-Respond with ONLY a JSON object:
-{
-  "primaryAgent": "agent-id-here",
-  "collaboratingAgents": ["agent-id-2", "agent-id-3"],
-  "shouldUseBrainTrust": false,
-  "intent": "one sentence describing what user wants",
-  "confidence": "high|medium|low",
-  "reasoning": "why you chose these agents"
-}
+Return ONLY this JSON:
+{"primaryAgent":"agent-id","collaboratingAgents":[],"shouldUseBrainTrust":false,"intent":"brief intent","confidence":"high","reasoning":"why"}
 
 Rules:
-- primaryAgent: the SINGLE best agent for this query
-- collaboratingAgents: 0-2 additional agents if the query spans multiple domains (e.g. startup plan needs CFO + Investor + Research)
-- shouldUseBrainTrust: true ONLY for complex strategic questions needing deep multi-perspective analysis
-- Keep collaboratingAgents empty for simple/focused queries
-- Return ONLY the JSON, no explanation`;
+- primaryAgent: single best agent ID
+- collaboratingAgents: 0-2 additional agents for multi-domain queries only
+- shouldUseBrainTrust: true ONLY for very complex strategic questions
+- Return ONLY the JSON object, nothing else`;
 
         const completion = await groqChatWithFallback(
             {

@@ -695,6 +695,11 @@ For this complex strategic question, if critical information is missing (budget,
       agentSystemPrompt += `\n\n${langDetection.langInstruction}`;
     }
 
+    // 5f. Role reminder in system prompt (NOT in user messages — avoids triggering thinking)
+    if (agentId && AGENT_INSTRUCTIONS[agentId]) {
+      agentSystemPrompt += `\n\n## ACTIVE ROLE REMINDER\nYou are currently acting as the **${agentId}** specialist. Stay in this role for the entire conversation.${tonePrompt ? `\nTone: ${tonePrompt}` : ""}`;
+    }
+
     // 5f. 🤝 Collaborative mode — if orchestrator found collaborating agents
     if (orchestrationResult && orchestrationResult.collaboratingAgents.length > 0 && !isBrainTrust) {
       agentSystemPrompt = buildCollaborativePrompt(
@@ -792,7 +797,6 @@ Apply the following highly advanced analysis steps:
 
       historyToUse.forEach((msg, idx) => {
         let msgContent = parseMessageContent(msg.role, msg.content);
-        // No SYSTEM REMINDER injection into user messages — it triggers thinking in models
         formattedMessages.push({
           role: msg.role === "user" ? "user" : "assistant",
           content: msgContent,
@@ -1279,7 +1283,13 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                 );
                 const { response: res, usedModel } = await openrouterFetchWithFallback(
                   [selectedModel],
-                  { messages: formattedMessages, stream: true, max_tokens: maxTok },
+                  {
+                    messages: formattedMessages,
+                    stream: true,
+                    max_tokens: maxTok,
+                    // Disable thinking/reasoning for ALL models — prevents internal monologue leaking
+                    thinking: { type: "disabled" },
+                  },
                   dbUser.id
                 );
                 response = res;
