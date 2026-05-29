@@ -348,57 +348,74 @@ const DynamicLoadingIndicator = ({ themeMode, agentId }: { themeMode: string; ag
 const parseThoughtAndContent = (text: string): { thought: string; content: string } => {
   if (!text) return { thought: "", content: "" };
 
-  // 1. Try <thought> tags
-  let thoughtStart = text.indexOf("<thought>");
-  let thoughtEnd = text.indexOf("</thought>");
-  let tagOffset = 9;
-
-  // 2. Fallback to <think> tags (DeepSeek native)
-  if (thoughtStart === -1) {
-    thoughtStart = text.indexOf("<think>");
-    thoughtEnd = text.indexOf("</think>");
-    tagOffset = 7;
-  }
-
-  if (thoughtStart !== -1) {
-    if (thoughtEnd !== -1) {
-      // Completed thought block
-      const thought = text.substring(thoughtStart + tagOffset, thoughtEnd).trim();
-      const content = (text.substring(0, thoughtStart) + text.substring(thoughtEnd + tagOffset + 1)).trim();
-      return { thought, content };
-    } else {
-      // In-progress thought block
-      const thought = text.substring(thoughtStart + tagOffset).trim();
-      const content = text.substring(0, thoughtStart).trim();
-      return { thought, content };
+  // 1. Tagged thought blocks (<thought>, <think>)
+  for (const [open, close, offset] of [["<thought>", "</thought>", 9], ["<think>", "</think>", 7]] as [string, string, number][]) {
+    const start = text.indexOf(open);
+    if (start !== -1) {
+      const end = text.indexOf(close);
+      if (end !== -1) {
+        const thought = text.substring(start + offset, end).trim();
+        const content = (text.substring(0, start) + text.substring(end + offset + 1)).trim();
+        return { thought, content };
+      } else {
+        return { thought: text.substring(start + offset).trim(), content: text.substring(0, start).trim() };
+      }
     }
   }
 
-  // 3. Detect untagged thinking patterns (Qwen3, some OpenRouter models)
-  // These models output their reasoning as plain text before the actual answer
-  const untaggedThinkingPatterns = [
-    // With double newline separator
-    /^(Okay,?\s+let['']s\s+see[\s\S]*?)(?=\n\n[A-Z🌶✅❌💡]|\n\n##|\n\nYes\.|\n\nNo\.|\n\nHi\.)/i,
-    /^(Okay,?\s+I\s+need[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
-    /^(First,?\s+I\s+need[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
-    /^(Let\s+me\s+(think|analyze|consider)[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
-    /^(The\s+user\s+(is\s+asking|wants|said)[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
-    /^(I\s+need\s+to\s+(adhere|follow|check)[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
-    /^(Wait,[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
-    /^(Hmm,[\s\S]*?)(?=\n\n[A-Z🌶]|\n\n##)/i,
-    // Without separator — entire response is thinking + short answer at end
-    /^(Okay,?\s+let['']s\s+see[\s\S]{50,}?)\n([A-Z][a-z].{0,50}$)/m,
-    /^(The\s+user\s+(is\s+asking|wants)[\s\S]{50,}?)\n([A-Z][a-z].{0,50}$)/m,
+  // 2. Aggressive untagged thinking detection
+  // These patterns match ANY internal monologue that leaks before the actual answer
+  const THINKING_STARTERS = [
+    /^(We have a user request[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
+    /^(The user (is asking|said|wants|asked)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
+    /^(User (is asking|said|wants|asked)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
+    /^(Okay,?\s+let['']s\s+see[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
+    /^(Okay,?\s+(I need|the user)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
+    /^(First,?\s+I\s+need[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
+    /^(Let\s+me\s+(think|analyze|consider|check)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
+    /^(I\s+need\s+to\s+(adhere|follow|check|respond|provide)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
+    /^(As\s+(a specialist|the AI|Kacha Morich)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
+    /^(Since\s+the\s+user[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
+    /^(Need\s+to\s+respond[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
+    /^(They\s+(provided|want|need|asked)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
+    /^(Also\s+(adhere|follow|check)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
+    /^(Wait,[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
+    /^(Hmm,[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
   ];
 
-  for (const pattern of untaggedThinkingPatterns) {
+  for (const pattern of THINKING_STARTERS) {
     const match = text.match(pattern);
-    if (match && match[1] && match[1].length > 50) {
+    if (match && match[1] && match[1].length > 20) {
       const thought = match[1].trim();
-      const content = text.substring(match[1].length).trim();
-      if (content.length > 10) {
-        return { thought, content };
+      const remaining = text.substring(match[1].length).trim();
+      if (remaining.length > 5) {
+        return { thought, content: remaining };
       }
+      // If no content after thinking, hide the thinking and show empty
+      return { thought, content: "" };
+    }
+  }
+
+  // 3. Multi-paragraph thinking: if first paragraph looks like internal monologue
+  // and second paragraph is the actual answer
+  const paragraphs = text.split(/\n\n+/);
+  if (paragraphs.length >= 2) {
+    const firstPara = paragraphs[0].trim();
+    const thinkingIndicators = [
+      /\buser (is asking|said|wants|asked)\b/i,
+      /\bneed to respond\b/i,
+      /\bwe (have|must|should|need)\b/i,
+      /\bprobably respond\b/i,
+      /\bkeep (it |this )?(brief|short|concise)\b/i,
+      /\bself.?check\b/i,
+      /\bfinal output\b/i,
+    ];
+    const isThinkingParagraph = thinkingIndicators.some(p => p.test(firstPara));
+    if (isThinkingParagraph && firstPara.length > 30) {
+      return {
+        thought: firstPara,
+        content: paragraphs.slice(1).join("\n\n").trim(),
+      };
     }
   }
 
