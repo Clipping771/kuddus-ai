@@ -1310,14 +1310,42 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
             const decoder = new TextDecoder();
             let buffer = "";
             let isThinking = false;
-            let streamBuffer = ""; // Buffer to detect untagged thinking at stream start
+            let streamBuffer = "";
             let untaggedThinkingChecked = false;
+
+            // All known thinking starters — any model, any format
+            const THINKING_STARTERS = [
+              /^(We have a user request)/i,
+              /^(The user (is asking|said|wants|asked|wrote))/i,
+              /^(User (is asking|said|wants|asked|wrote))/i,
+              /^(Okay,?\s+let['']s\s+see)/i,
+              /^(Okay,?\s+(I need|the user))/i,
+              /^(First,?\s+I\s+need)/i,
+              /^(Let\s+me\s+(think|analyze|consider|check|see))/i,
+              /^(I\s+need\s+to\s+(adhere|follow|check|respond|provide|analyze))/i,
+              /^(As\s+(a specialist|the AI|Kacha Morich|an AI))/i,
+              /^(Since\s+the\s+user)/i,
+              /^(Need\s+to\s+respond)/i,
+              /^(They\s+(provided|want|need|asked))/i,
+              /^(Also\s+(adhere|follow|check))/i,
+              /^(Wait,\s)/i,
+              /^(Hmm,\s)/i,
+              /^(So,?\s+the\s+response\s+should)/i,
+              /^(The\s+response\s+should)/i,
+              /^(Checking\s+the\s+rules)/i,
+              /^(Self.?check)/i,
+            ];
 
             while (reader) {
               const { done, value } = await reader.read();
               if (done) {
                 if (isThinking) {
                   controller.enqueue(encoder.encode("</thought>\n"));
+                }
+                // Flush any remaining stream buffer
+                if (streamBuffer && !untaggedThinkingChecked) {
+                  controller.enqueue(encoder.encode(streamBuffer));
+                  assistantResponse += streamBuffer;
                 }
                 break;
               }
@@ -1346,37 +1374,24 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                         controller.enqueue(encoder.encode("\n</thought>\n"));
                       }
 
-                      // Detect untagged thinking at stream start (Qwen3, some models)
-                      // Use a smaller buffer (15 chars) for faster first token
+                      // Buffer first 60 chars to detect thinking at stream start
                       if (!untaggedThinkingChecked) {
                         streamBuffer += text;
-                        if (streamBuffer.length >= 15) {
+                        if (streamBuffer.length >= 60) {
                           untaggedThinkingChecked = true;
-                          const untaggedPatterns = [
-                            /^(Okay,?\s+let['']s\s+see)/i,
-                            /^(Okay,?\s+I\s+need)/i,
-                            /^(First,?\s+I\s+need)/i,
-                            /^(Let\s+me\s+(think|analyze))/i,
-                            /^(The\s+user\s+(is\s+asking|wants))/i,
-                            /^(I\s+need\s+to\s+(adhere|follow))/i,
-                            /^(Wait,\s)/i,
-                            /^(Hmm,\s)/i,
-                          ];
-                          const isUntaggedThinking = untaggedPatterns.some(p => p.test(streamBuffer));
-                          if (isUntaggedThinking) {
+                          const isThinkingStart = THINKING_STARTERS.some(p => p.test(streamBuffer));
+                          if (isThinkingStart) {
                             isThinking = true;
                             controller.enqueue(encoder.encode("<thought>\n" + streamBuffer));
                             assistantResponse += streamBuffer;
                           } else {
-                            // Normal content — flush immediately
                             controller.enqueue(encoder.encode(streamBuffer));
                             assistantResponse += streamBuffer;
                           }
                           streamBuffer = "";
                           continue;
                         }
-                        // Still buffering — don't enqueue yet
-                        continue;
+                        continue; // still buffering
                       }
 
                       assistantResponse += text;
