@@ -1372,6 +1372,9 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                       if (isThinking) {
                         isThinking = false;
                         controller.enqueue(encoder.encode("\n</thought>\n"));
+                        // Skip filler words that immediately follow thinking block
+                        const isFillerOnly = /^(Ok\.?\s*|Okay\.?\s*|Sure\.?\s*|Alright\.?\s*|Right\.?\s*|Got it\.?\s*|Understood\.?\s*|Well,?\s*)$/i.test(text.trim());
+                        if (isFillerOnly) continue;
                       }
 
                       // Buffer first 60 chars to detect thinking at stream start

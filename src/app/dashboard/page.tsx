@@ -2739,11 +2739,15 @@ export default function Dashboard() {
         });
       }
 
-      // Final flush — ensure last partial chunk is always shown
+      // Final flush — strip thinking leftovers and ensure last chunk shown
       setMessages((prev) => {
         const updated = [...prev];
         if (updated.length > 0 && accumulatedResponse) {
-          updated[updated.length - 1] = { role: "assistant", content: accumulatedResponse };
+          // Strip leading filler words that are thinking leftovers (e.g. "Ok.", "Sure.")
+          const cleaned = accumulatedResponse
+            .replace(/^(Ok\.?\s*|Okay\.?\s*|Sure\.?\s*|Alright\.?\s*|Right\.?\s*|Got it\.?\s*|Understood\.?\s*|Well,?\s*)/i, "")
+            .trim();
+          updated[updated.length - 1] = { role: "assistant", content: cleaned || accumulatedResponse };
         }
         return updated;
       });
