@@ -3520,34 +3520,42 @@ export default function Dashboard() {
                             const cMap: Record<string, string> = { emerald: themeMode === "black" ? "text-emerald-400" : "text-emerald-600", amber: themeMode === "black" ? "text-amber-400" : "text-amber-600", violet: themeMode === "black" ? "text-violet-400" : "text-violet-600", blue: themeMode === "black" ? "text-blue-400" : "text-blue-600" };
                             const bMap: Record<string, string> = { emerald: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20", amber: "bg-amber-500/15 text-amber-400 border-amber-500/20", violet: "bg-violet-500/15 text-violet-400 border-violet-500/20", blue: "bg-blue-500/15 text-blue-400 border-blue-500/20" };
 
-                            return cats.map(cat => {
+                            return cats.map((cat) => {
                               const catModels = filtered.filter(cat.filter);
                               if (catModels.length === 0) return null;
+                              const bgMap: Record<string, string> = {
+                                emerald: themeMode === "black" ? "bg-emerald-500/8 border-emerald-500/15" : "bg-emerald-50/80 border-emerald-200",
+                                amber: themeMode === "black" ? "bg-amber-500/8 border-amber-500/15" : "bg-amber-50/80 border-amber-200",
+                                violet: themeMode === "black" ? "bg-violet-500/8 border-violet-500/15" : "bg-violet-50/80 border-violet-200",
+                                blue: themeMode === "black" ? "bg-blue-500/8 border-blue-500/15" : "bg-blue-50/80 border-blue-200",
+                              };
                               return (
-                                <div key={cat.label}>
-                                  <div className="px-2 mb-1">
-                                    <span className={`text-[10px] font-black ${cMap[cat.color]}`}>{cat.label}</span>
-                                    <span className={`text-[9px] ml-1.5 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>{cat.desc}</span>
+                                <div key={cat.label} className={`rounded-xl border overflow-hidden ${bgMap[cat.color]}`}>
+                                  <div className={`px-3 py-2 flex items-center gap-2 border-b ${themeMode === "black" ? "border-white/5 bg-black/20" : "border-black/5 bg-white/40"}`}>
+                                    <span className={`text-[11px] font-black tracking-wide ${cMap[cat.color]}`}>{cat.label}</span>
+                                    <span className={`text-[9px] ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>— {cat.desc}</span>
+                                    <span className={`ml-auto text-[9px] px-1.5 py-0.5 rounded-full font-bold ${bMap[cat.color]}`}>{catModels.length}</span>
                                   </div>
-                                  <div className="space-y-0.5">
+                                  <div className="p-1 space-y-0.5">
                                     {catModels.map((model: any) => {
                                       const isSel = selectedModelId === model.id;
                                       return (
                                         <button key={model.id} type="button"
                                           onClick={() => { handleModelChange(model.id); setModelDropdownOpen(false); setModelsSearch(""); }}
-                                          className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg transition duration-150 text-left ${isSel ? (themeMode === "black" ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-300" : "bg-emerald-50 border border-emerald-200 text-emerald-700") : (themeMode === "black" ? "text-neutral-400 hover:bg-white/[0.04] hover:text-white" : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900")}`}
+                                          className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg transition duration-150 text-left ${isSel
+                                            ? themeMode === "black" ? "bg-white/10 border border-white/15 text-white" : "bg-white border border-neutral-300 shadow-sm text-neutral-900"
+                                            : themeMode === "black" ? "text-neutral-300 hover:bg-white/[0.06] hover:text-white" : "text-neutral-700 hover:bg-white/80 hover:text-neutral-900"}`}
                                         >
-                                          <div className="flex items-center gap-2 min-w-0">
-                                            <span className="text-sm flex-shrink-0">{model.icon || "✨"}</span>
+                                          <div className="flex items-center gap-2.5 min-w-0">
+                                            <span className="text-base flex-shrink-0">{model.icon || "✨"}</span>
                                             <div className="min-w-0">
-                                              <div className="text-[11px] font-bold truncate">{model.name}</div>
-                                              <div className={`text-[9px] truncate ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>{model.id}</div>
+                                              <div className={`text-[12px] font-bold truncate ${isSel ? (themeMode === "black" ? "text-white" : "text-neutral-900") : ""}`}>{model.name}</div>
+                                              <div className={`text-[9px] truncate font-mono ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>{model.id}</div>
                                             </div>
                                           </div>
-                                          <div className="flex items-center gap-1 flex-shrink-0">
-                                            <span className={`text-[8px] px-1.5 py-0.5 rounded-full border font-bold ${bMap[cat.color]}`}>{model.badge}</span>
-                                            {!model.isFree && <span className="text-[9px]">💳</span>}
-                                            {isSel && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                                            {!model.isFree && <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${themeMode === "black" ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/20" : "bg-yellow-50 text-yellow-600 border border-yellow-200"}`}>💳</span>}
+                                            {isSel && <span className={`w-2 h-2 rounded-full flex-shrink-0 ${themeMode === "black" ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-emerald-500"}`} />}
                                           </div>
                                         </button>
                                       );
