@@ -1186,6 +1186,12 @@ export default function Dashboard() {
 
   const [selectedModelId, setSelectedModelId] = useState<string>("google/gemma-4-31b-it");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({
+    "🚀 Fast & Free": false,
+    "⚡ Reasoning": true,
+    "🌐 Other Free": true,
+    "💎 Premium": true,
+  });
 
   // Dynamic model list from OpenRouter
   const [modelsList, setModelsList] = useState<any[]>(FALLBACK_MODELS);
@@ -3559,43 +3565,65 @@ Return ONLY the name, nothing else.`
                             return cats.map((cat) => {
                               const catModels = filtered.filter(cat.filter);
                               if (catModels.length === 0) return null;
+                              const isCollapsed = modelsSearch ? false : !!collapsedCategories[cat.label];
                               const bgMap: Record<string, string> = {
                                 emerald: themeMode === "black" ? "bg-emerald-500/8 border-emerald-500/15" : "bg-emerald-50/80 border-emerald-200",
                                 amber: themeMode === "black" ? "bg-amber-500/8 border-amber-500/15" : "bg-amber-50/80 border-amber-200",
                                 violet: themeMode === "black" ? "bg-violet-500/8 border-violet-500/15" : "bg-violet-50/80 border-violet-200",
                                 blue: themeMode === "black" ? "bg-blue-500/8 border-blue-500/15" : "bg-blue-50/80 border-blue-200",
                               };
+                              const glowMap: Record<string, string> = {
+                                emerald: themeMode === "black" ? "hover:bg-emerald-500/10" : "hover:bg-emerald-100/60",
+                                amber: themeMode === "black" ? "hover:bg-amber-500/10" : "hover:bg-amber-100/60",
+                                violet: themeMode === "black" ? "hover:bg-violet-500/10" : "hover:bg-violet-100/60",
+                                blue: themeMode === "black" ? "hover:bg-blue-500/10" : "hover:bg-blue-100/60",
+                              };
                               return (
-                                <div key={cat.label} className={`rounded-xl border overflow-hidden ${bgMap[cat.color]}`}>
-                                  <div className={`px-3 py-2 flex items-center gap-2 border-b ${themeMode === "black" ? "border-white/5 bg-black/20" : "border-black/5 bg-white/40"}`}>
+                                <div key={cat.label} className={`rounded-xl border overflow-hidden transition-all duration-200 ${bgMap[cat.color]}`}>
+                                  {/* Collapsible Category Header */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setCollapsedCategories(prev => ({ ...prev, [cat.label]: !prev[cat.label] }))}
+                                    className={`w-full px-3 py-2.5 flex items-center gap-2 transition-all duration-200 cursor-pointer select-none ${isCollapsed ? "border-transparent" : (themeMode === "black" ? "border-b border-white/5 bg-black/20" : "border-b border-black/5 bg-white/40")} ${glowMap[cat.color]}`}
+                                  >
                                     <span className={`text-[11px] font-black tracking-wide ${cMap[cat.color]}`}>{cat.label}</span>
                                     <span className={`text-[9px] ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>— {cat.desc}</span>
-                                    <span className={`ml-auto text-[9px] px-1.5 py-0.5 rounded-full font-bold ${bMap[cat.color]}`}>{catModels.length}</span>
-                                  </div>
-                                  <div className="p-1 space-y-0.5">
-                                    {catModels.map((model: any) => {
-                                      const isSel = selectedModelId === model.id;
-                                      return (
-                                        <button key={model.id} type="button"
-                                          onClick={() => { handleModelChange(model.id); setModelDropdownOpen(false); setModelsSearch(""); }}
-                                          className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg transition duration-150 text-left ${isSel
-                                            ? themeMode === "black" ? "bg-white/10 border border-white/15 text-white" : "bg-white border border-neutral-300 shadow-sm text-neutral-900"
-                                            : themeMode === "black" ? "text-neutral-300 hover:bg-white/[0.06] hover:text-white" : "text-neutral-700 hover:bg-white/80 hover:text-neutral-900"}`}
-                                        >
-                                          <div className="flex items-center gap-2.5 min-w-0">
-                                            <span className="text-base flex-shrink-0">{model.icon || "✨"}</span>
-                                            <div className="min-w-0">
-                                              <div className={`text-[12px] font-bold truncate ${isSel ? (themeMode === "black" ? "text-white" : "text-neutral-900") : ""}`}>{model.name}</div>
-                                              <div className={`text-[9px] truncate font-mono ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>{model.id}</div>
+                                    <span className={`ml-auto text-[9px] px-1.5 py-0.5 rounded-full font-bold border ${bMap[cat.color]}`}>{catModels.length}</span>
+                                    <ChevronDown
+                                      size={12}
+                                      className={`flex-shrink-0 transition-transform duration-300 ease-in-out ${cMap[cat.color]} ${isCollapsed ? "" : "rotate-180"}`}
+                                    />
+                                  </button>
+                                  {/* Collapsible Body */}
+                                  <div
+                                    className="overflow-hidden transition-all duration-300 ease-in-out"
+                                    style={{ maxHeight: isCollapsed ? "0px" : `${catModels.length * 60}px` }}
+                                  >
+                                    <div className="p-1 space-y-0.5">
+                                      {catModels.map((model: any) => {
+                                        const isSel = selectedModelId === model.id;
+                                        return (
+                                          <button key={model.id} type="button"
+                                            onClick={() => { handleModelChange(model.id); setModelDropdownOpen(false); setModelsSearch(""); }}
+                                            className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg transition duration-150 text-left ${isSel
+                                              ? themeMode === "black" ? "bg-white/10 border border-white/15 text-white" : "bg-white border border-neutral-300 shadow-sm text-neutral-900"
+                                              : themeMode === "black" ? "text-neutral-300 hover:bg-white/[0.06] hover:text-white" : "text-neutral-700 hover:bg-white/80 hover:text-neutral-900"}`}
+                                          >
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                              <span className="text-base flex-shrink-0">{model.icon || "✨"}</span>
+                                              <div className="min-w-0">
+                                                <div className={`text-[12px] font-bold truncate ${isSel ? (themeMode === "black" ? "text-white" : "text-neutral-900") : ""}`}>{model.name}</div>
+                                                <div className={`text-[9px] truncate font-mono ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>{model.id}</div>
+                                              </div>
                                             </div>
-                                          </div>
-                                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                                            {!model.isFree && <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${themeMode === "black" ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/20" : "bg-yellow-50 text-yellow-600 border border-yellow-200"}`}>💳</span>}
-                                            {isSel && <span className={`w-2 h-2 rounded-full flex-shrink-0 ${themeMode === "black" ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-emerald-500"}`} />}
-                                          </div>
-                                        </button>
-                                      );
-                                    })}
+                                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                                              {!model.isFree && <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${themeMode === "black" ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/20" : "bg-yellow-50 text-yellow-600 border border-yellow-200"}`}>💳</span>}
+                                              {isSel && <span className={`w-2 h-2 rounded-full flex-shrink-0 ${themeMode === "black" ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-emerald-500"}`} />}
+                                            </div>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
                                 </div>
                               );
