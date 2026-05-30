@@ -208,7 +208,8 @@ import {
   Download,
   ChevronLeft,
   ChevronRight,
-  Key
+  Key,
+  RefreshCw
 } from "lucide-react";
 import Link from "next/link";
 import { parseAnyFile } from "@/lib/fileParser";
@@ -4854,122 +4855,246 @@ export default function Dashboard() {
       {/* 5. Custom Agent Builder — Smart 2-Step Wizard */}
       {
         customAgentModalOpen && (() => {
-          // Step state lives here via a wrapper component trick — use existing states
           const isStep2 = newAgentName.trim() !== "" && newAgentInstructions.trim() !== "";
-          return (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-              <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => { setCustomAgentModalOpen(false); setAgentConceptPrompt(""); setNewAgentName(""); setNewAgentBanglaName(""); setNewAgentBanglaDesc(""); setNewAgentInstructions(""); }} />
-              <div className={`relative max-w-lg w-full max-h-[92vh] overflow-y-auto rounded-3xl border shadow-2xl scrollbar-thin ${themeMode === "black" ? "bg-[#0A0A0C]/98 border-white/10 text-neutral-100" : "bg-white border-neutral-200 text-neutral-900"}`}>
+          const dk = themeMode === "black";
+          const closeModal = () => {
+            setCustomAgentModalOpen(false);
+            setAgentConceptPrompt("");
+            setNewAgentName("");
+            setNewAgentBanglaName("");
+            setNewAgentBanglaDesc("");
+            setNewAgentInstructions("");
+            setNewAgentIcon("🚀");
+          };
 
-                {/* Header */}
-                <div className={`flex items-center justify-between px-6 py-4 border-b ${themeMode === "black" ? "border-white/5" : "border-neutral-100"}`}>
+          // Quick-start templates
+          const TEMPLATES = [
+            { icon: "💼", label: "Sales Coach", idea: "A high-performance B2B sales coach who helps craft cold emails, handle objections, build pipelines, and close deals faster using SPIN and Challenger Sale frameworks." },
+            { icon: "⚖️", label: "Contract Reviewer", idea: "A corporate legal expert who reviews contracts, spots risky clauses, drafts NDAs and service agreements, and ensures compliance with local regulations." },
+            { icon: "🏋️", label: "Fitness Coach", idea: "A certified personal trainer who creates personalised workout plans, tracks progress, gives nutrition advice, and motivates users to hit their fitness goals." },
+            { icon: "📈", label: "Growth Hacker", idea: "A data-driven growth strategist who designs viral loops, optimises conversion funnels, runs A/B tests, and scales user acquisition for SaaS and e-commerce." },
+            { icon: "🎨", label: "Brand Designer", idea: "A senior brand strategist who helps define brand identity, create visual guidelines, write brand voice documents, and position products in competitive markets." },
+            { icon: "🧑‍💻", label: "Code Reviewer", idea: "A senior software engineer who reviews code for security vulnerabilities, performance issues, and best practices, then rewrites it to production-grade quality." },
+          ];
+
+          return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+              <div className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={closeModal} />
+              <div className={`relative w-full max-w-xl max-h-[94vh] overflow-y-auto rounded-3xl border shadow-2xl flex flex-col ${dk ? "bg-[#0A0A0C]/99 border-white/10 text-neutral-100" : "bg-white border-neutral-200 text-neutral-900"}`}
+                style={{ boxShadow: dk ? "0 0 80px rgba(16,185,129,0.08), 0 25px 50px rgba(0,0,0,0.8)" : "0 25px 50px rgba(0,0,0,0.15)" }}>
+
+                {/* ── Header ── */}
+                <div className={`flex items-center justify-between px-6 py-4 border-b flex-shrink-0 ${dk ? "border-white/5" : "border-neutral-100"}`}>
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${themeMode === "black" ? "bg-emerald-500/15" : "bg-emerald-50"}`}>
-                      <Sparkles size={15} className="text-emerald-500" />
+                    <div className={`w-9 h-9 rounded-2xl flex items-center justify-center ${dk ? "bg-emerald-500/15 border border-emerald-500/20" : "bg-emerald-50 border border-emerald-200"}`}>
+                      <Sparkles size={16} className="text-emerald-500" />
                     </div>
                     <div>
                       <h3 className="font-extrabold text-sm tracking-tight">Create Custom Agent</h3>
-                      <p className={`text-[10px] ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>
-                        {isStep2 ? "Step 2 — Review & customise" : "Step 1 — Describe your agent"}
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <div className={`flex items-center gap-1`}>
+                          <div className={`w-4 h-1 rounded-full ${!isStep2 ? "bg-emerald-500" : (dk ? "bg-neutral-700" : "bg-neutral-200")}`} />
+                          <div className={`w-4 h-1 rounded-full ${isStep2 ? "bg-emerald-500" : (dk ? "bg-neutral-700" : "bg-neutral-200")}`} />
+                        </div>
+                        <p className={`text-[10px] ${dk ? "text-neutral-500" : "text-neutral-400"}`}>
+                          {isStep2 ? "Step 2 of 2 — Review & Save" : "Step 1 of 2 — Describe your agent"}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <button type="button" onClick={() => { setCustomAgentModalOpen(false); setAgentConceptPrompt(""); setNewAgentName(""); setNewAgentBanglaName(""); setNewAgentBanglaDesc(""); setNewAgentInstructions(""); }} className={`p-1.5 rounded-lg transition ${themeMode === "black" ? "hover:bg-white/5 text-neutral-500 hover:text-white" : "hover:bg-neutral-100 text-neutral-400"}`}>
+                  <button type="button" onClick={closeModal} className={`p-2 rounded-xl transition ${dk ? "hover:bg-white/5 text-neutral-500 hover:text-white" : "hover:bg-neutral-100 text-neutral-400"}`}>
                     <X size={16} />
                   </button>
                 </div>
 
-                <div className="px-6 py-5 space-y-4">
+                <div className="px-6 py-5 flex-1">
                   {!isStep2 ? (
-                    /* ── STEP 1: Describe ── */
-                    <>
+                    /* ══════════════════════════════════════
+                       STEP 1 — Describe
+                    ══════════════════════════════════════ */
+                    <div className="space-y-5">
+                      {/* Quick-start templates */}
                       <div>
-                        <label className={`block text-[11px] font-black uppercase tracking-widest mb-2 ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>
-                          What kind of agent do you need?
-                        </label>
-                        <textarea
-                          rows={5}
-                          autoFocus
-                          placeholder={`Describe in plain language. Examples:\n\n• "A fitness coach who creates personalised workout plans and tracks progress"\n• "A legal contract reviewer who spots risks and suggests improvements"\n• "A cold email writer who crafts high-converting outreach sequences"`}
-                          value={agentConceptPrompt}
-                          onChange={(e) => setAgentConceptPrompt(e.target.value)}
-                          className={`w-full p-4 rounded-2xl border outline-none text-sm resize-none leading-relaxed transition ${themeMode === "black" ? "bg-neutral-900/60 border-white/8 text-white placeholder-neutral-600 focus:border-emerald-500/50" : "bg-neutral-50 border-neutral-200 text-neutral-900 placeholder-neutral-400 focus:border-emerald-400"}`}
-                        />
-                        <p className={`text-[10px] mt-2 ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>
-                          The more detail you give, the better the agent. Mention tone, expertise level, specific tasks, target audience.
+                        <p className={`text-[10px] font-black uppercase tracking-widest mb-2.5 ${dk ? "text-neutral-500" : "text-neutral-400"}`}>
+                          ⚡ Quick Start — Pick a template
                         </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleGenerateAll}
-                        disabled={isGeneratingAll || !agentConceptPrompt.trim()}
-                        className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-neutral-950 text-sm font-black tracking-wide uppercase transition-all flex items-center justify-center gap-2"
-                      >
-                        {isGeneratingAll ? (
-                          <><Loader2 size={15} className="animate-spin" /> Generating agent...</>
-                        ) : (
-                          <><Sparkles size={15} /> Generate Agent with AI</>
-                        )}
-                      </button>
-                    </>
-                  ) : (
-                    /* ── STEP 2: Review & Edit ── */
-                    <form onSubmit={handleCreateCustomAgent} className="space-y-4">
-                      {/* Generated summary card */}
-                      <div className={`p-4 rounded-2xl border ${themeMode === "black" ? "bg-emerald-500/5 border-emerald-500/15" : "bg-emerald-50 border-emerald-200"}`}>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xl">{newAgentIcon}</span>
-                          <span className="font-extrabold text-sm text-emerald-500">{newAgentName}</span>
-                        </div>
-                        <p className={`text-xs leading-relaxed ${themeMode === "black" ? "text-neutral-400" : "text-neutral-600"}`}>{newAgentBanglaDesc}</p>
-                      </div>
-
-                      {/* Name */}
-                      <div>
-                        <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Agent Name</label>
-                        <input type="text" required value={newAgentName} onChange={(e) => setNewAgentName(e.target.value)}
-                          className={`w-full px-4 py-2.5 rounded-xl border outline-none text-sm transition ${themeMode === "black" ? "bg-neutral-900/60 border-white/8 text-white focus:border-emerald-500/50" : "bg-neutral-50 border-neutral-200 focus:border-emerald-400"}`} />
-                      </div>
-
-                      {/* Description */}
-                      <div>
-                        <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Short Description</label>
-                        <input type="text" value={newAgentBanglaDesc} onChange={(e) => setNewAgentBanglaDesc(e.target.value)}
-                          className={`w-full px-4 py-2.5 rounded-xl border outline-none text-sm transition ${themeMode === "black" ? "bg-neutral-900/60 border-white/8 text-white focus:border-emerald-500/50" : "bg-neutral-50 border-neutral-200 focus:border-emerald-400"}`} />
-                      </div>
-
-                      {/* Icon */}
-                      <div>
-                        <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Icon</label>
-                        <div className="flex flex-wrap gap-2">
-                          {["🚀", "💰", "📈", "📣", "🎨", "💻", "🧠", "🛡️", "🤝", "🔥", "🌶️", "⚡", "🎯", "📊", "🔬", "🏋️", "⚖️", "✍️", "🎓", "🌍"].map(e => (
-                            <button key={e} type="button" onClick={() => setNewAgentIcon(e)}
-                              className={`w-9 h-9 rounded-xl flex items-center justify-center text-base border transition ${newAgentIcon === e ? "border-emerald-500 bg-emerald-500/15 scale-110" : themeMode === "black" ? "border-white/5 bg-neutral-900 hover:bg-neutral-800" : "border-neutral-200 bg-white hover:bg-neutral-50"}`}>
-                              {e}
+                        <div className="grid grid-cols-3 gap-2">
+                          {TEMPLATES.map(t => (
+                            <button
+                              key={t.label}
+                              type="button"
+                              onClick={() => setAgentConceptPrompt(t.idea)}
+                              className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border text-center transition-all hover:scale-[1.02] active:scale-95 ${agentConceptPrompt === t.idea
+                                ? (dk ? "border-emerald-500/50 bg-emerald-500/10" : "border-emerald-400 bg-emerald-50")
+                                : (dk ? "border-white/8 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]" : "border-neutral-200 bg-neutral-50 hover:border-emerald-300 hover:bg-emerald-50/50")
+                                }`}
+                            >
+                              <span className="text-xl">{t.icon}</span>
+                              <span className={`text-[10px] font-bold leading-tight ${dk ? "text-neutral-300" : "text-neutral-700"}`}>{t.label}</span>
                             </button>
                           ))}
                         </div>
                       </div>
 
-                      {/* Instructions preview */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <label className={`text-[10px] font-black uppercase tracking-widest ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>System Instructions</label>
-                          <span className={`text-[9px] ${themeMode === "black" ? "text-neutral-600" : "text-neutral-400"}`}>{newAgentInstructions.length} chars</span>
-                        </div>
-                        <textarea rows={5} required value={newAgentInstructions} onChange={(e) => setNewAgentInstructions(e.target.value)}
-                          className={`w-full px-4 py-3 rounded-xl border outline-none text-xs resize-none leading-relaxed transition ${themeMode === "black" ? "bg-neutral-900/60 border-white/8 text-neutral-300 focus:border-emerald-500/50" : "bg-neutral-50 border-neutral-200 focus:border-emerald-400"}`} />
+                      {/* Divider */}
+                      <div className="flex items-center gap-3">
+                        <div className={`flex-1 h-px ${dk ? "bg-white/8" : "bg-neutral-200"}`} />
+                        <span className={`text-[10px] font-bold ${dk ? "text-neutral-600" : "text-neutral-400"}`}>OR DESCRIBE YOUR OWN</span>
+                        <div className={`flex-1 h-px ${dk ? "bg-white/8" : "bg-neutral-200"}`} />
                       </div>
 
-                      <div className="flex gap-3 pt-1">
-                        <button type="button" onClick={() => { setNewAgentName(""); setNewAgentInstructions(""); }}
-                          className={`flex-1 py-2.5 rounded-xl border text-xs font-bold transition ${themeMode === "black" ? "border-white/10 text-neutral-400 hover:text-white hover:border-white/20" : "border-neutral-200 text-neutral-500 hover:text-neutral-800"}`}>
-                          ← Regenerate
+                      {/* Text input */}
+                      <div>
+                        <textarea
+                          rows={4}
+                          autoFocus
+                          placeholder={"Describe your agent in plain language...\n\nExamples:\n• A YouTube script writer who creates viral hooks and retention-optimised scripts\n• A Python tutor who explains concepts simply and reviews code with detailed feedback"}
+                          value={agentConceptPrompt}
+                          onChange={(e) => setAgentConceptPrompt(e.target.value)}
+                          className={`w-full p-4 rounded-2xl border outline-none text-sm resize-none leading-relaxed transition-all ${dk
+                            ? "bg-neutral-900/60 border-white/8 text-white placeholder-neutral-600 focus:border-emerald-500/40 focus:bg-neutral-900/80"
+                            : "bg-neutral-50 border-neutral-200 text-neutral-900 placeholder-neutral-400 focus:border-emerald-400 focus:bg-white"
+                            }`}
+                        />
+                        {/* Character count + tip */}
+                        <div className="flex items-center justify-between mt-1.5">
+                          <p className={`text-[10px] ${dk ? "text-neutral-600" : "text-neutral-400"}`}>
+                            💡 More detail = smarter agent. Mention tone, tasks, audience.
+                          </p>
+                          <span className={`text-[10px] font-mono ${agentConceptPrompt.length > 20 ? (dk ? "text-emerald-500" : "text-emerald-600") : (dk ? "text-neutral-700" : "text-neutral-400")}`}>
+                            {agentConceptPrompt.length} chars
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Generate button */}
+                      <button
+                        type="button"
+                        onClick={handleGenerateAll}
+                        disabled={isGeneratingAll || agentConceptPrompt.trim().length < 10}
+                        className={`w-full py-4 rounded-2xl text-sm font-black tracking-wide uppercase transition-all flex items-center justify-center gap-2.5 ${isGeneratingAll || agentConceptPrompt.trim().length < 10
+                          ? (dk ? "bg-neutral-800 text-neutral-600 cursor-not-allowed" : "bg-neutral-100 text-neutral-400 cursor-not-allowed")
+                          : "bg-emerald-500 hover:bg-emerald-400 text-neutral-950 hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-emerald-500/20"
+                          }`}
+                      >
+                        {isGeneratingAll ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            <span>Building your agent...</span>
+                            <span className={`text-[10px] font-normal normal-case ${dk ? "text-neutral-400" : "text-neutral-600"}`}>~10 seconds</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={16} />
+                            Generate Agent with AI
+                          </>
+                        )}
+                      </button>
+
+                      {/* Loading progress bar */}
+                      {isGeneratingAll && (
+                        <div className={`h-1 rounded-full overflow-hidden ${dk ? "bg-neutral-800" : "bg-neutral-100"}`}>
+                          <div className="h-full bg-emerald-500 rounded-full animate-pulse" style={{ width: "60%", animation: "shimmer 2s linear infinite" }} />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* ══════════════════════════════════════
+                       STEP 2 — Review & Save
+                    ══════════════════════════════════════ */
+                    <form onSubmit={handleCreateCustomAgent} className="space-y-4">
+
+                      {/* Agent preview card */}
+                      <div className={`p-4 rounded-2xl border flex items-center gap-3 ${dk ? "bg-emerald-500/5 border-emerald-500/15" : "bg-emerald-50 border-emerald-200"}`}>
+                        <span className="text-3xl">{newAgentIcon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-extrabold text-sm text-emerald-500 truncate">{newAgentName}</div>
+                          <div className={`text-[11px] mt-0.5 leading-relaxed line-clamp-2 ${dk ? "text-neutral-400" : "text-neutral-600"}`}>{newAgentBanglaDesc}</div>
+                        </div>
+                        <div className={`text-[9px] px-2 py-1 rounded-full font-bold border ${dk ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-100 text-emerald-700 border-emerald-200"}`}>
+                          AI Generated
+                        </div>
+                      </div>
+
+                      {/* Name + Icon row */}
+                      <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+                        <div>
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${dk ? "text-neutral-500" : "text-neutral-400"}`}>Agent Name</label>
+                          <input
+                            type="text" required value={newAgentName}
+                            onChange={(e) => setNewAgentName(e.target.value)}
+                            className={`w-full px-4 py-2.5 rounded-xl border outline-none text-sm font-semibold transition ${dk ? "bg-neutral-900/60 border-white/8 text-white focus:border-emerald-500/50" : "bg-neutral-50 border-neutral-200 focus:border-emerald-400"}`}
+                          />
+                        </div>
+                        <div>
+                          <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${dk ? "text-neutral-500" : "text-neutral-400"}`}>Icon</label>
+                          <div className="relative group">
+                            <button
+                              type="button"
+                              className={`w-11 h-11 rounded-xl border text-xl flex items-center justify-center transition ${dk ? "border-white/8 bg-neutral-900 hover:border-emerald-500/40" : "border-neutral-200 bg-white hover:border-emerald-400"}`}
+                            >
+                              {newAgentIcon}
+                            </button>
+                            {/* Icon picker on hover */}
+                            <div className={`absolute bottom-full right-0 mb-2 p-2 rounded-2xl border shadow-2xl z-10 hidden group-hover:flex flex-wrap gap-1.5 w-52 ${dk ? "bg-[#0A0A0C] border-white/10" : "bg-white border-neutral-200"}`}>
+                              {["🚀", "💰", "📈", "📣", "🎨", "💻", "🧠", "🛡️", "🤝", "🔥", "🌶️", "⚡", "🎯", "📊", "🔬", "🏋️", "⚖️", "✍️", "🎓", "🌍", "🎵", "🍕", "🏠", "✈️"].map(e => (
+                                <button key={e} type="button" onClick={() => setNewAgentIcon(e)}
+                                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm transition hover:scale-110 ${newAgentIcon === e ? "bg-emerald-500/20 border border-emerald-500/40" : (dk ? "hover:bg-white/5" : "hover:bg-neutral-100")}`}>
+                                  {e}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${dk ? "text-neutral-500" : "text-neutral-400"}`}>Short Description</label>
+                        <input
+                          type="text" value={newAgentBanglaDesc}
+                          onChange={(e) => setNewAgentBanglaDesc(e.target.value)}
+                          className={`w-full px-4 py-2.5 rounded-xl border outline-none text-sm transition ${dk ? "bg-neutral-900/60 border-white/8 text-white focus:border-emerald-500/50" : "bg-neutral-50 border-neutral-200 focus:border-emerald-400"}`}
+                        />
+                      </div>
+
+                      {/* Instructions */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className={`text-[10px] font-black uppercase tracking-widest ${dk ? "text-neutral-500" : "text-neutral-400"}`}>System Instructions</label>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${newAgentInstructions.length > 500
+                              ? (dk ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-50 text-emerald-700")
+                              : (dk ? "bg-neutral-800 text-neutral-500" : "bg-neutral-100 text-neutral-500")
+                              }`}>
+                              {newAgentInstructions.length} chars {newAgentInstructions.length > 500 ? "✓ Rich" : ""}
+                            </span>
+                          </div>
+                        </div>
+                        <textarea
+                          rows={6} required value={newAgentInstructions}
+                          onChange={(e) => setNewAgentInstructions(e.target.value)}
+                          className={`w-full px-4 py-3 rounded-xl border outline-none text-xs resize-none leading-relaxed transition font-mono ${dk ? "bg-neutral-900/60 border-white/8 text-neutral-300 focus:border-emerald-500/50" : "bg-neutral-50 border-neutral-200 focus:border-emerald-400"}`}
+                        />
+                        <p className={`text-[10px] mt-1 ${dk ? "text-neutral-600" : "text-neutral-400"}`}>
+                          Edit the instructions to fine-tune your agent's behaviour and expertise.
+                        </p>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-2.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => { setNewAgentName(""); setNewAgentInstructions(""); }}
+                          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-xs font-bold transition ${dk ? "border-white/10 text-neutral-400 hover:text-white hover:border-white/20 hover:bg-white/5" : "border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:bg-neutral-50"}`}
+                        >
+                          <RefreshCw size={12} /> Regenerate
                         </button>
-                        <button type="submit"
-                          className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 text-xs font-black uppercase tracking-wider transition-all">
-                          ✓ Save Agent
+                        <button
+                          type="submit"
+                          className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 text-xs font-black uppercase tracking-wider transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-emerald-500/15 flex items-center justify-center gap-2"
+                        >
+                          <Sparkles size={13} /> Save Agent
                         </button>
                       </div>
                     </form>
