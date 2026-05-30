@@ -317,16 +317,12 @@ ${contentPreview ? "এই ডকুমেন্টের CONTENT বিশ্�
         : `You are naming an AI agent based on a PDF document.
 
 File name: "${fileName}"
-${contentPreview ? `Document content (first 800 chars): "${contentPreview.substring(0, 800)}"` : ""}
+${contentPreview ? `Document content: "${contentPreview.substring(0, 600)}"` : ""}
 
-Task: Generate a smart, theme-based 2-4 word name for an AI expert agent that specializes in this document's subject.
-
-Rules:
-- Base the name on the CONTENT theme, NOT the filename
-- Format: "[Subject] Expert" or "[Subject] Advisor" or "[Subject] Guide"
-- Examples: "Clinical Medicine Expert", "Mobile Trading Advisor", "Contract Law Guide", "Python Development Expert"
-- DO NOT repeat the filename words verbatim
-- Return ONLY the 2-4 word name, nothing else`;
+Generate ONE short name (2-4 words max) for an AI expert agent on this document's topic.
+Format: "[Topic] Expert" or "[Topic] Advisor"
+Examples: "Psychology Expert", "Finance Advisor", "Trading Guide"
+Output ONLY the name. No list. No explanation. No punctuation. Just the name.`;
 
       // Tier 1: Try Groq — DB keys first, then env key
       const groqKeysForName: string[] = [];
@@ -349,11 +345,18 @@ Rules:
           const completion = await groq.chat.completions.create({
             messages: [{ role: "user", content: namePrompt }],
             model: "llama-3.1-8b-instant",
-            temperature: 0.7,
-            max_tokens: 20,
+            temperature: 0.5,
+            max_tokens: 12,
           });
-          const name = completion.choices[0]?.message?.content?.trim().replace(/^["']|["']$/g, "") || "";
-          if (name) return NextResponse.json({ name });
+          const raw = completion.choices[0]?.message?.content?.trim() || "";
+          // Take ONLY the first line, strip quotes, numbers, bullets
+          const name = raw
+            .split(/[\n\r]/)[0]
+            .replace(/^[\d\.\-\*\•\s]+/, "")
+            .replace(/^["']|["']$/g, "")
+            .trim()
+            .substring(0, 40);
+          if (name && name.split(" ").length <= 5) return NextResponse.json({ name });
         } catch (groqErr: any) {
           console.warn("[Agent Name] Groq key failed:", groqErr.message?.slice(0, 60));
         }
@@ -385,14 +388,20 @@ Rules:
             body: JSON.stringify({
               model: "meta-llama/llama-3.3-70b-instruct:free",
               messages: [{ role: "user", content: namePrompt }],
-              temperature: 0.7,
-              max_tokens: 25,
+              temperature: 0.5,
+              max_tokens: 12,
             }),
           });
           if (res.ok) {
             const data = await res.json();
-            const name = data.choices?.[0]?.message?.content?.trim().replace(/^["']|["']$/g, "") || "";
-            if (name) return NextResponse.json({ name });
+            const raw = data.choices?.[0]?.message?.content?.trim() || "";
+            const name = raw
+              .split(/[\n\r]/)[0]
+              .replace(/^[\d\.\-\*\•\s]+/, "")
+              .replace(/^["']|["']$/g, "")
+              .trim()
+              .substring(0, 40);
+            if (name && name.split(" ").length <= 5) return NextResponse.json({ name });
           }
         } catch (orErr) {
           console.warn("[Agent Name] OpenRouter fallback failed:", orErr);

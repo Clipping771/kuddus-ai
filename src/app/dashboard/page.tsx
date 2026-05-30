@@ -1616,7 +1616,15 @@ export default function Dashboard() {
       if (res.ok) {
         const data = await res.json();
         if (data.name && data.name.trim()) {
-          setNewPdfAgentName(data.name.trim());
+          // Take only first line, max 5 words, max 40 chars
+          const cleanName = data.name
+            .split(/[\n\r]/)[0]
+            .replace(/^[\d\.\-\*\•\s]+/, "")
+            .replace(/^["']|["']$/g, "")
+            .trim()
+            .split(" ").slice(0, 5).join(" ")
+            .substring(0, 40);
+          setNewPdfAgentName(cleanName || data.name.trim());
         }
       }
     } catch {
