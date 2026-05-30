@@ -1097,6 +1097,26 @@ export async function POST(req: Request) {
 
     const isCustomAgent = agentId && !AGENT_INSTRUCTIONS[agentId];
 
+    // 🔑 For custom/PDF agents — always fetch fresh instructions from DB
+    // (localStorage strips instructions to save space, so we can't rely on client-sent customInstructions)
+    let resolvedCustomInstructions = customInstructions || "";
+    if (isCustomAgent && agentId && !resolvedCustomInstructions) {
+      try {
+        const { data: agentRow } = await supabase
+          .from("custom_agents")
+          .select("instructions")
+          .eq("id", agentId)
+          .eq("user_id", dbUser.id)
+          .single();
+        if (agentRow?.instructions) {
+          resolvedCustomInstructions = agentRow.instructions;
+          console.log(`[CustomAgent] ✅ Fetched instructions from DB for agent: ${agentId} (${resolvedCustomInstructions.length} chars)`);
+        }
+      } catch (fetchErr) {
+        console.warn("[CustomAgent] Failed to fetch instructions from DB:", fetchErr);
+      }
+    }
+
     // 🌐 Advanced Language Detection — Bangla / Banglish / Mixed / English
     const langDetection = detectLanguage(message);
     console.log(`[Lang] Detected: ${langDetection.primary} (confidence: ${langDetection.confidence}, banglaRatio: ${langDetection.banglaRatio.toFixed(2)})`);
@@ -1135,8 +1155,11 @@ export async function POST(req: Request) {
     const customizedGeneralPurpose = GENERAL_PURPOSE_IDENTITY.replace(/Nova AI/g, aiName).replace(/Kacha Morich AI/g, aiName);
 
     let agentSystemPrompt = "";
-    if (isCustomAgent) {
-      // Custom agent — minimal base, instructions come from customInstructions below
+    if (isCustomAgent && resolvedCustomInstructions) {
+      // Custom agent WITH instructions — use them directly as the full identity
+      agentSystemPrompt = customizedSharedRules;
+    } else if (isCustomAgent) {
+      // Custom agent but no instructions found — minimal base
       agentSystemPrompt = `You are **${aiName}**.
 You naturally mix Bangla and English when the user does, otherwise respond in the user's language.
 Format your responses using clear headings, bold text, and bullet points.
@@ -1163,13 +1186,11 @@ This overrides all other personality defaults below.\n\n---\n\n` : "";
 
     if (agentId) {
       let selectedAgentPrompt = AGENT_INSTRUCTIONS[agentId];
-      if (!selectedAgentPrompt && customInstructions) {
-        selectedAgentPrompt = customInstructions;
+      if (!selectedAgentPrompt && resolvedCustomInstructions) {
+        selectedAgentPrompt = resolvedCustomInstructions;
       }
 
       if (selectedAgentPrompt) {
-        // Agent identity is FIRST — no "Executive Board" base polluting it
-        // Structure: [tone] → [agent role & identity] → [shared output rules]
         agentSystemPrompt = `${toneBlock}${selectedAgentPrompt}
 
 ---
@@ -1177,7 +1198,7 @@ This overrides all other personality defaults below.\n\n---\n\n` : "";
 ${agentSystemPrompt}`;
       } else {
         // Custom agent with no built-in instructions — tone + custom instructions lead
-        agentSystemPrompt = `${toneBlock}${customInstructions ? `## YOUR ROLE & INSTRUCTIONS\n${customInstructions}\n\n---\n\n` : ""}${agentSystemPrompt}`;
+        agentSystemPrompt = `${toneBlock}${resolvedCustomInstructions ? `## YOUR ROLE & INSTRUCTIONS\n${resolvedCustomInstructions}\n\n---\n\n` : ""}${agentSystemPrompt}`;
       }
     } else {
       agentSystemPrompt = `${toneBlock}${agentSystemPrompt}`;

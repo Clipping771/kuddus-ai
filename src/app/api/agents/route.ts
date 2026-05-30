@@ -69,32 +69,35 @@ export async function POST(req: Request) {
     }
 
     // 3. Generate Expert System Prompt via LLM
-    let generatedInstructions = pdfText.substring(0, 12000); // Fallback
+    let generatedInstructions = "";
 
-    const systemPromptMsg = `You are a world-class AI prompt engineer specializing in building elite, production-grade AI agents from documents.
+    // Always embed the raw PDF text as the agent's knowledge base
+    const embeddedKnowledge = `## 📄 DOCUMENT KNOWLEDGE BASE
+The following is the full text of the document this agent is trained on.
+You MUST use this as your primary source of truth for all answers.
+Always cite specific sections, concepts, or quotes from this text when answering.
 
-Based on the document text below, create a COMPREHENSIVE, POWERFUL system prompt for an AI agent that is a deep subject matter expert on this document's content.
-
-The system prompt MUST include ALL these sections (minimum 600 words):
-
-1. **IDENTITY & ROLE** — Who this agent is, what document they mastered, their exact expertise
-2. **CORE KNOWLEDGE AREAS** — 8-10 specific topics/concepts extracted directly from the document
-3. **HOW TO ANSWER** — Always cite specific sections/concepts from the document, be precise, structured
-4. **OPERATING PROTOCOL** — Step-by-step: understand question → find relevant doc section → give structured answer with document references
-5. **RESPONSE FORMAT** — Use headers, bullet points, quote document concepts directly
-6. **QUALITY STANDARDS** — Never hallucinate beyond the document, say "the document states..." when citing
-7. **GUARDRAILS** — If question is outside document scope, say so clearly
-
-Make this agent feel like talking to someone who has memorized and deeply understood every word of this document.
-
-Document Text:
 ====================
-${pdfText.substring(0, 12000)}
+${pdfText.substring(0, 10000)}
 ====================
 
-Return ONLY the system prompt text. No preamble, no explanation.`;
+`;
 
-    // Try Groq first with key rotation
+    const systemPromptMsg = `You are a world-class AI prompt engineer. Create a comprehensive system prompt for an AI agent that is a deep expert on the document below.
+
+The system prompt MUST include:
+1. **IDENTITY** — Who this agent is (e.g. "You are a dedicated expert on [book/document title]")
+2. **CORE EXPERTISE** — 8-10 specific topics/concepts from the document
+3. **HOW TO ANSWER** — Always reference specific parts of the document, quote directly when relevant
+4. **OPERATING PROTOCOL** — Understand question → find relevant section → give structured answer with document references
+5. **QUALITY STANDARDS** — Never hallucinate beyond the document content
+
+Document Text (first 8000 chars):
+${pdfText.substring(0, 8000)}
+
+Return ONLY the system prompt. No preamble.`;
+
+    // Try Groq first
     let groqSuccess = false;
     try {
       const completion = await groqChatWithFallback(
@@ -108,9 +111,10 @@ Return ONLY the system prompt text. No preamble, no explanation.`;
       );
       const content = completion.choices[0]?.message?.content?.trim();
       if (content && content.length > 200) {
-        generatedInstructions = content;
+        // Prepend the embedded knowledge base to the generated instructions
+        generatedInstructions = embeddedKnowledge + content;
         groqSuccess = true;
-        console.log("[Agents] Groq success — instructions length:", content.length);
+        console.log("[Agents] Groq success — instructions length:", generatedInstructions.length);
       }
     } catch (groqError: any) {
       console.error("Groq Persona Generation Error:", groqError?.message || groqError);
@@ -122,9 +126,8 @@ Return ONLY the system prompt text. No preamble, no explanation.`;
         const { response: res } = await openrouterFetchWithFallback(
           [
             "meta-llama/llama-3.3-70b-instruct:free",
-            "deepseek/deepseek-r1-0528:free",
-            "qwen/qwen3-8b:free",
-            "mistralai/mistral-7b-instruct:free",
+            "google/gemma-3-27b-it:free",
+            "nousresearch/hermes-3-llama-3.1-405b:free",
           ],
           {
             messages: [{ role: "user", content: systemPromptMsg }],
@@ -136,13 +139,17 @@ Return ONLY the system prompt text. No preamble, no explanation.`;
         const data = await res.json();
         const content = data.choices?.[0]?.message?.content?.trim();
         if (content && content.length > 200) {
-          generatedInstructions = content;
-          console.log("[Agents] OpenRouter success — instructions length:", content.length);
+          generatedInstructions = embeddedKnowledge + content;
+          console.log("[Agents] OpenRouter success — instructions length:", generatedInstructions.length);
         }
       } catch (orErr: any) {
         console.warn("[Agents] OpenRouter fallback failed:", orErr?.message);
-        // Falls back to raw truncated text — agent still gets created
       }
+    }
+
+    // Last resort — just embed the raw text directly
+    if (!generatedInstructions) {
+      generatedInstructions = embeddedKnowledge + `\nYou are an expert on the document above. Answer all questions based strictly on its content. Quote directly when relevant. If a question is outside the document's scope, say so clearly.`;
     }
 
     // 4. Insert into Supabase
