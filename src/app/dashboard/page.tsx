@@ -1249,6 +1249,7 @@ export default function Dashboard() {
   // API key notification banner
   const [apiBanner, setApiBanner] = useState<BannerType | null>(null);
   const [apiBannerMessage, setApiBannerMessage] = useState<string>("");
+  const [apiBannerKeyStatus, setApiBannerKeyStatus] = useState<any>(null);
 
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentBanglaName, setNewAgentBanglaName] = useState("");
@@ -2239,8 +2240,27 @@ export default function Dashboard() {
         fetch("/api/check-keys")
           .then(r => r.ok ? r.json() : null)
           .then(status => {
-            if (status?.needsAttention) {
-              setApiBanner("api_key_exhausted");
+            if (!status) return;
+            setApiBannerKeyStatus(status);
+            if (status.needsAttention) {
+              // Pick the most specific banner type
+              const groqBad = status.groq.checked && !status.groq.ok;
+              const orBad = status.openrouter.checked && !status.openrouter.ok;
+              if (!status.openrouter.checked && !status.groq.checked) {
+                setApiBanner("no_keys_configured");
+              } else if (groqBad && orBad) {
+                setApiBanner("api_key_exhausted");
+              } else if (orBad) {
+                setApiBanner("api_key_exhausted");
+              } else if (groqBad) {
+                setApiBanner("groq_invalid");
+              } else {
+                setApiBanner("api_key_exhausted");
+              }
+              if (status.reason) setApiBannerMessage(status.reason);
+            } else if (status.openrouter?.exhaustedKeys > 0) {
+              // Soft warning — some keys exhausted but app still works
+              setApiBanner("partial_exhausted");
               if (status.reason) setApiBannerMessage(status.reason);
             }
           })
@@ -2657,6 +2677,7 @@ export default function Dashboard() {
           const errData = await response.json();
           if (errData?.error?.includes("exhausted") || errData?.error?.includes("API key") || response.status === 402 || response.status === 429) {
             setApiBanner("api_key_exhausted");
+            setApiBannerMessage("Your OpenRouter API keys are exhausted. Add a new free key at openrouter.ai/keys");
           }
         } catch { /* ignore parse error */ }
         throw new Error("API call failed");
@@ -4358,7 +4379,9 @@ export default function Dashboard() {
                 <ApiKeyBanner
                   type={apiBanner}
                   message={apiBannerMessage || undefined}
-                  onDismiss={() => { setApiBanner(null); setApiBannerMessage(""); }}
+                  keyStatus={apiBannerKeyStatus}
+                  themeMode={themeMode}
+                  onDismiss={() => { setApiBanner(null); setApiBannerMessage(""); setApiBannerKeyStatus(null); }}
                 />
               )}
 
