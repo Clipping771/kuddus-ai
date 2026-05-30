@@ -229,22 +229,39 @@ Each object in the array MUST have the exact following structure:
       : `Generate 4 brand new dynamic, structured case suggestions for "${agentName}". Random salt: ${Math.random() * 100000}. Ensure these business ideas are completely unique and cover different angles.`;
 
     const parseAndReturn = (rawContent: string) => {
-      let cleanJSON = rawContent.trim();
-      if (cleanJSON.startsWith("```")) {
-        cleanJSON = cleanJSON.replace(/^```json\s*/i, "").replace(/```$/, "").trim();
-      }
-      const parsedArray = JSON.parse(cleanJSON);
-      if (Array.isArray(parsedArray) && parsedArray.length > 0) {
-        return NextResponse.json({ suggestions: parsedArray });
+      try {
+        let cleanJSON = rawContent.trim();
+        // Strip markdown code fences
+        cleanJSON = cleanJSON.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+        // Extract JSON array if wrapped in other text
+        const arrMatch = cleanJSON.match(/\[[\s\S]*\]/);
+        if (arrMatch) cleanJSON = arrMatch[0];
+        const parsedArray = JSON.parse(cleanJSON);
+        if (Array.isArray(parsedArray) && parsedArray.length > 0) {
+          return NextResponse.json({ suggestions: parsedArray });
+        }
+      } catch (parseErr: any) {
+        console.warn("[Prompts Generate] JSON parse failed:", parseErr.message?.slice(0, 60));
       }
       return null;
     };
 
-    // Tier 1: Try Groq first — blazing fast, no rate limit issues
-    if (process.env.GROQ_API_KEY) {
+    // Tier 1: Try Groq with DB user keys first, then env key
+    const groqKeysToTry: string[] = [];
+    if (dbUserId) {
+      try {
+        const { data: groqKeys } = await supabase
+          .from("groq_keys").select("api_key")
+          .eq("user_id", dbUserId).eq("is_active", true);
+        if (groqKeys) groqKeysToTry.push(...groqKeys.map((k: any) => k.api_key).filter(Boolean));
+      } catch { /* silent */ }
+    }
+    if (process.env.GROQ_API_KEY) groqKeysToTry.push(process.env.GROQ_API_KEY);
+
+    for (const groqKey of groqKeysToTry) {
       try {
         console.log("[Prompts Generate] Trying Groq llama-3.3-70b-versatile...");
-        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+        const groq = new Groq({ apiKey: groqKey });
         const completion = await groq.chat.completions.create({
           model: "llama-3.3-70b-versatile",
           messages: [
@@ -263,38 +280,40 @@ Each object in the array MUST have the exact following structure:
           }
         }
       } catch (groqErr: any) {
-        console.warn("[Prompts Generate] Groq failed, falling back to OpenRouter:", groqErr.message || groqErr);
+        console.warn("[Prompts Generate] Groq key failed:", groqErr.message?.slice(0, 80));
       }
     }
 
-    // Tier 2: OpenRouter fallback with key rotation
-    const { response } = await openrouterFetchWithFallback(
-      [
-        "meta-llama/llama-3.3-70b-instruct:free",
-        "deepseek/deepseek-r1-0528:free",
-        "mistralai/mistral-7b-instruct:free",
-        "openrouter/free",
-      ],
-      {
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage }
+    // Tier 2: OpenRouter fallback — only working free models
+    try {
+      const { response } = await openrouterFetchWithFallback(
+        [
+          "meta-llama/llama-3.3-70b-instruct:free",
+          "google/gemma-3-27b-it:free",
+          "nousresearch/hermes-3-llama-3.1-405b:free",
         ],
-        temperature: 0.9,
-        max_tokens: 700,
-      },
-      dbUserId
-    );
+        {
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage }
+          ],
+          temperature: 0.9,
+          max_tokens: 700,
+        },
+        dbUserId
+      );
 
-    if (!response.ok) {
-      throw new Error(`OpenRouter API failed with status ${response.status}`);
+      if (response.ok) {
+        const data = await response.json();
+        const rawContent = data.choices?.[0]?.message?.content?.trim() || "";
+        if (rawContent) {
+          const result = parseAndReturn(rawContent);
+          if (result) return result;
+        }
+      }
+    } catch (orErr: any) {
+      console.warn("[Prompts Generate] OpenRouter failed:", orErr.message?.slice(0, 80));
     }
-
-    const data = await response.json();
-    const rawContent = data.choices[0]?.message?.content?.trim() || "";
-
-    const result = parseAndReturn(rawContent);
-    if (result) return result;
   } catch (error) {
     console.warn("AI generation failed, timed out, or rate-limited. Returning dynamically shuffled static fallbacks instantly:", error);
   }

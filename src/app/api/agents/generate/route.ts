@@ -157,41 +157,56 @@ Stay strictly within your domain of expertise. If a request falls outside "${ide
   }
 }
 
-async function tryGroq(idea: string, prompt: string) {
-  if (!process.env.GROQ_API_KEY) {
-    throw new Error("Groq API key not configured");
+async function tryGroq(idea: string, prompt: string, userId?: string) {
+  // Collect Groq keys: DB keys first, then env key
+  const groqKeys: string[] = [];
+
+  if (userId) {
+    try {
+      const { supabase } = await import("@/lib/supabase");
+      const { data: dbUser } = await supabase
+        .from("users").select("id").eq("clerk_id", userId).single();
+      if (dbUser) {
+        const { data: keys } = await supabase
+          .from("groq_keys").select("api_key")
+          .eq("user_id", dbUser.id).eq("is_active", true);
+        if (keys) groqKeys.push(...keys.map((k: any) => k.api_key).filter(Boolean));
+      }
+    } catch { /* silent */ }
   }
-  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-  // Updated to current active Groq models (mixtral-8x7b-32768 and llama3-70b-8192 are deprecated)
+  if (process.env.GROQ_API_KEY) groqKeys.push(process.env.GROQ_API_KEY);
+
+  if (groqKeys.length === 0) throw new Error("No Groq keys available");
+
   const models = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama-3.1-8b-instant"];
 
-  for (const model of models) {
-    try {
-      console.log(`[Agent Auto-Gen] Trying Groq with model: ${model}`);
-      const completion = await groq.chat.completions.create({
-        messages: [{ role: "user", content: prompt }],
-        model,
-        temperature: 0.8,
-        response_format: { type: "json_object" },
-        max_tokens: 4000,
-      });
-      const responseText = completion.choices[0]?.message?.content || "";
-      if (responseText.trim()) {
-        return parseJSON(responseText);
+  for (const apiKey of groqKeys) {
+    for (const model of models) {
+      try {
+        console.log(`[Agent Auto-Gen] Trying Groq model: ${model}`);
+        const groq = new Groq({ apiKey });
+        const completion = await groq.chat.completions.create({
+          messages: [{ role: "user", content: prompt }],
+          model,
+          temperature: 0.8,
+          response_format: { type: "json_object" },
+          max_tokens: 4000,
+        });
+        const responseText = completion.choices[0]?.message?.content || "";
+        if (responseText.trim()) return parseJSON(responseText);
+      } catch (err: any) {
+        console.warn(`[Agent Auto-Gen] Groq ${model} failed:`, err.message?.slice(0, 80));
       }
-    } catch (err: any) {
-      console.error(`[Agent Auto-Gen] Groq model ${model} failed:`, err.message || err);
     }
   }
-  throw new Error("All Groq models failed");
+  throw new Error("All Groq keys/models failed");
 }
 
 async function tryOpenRouter(prompt: string, userId?: string) {
   const models = [
     "meta-llama/llama-3.3-70b-instruct:free",
-    "deepseek/deepseek-r1-0528:free",
     "google/gemma-3-27b-it:free",
-    "mistralai/mistral-7b-instruct:free",
+    "nousresearch/hermes-3-llama-3.1-405b:free",
   ];
 
   // Collect all available keys: DB keys first, then env vars
@@ -313,10 +328,24 @@ Rules:
 - DO NOT repeat the filename words verbatim
 - Return ONLY the 2-4 word name, nothing else`;
 
-      // Tier 1: Try Groq (env key)
-      if (process.env.GROQ_API_KEY) {
-        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+      // Tier 1: Try Groq — DB keys first, then env key
+      const groqKeysForName: string[] = [];
+      try {
+        const { supabase } = await import("@/lib/supabase");
+        const { data: dbUserForName } = await supabase
+          .from("users").select("id").eq("clerk_id", userId).single();
+        if (dbUserForName) {
+          const { data: gKeys } = await supabase
+            .from("groq_keys").select("api_key")
+            .eq("user_id", dbUserForName.id).eq("is_active", true);
+          if (gKeys) groqKeysForName.push(...gKeys.map((k: any) => k.api_key).filter(Boolean));
+        }
+      } catch { /* silent */ }
+      if (process.env.GROQ_API_KEY) groqKeysForName.push(process.env.GROQ_API_KEY);
+
+      for (const gKey of groqKeysForName) {
         try {
+          const groq = new Groq({ apiKey: gKey });
           const completion = await groq.chat.completions.create({
             messages: [{ role: "user", content: namePrompt }],
             model: "llama-3.1-8b-instant",
@@ -325,8 +354,8 @@ Rules:
           });
           const name = completion.choices[0]?.message?.content?.trim().replace(/^["']|["']$/g, "") || "";
           if (name) return NextResponse.json({ name });
-        } catch (groqErr) {
-          console.warn("[Agent Name] Groq env key failed, trying OpenRouter...");
+        } catch (groqErr: any) {
+          console.warn("[Agent Name] Groq key failed:", groqErr.message?.slice(0, 60));
         }
       }
 
@@ -444,9 +473,9 @@ Make it genuinely powerful — this should feel like talking to a world-class ex
 
     let agentDetails = null;
 
-    // Step 1: Try Groq (fast + high quality)
+    // Step 1: Try Groq (fast + high quality) — with DB key rotation
     try {
-      agentDetails = await tryGroq(idea, prompt);
+      agentDetails = await tryGroq(idea, prompt, userId);
       console.log("[Agent Auto-Gen] Successfully generated using Groq!");
     } catch (groqErr) {
       console.error("[Agent Auto-Gen] Groq failed, trying OpenRouter...");
