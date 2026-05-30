@@ -1525,6 +1525,7 @@ export default function Dashboard() {
         const data = await res.json();
         if (data.name) setNewAgentName(data.name);
         if (data.banglaName) setNewAgentBanglaName(data.banglaName);
+        else if (data.name) setNewAgentBanglaName(data.name); // fallback
         if (data.banglaDesc) setNewAgentBanglaDesc(data.banglaDesc);
         if (data.icon) setNewAgentIcon(data.icon);
         if (data.instructions) setNewAgentInstructions(data.instructions);
@@ -1717,12 +1718,12 @@ export default function Dashboard() {
 
   const handleCreateCustomAgent = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAgentName.trim() || !newAgentBanglaName.trim() || !newAgentInstructions.trim()) return;
+    if (!newAgentName.trim() || !newAgentInstructions.trim()) return;
 
     const newAgent: CustomAgent = {
       id: `custom-agent-${Date.now()}`,
       name: newAgentName.trim(),
-      banglaName: newAgentBanglaName.trim(),
+      banglaName: newAgentBanglaName.trim() || newAgentName.trim(),
       banglaDesc: newAgentBanglaDesc.trim() || "Custom Specialist AI Advisor",
       icon: newAgentIcon,
       instructions: newAgentInstructions.trim(),
