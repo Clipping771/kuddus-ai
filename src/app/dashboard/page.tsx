@@ -345,81 +345,78 @@ const DynamicLoadingIndicator = ({ themeMode, agentId }: { themeMode: string; ag
   );
 };
 
+// Strips ALL internal thinking/monologue from AI responses — silently, never shown to user.
+// Returns only the clean final answer.
 const parseThoughtAndContent = (text: string): { thought: string; content: string } => {
   if (!text) return { thought: "", content: "" };
 
-  // 1. Tagged thought blocks (<thought>, <think>)
-  for (const [open, close, offset] of [["<thought>", "</thought>", 9], ["<think>", "</think>", 7]] as [string, string, number][]) {
-    const start = text.indexOf(open);
-    if (start !== -1) {
-      const end = text.indexOf(close);
-      if (end !== -1) {
-        const thought = text.substring(start + offset, end).trim();
-        const content = (text.substring(0, start) + text.substring(end + offset + 1)).trim();
-        return { thought, content };
-      } else {
-        return { thought: text.substring(start + offset).trim(), content: text.substring(0, start).trim() };
-      }
-    }
-  }
+  let cleaned = text;
 
-  // 2. Aggressive untagged thinking detection
-  // These patterns match ANY internal monologue that leaks before the actual answer
-  const THINKING_STARTERS = [
-    /^(We have a user request[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
-    /^(The user (is asking|said|wants|asked)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
-    /^(User (is asking|said|wants|asked)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
-    /^(Okay,?\s+let['']s\s+see[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
-    /^(Okay,?\s+(I need|the user)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
-    /^(First,?\s+I\s+need[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
-    /^(Let\s+me\s+(think|analyze|consider|check)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
-    /^(I\s+need\s+to\s+(adhere|follow|check|respond|provide)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
-    /^(As\s+(a specialist|the AI|Kacha Morich)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
-    /^(Since\s+the\s+user[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
-    /^(Need\s+to\s+respond[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
-    /^(They\s+(provided|want|need|asked)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
-    /^(Also\s+(adhere|follow|check)[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
-    /^(Wait,[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
-    /^(Hmm,[\s\S]*?)(?=\n\n|\n[A-Z*#]|$)/i,
+  // 1. Strip explicit <thought>...</thought> and <think>...</think> blocks entirely
+  cleaned = cleaned.replace(/<thought>[\s\S]*?<\/thought>/gi, "").trim();
+  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+
+  // 2. Strip unclosed <thought> or <think> tags (streaming mid-thought)
+  cleaned = cleaned.replace(/<thought>[\s\S]*/gi, "").trim();
+  cleaned = cleaned.replace(/<think>[\s\S]*/gi, "").trim();
+
+  // 3. Strip multi-paragraph internal monologue at the START of the response
+  // These are paragraphs that look like the model reasoning about what to say
+  const THINKING_PARAGRAPH_PATTERNS = [
+    /\buser (is asking|said|wants|asked|just said|wrote)\b/i,
+    /\bneed to respond\b/i,
+    /\bwe (have|must|should|need) (a |to )?(respond|reply|answer)\b/i,
+    /\bprobably respond\b/i,
+    /\bkeep (it |this )?(brief|short|concise)\b/i,
+    /\bself.?check\b/i,
+    /\bfinal output\b/i,
+    /\bthe (tone|instruction|rule) (says|requires|states)\b/i,
+    /\bmy role is\b/i,
+    /\bi (should|must|will|can) (respond|reply|answer|provide)\b/i,
+    /\bfor (this|a) (greeting|simple|short|quick)\b/i,
+    /\bsince (this|it) (is|seems|appears) (a |to be )?(simple|short|greeting)\b/i,
+    /\bso (the |my )?(final |actual )?(answer|response|reply)\b/i,
+    /\bfinal (answer|response|reply):/i,
+    /\bperhaps ["']?(hello|hi|hey)\b/i,
+    /\bmaybe ["']?(hello|hi|hey)\b/i,
+    /\bthat (adds|would add) value\b/i,
+    /\bno filler\b/i,
+    /\bensure no filler\b/i,
   ];
 
-  for (const pattern of THINKING_STARTERS) {
-    const match = text.match(pattern);
-    if (match && match[1] && match[1].length > 20) {
-      const thought = match[1].trim();
-      const remaining = text.substring(match[1].length).trim();
-      if (remaining.length > 5) {
-        return { thought, content: remaining };
-      }
-      // If no content after thinking, hide the thinking and show empty
-      return { thought, content: "" };
+  // Split into paragraphs and strip leading thinking paragraphs
+  const paragraphs = cleaned.split(/\n\n+/);
+  let firstRealParagraph = 0;
+  for (let i = 0; i < paragraphs.length; i++) {
+    const para = paragraphs[i].trim();
+    if (!para) { firstRealParagraph = i + 1; continue; }
+    const isThinking = THINKING_PARAGRAPH_PATTERNS.some(p => p.test(para));
+    if (isThinking) {
+      firstRealParagraph = i + 1;
+    } else {
+      break; // first non-thinking paragraph found
     }
   }
 
-  // 3. Multi-paragraph thinking: if first paragraph looks like internal monologue
-  // and second paragraph is the actual answer
-  const paragraphs = text.split(/\n\n+/);
-  if (paragraphs.length >= 2) {
-    const firstPara = paragraphs[0].trim();
-    const thinkingIndicators = [
-      /\buser (is asking|said|wants|asked)\b/i,
-      /\bneed to respond\b/i,
-      /\bwe (have|must|should|need)\b/i,
-      /\bprobably respond\b/i,
-      /\bkeep (it |this )?(brief|short|concise)\b/i,
-      /\bself.?check\b/i,
-      /\bfinal output\b/i,
-    ];
-    const isThinkingParagraph = thinkingIndicators.some(p => p.test(firstPara));
-    if (isThinkingParagraph && firstPara.length > 30) {
-      return {
-        thought: firstPara,
-        content: paragraphs.slice(1).join("\n\n").trim(),
-      };
-    }
+  if (firstRealParagraph > 0 && firstRealParagraph < paragraphs.length) {
+    cleaned = paragraphs.slice(firstRealParagraph).join("\n\n").trim();
   }
 
-  return { thought: "", content: text };
+  // 4. Strip leading filler words
+  cleaned = cleaned.replace(/^(Ok\.?\s*|Okay\.?\s*|Sure\.?\s*|Alright\.?\s*|Right\.?\s*|Got it\.?\s*|Understood\.?\s*|Well,?\s*)/i, "").trim();
+
+  // 5. If after all stripping we have nothing, return the original (better than blank)
+  if (!cleaned && text.length > 0) {
+    // Last resort: return everything after the last double-newline
+    const lastBreak = text.lastIndexOf("\n\n");
+    if (lastBreak > 0) {
+      const tail = text.substring(lastBreak).trim();
+      if (tail.length > 10) return { thought: "", content: tail };
+    }
+    return { thought: "", content: text };
+  }
+
+  return { thought: "", content: cleaned };
 };
 
 // --- CLAUDE-STYLE DOCUMENT ARTIFACTS ---
@@ -3977,12 +3974,12 @@ Return ONLY the name, nothing else.`
                             : "bg-gradient-to-br from-[#FFFFFF] to-[#F8FAFC] border-neutral-200/80 text-neutral-800 shadow-md prose-neutral"
                             }`}>
                             {msg.content ? (() => {
-                              const { thought, content: finalContent } = parseThoughtAndContent(msg.content);
+                              const { content: finalContent } = parseThoughtAndContent(msg.content);
                               const isMessageLast = index === messages.length - 1;
+                              // Show spinner if: last message, still loading, AND no clean content yet
                               const showSpinner = isMessageLast && isLoading && !finalContent;
-
-                              // If streaming has finished but finalContent is empty, fallback to show thoughts so it is not blank
-                              const contentToRender = finalContent || ((!isLoading || !isMessageLast) ? thought : "");
+                              // contentToRender is always the clean stripped content
+                              const contentToRender = finalContent;
 
                               return (
                                 <div className="w-full max-w-full overflow-hidden break-words [&_*]:max-w-full [&_pre]:overflow-x-auto [&_code]:break-all [&_p]:break-words [&_li]:break-words">

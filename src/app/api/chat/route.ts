@@ -1243,13 +1243,10 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
               ]
               : [
                 primaryModel,
-                // Top free text models — Qwen3 excluded (outputs uncontrollable thinking text)
-                "deepseek/deepseek-r1-0528:free",
+                // Top free text models — NO thinking models in this list
                 "meta-llama/llama-3.3-70b-instruct:free",
                 "mistralai/mistral-7b-instruct:free",
                 "google/gemma-3-27b-it:free",
-                "deepseek/deepseek-r1:free",
-                "microsoft/phi-4-reasoning-plus:free",
                 "nousresearch/hermes-3-llama-3.1-405b:free",
                 "openrouter/free",
               ];
@@ -1296,40 +1293,58 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
             let isThinking = false;
             let streamBuffer = "";
             let untaggedThinkingChecked = false;
+            let thinkingDropBuffer = ""; // accumulates thinking text — NEVER sent to client
 
             // All known thinking starters — any model, any format
+            // When detected at stream start, ALL content is silently dropped until a paragraph break
             const THINKING_STARTERS = [
-              /^(We have a user request)/i,
-              /^(The user (is asking|said|wants|asked|wrote))/i,
+              /^(We (have|need|must|should) (a |to )?respond)/i,
+              /^(We need to respond)/i,
+              /^(The user (is asking|said|wants|asked|wrote|has))/i,
               /^(User (is asking|said|wants|asked|wrote))/i,
-              /^(Okay,?\s+let['']s\s+see)/i,
-              /^(Okay,?\s+(I need|the user))/i,
-              /^(First,?\s+I\s+need)/i,
-              /^(Let\s+me\s+(think|analyze|consider|check|see))/i,
-              /^(I\s+need\s+to\s+(adhere|follow|check|respond|provide|analyze))/i,
-              /^(As\s+(a specialist|the AI|Kacha Morich|an AI))/i,
+              /^(Okay,?\s+let['']s\s+(see|think|analyze|check))/i,
+              /^(Okay,?\s+(I need|the user|so))/i,
+              /^(Ok,?\s+(I need|the user|so|let))/i,
+              /^(First,?\s+I\s+(need|should|must|will))/i,
+              /^(Let\s+me\s+(think|analyze|consider|check|see|re-read|re-check|look))/i,
+              /^(I\s+need\s+to\s+(adhere|follow|check|respond|provide|analyze|re-read|think))/i,
+              /^(As\s+(a specialist|the AI|Kacha Morich|an AI|a legal|a CFO|a dev))/i,
               /^(Since\s+the\s+user)/i,
               /^(Need\s+to\s+respond)/i,
               /^(They\s+(provided|want|need|asked))/i,
               /^(Also\s+(adhere|follow|check))/i,
-              /^(Wait,\s)/i,
-              /^(Hmm,\s)/i,
+              /^(Wait,?\s)/i,
+              /^(Hmm,?\s)/i,
               /^(So,?\s+the\s+response\s+should)/i,
               /^(The\s+response\s+should)/i,
               /^(Checking\s+the\s+rules)/i,
               /^(Self.?check)/i,
+              /^(My role is)/i,
+              /^(I am (acting|operating|working) as)/i,
+              /^(Based on (my|the) (role|instructions|system prompt))/i,
+              /^(According to (my|the) (role|instructions))/i,
+              /^(The (tone|instruction|rule) (says|requires|states))/i,
+              /^(I (should|must|will|can) (respond|reply|answer|provide))/i,
+              /^(For (this|a) (greeting|simple|short|quick))/i,
+              /^(Since (this|it) (is|seems|appears) (a |to be )?(simple|short|greeting|hi|hello))/i,
+              /^(The (user|message|query) (is|seems|appears|says|just))/i,
+              /^(Perhaps|Maybe) ["']?(Hello|Hi|Hey)/i,
+              /^(So (the |my )?(final |actual )?(answer|response|reply))/i,
+              /^(Final (answer|response|reply):)/i,
             ];
 
             while (reader) {
               const { done, value } = await reader.read();
               if (done) {
                 if (isThinking) {
-                  controller.enqueue(encoder.encode("</thought>\n"));
+                  // Thinking was active at end — don't send anything, just close
+                  isThinking = false;
                 }
-                // Flush any remaining stream buffer
-                if (streamBuffer && !untaggedThinkingChecked) {
+                // Flush any remaining stream buffer (only if not in thinking mode)
+                if (streamBuffer && !isThinking) {
                   controller.enqueue(encoder.encode(streamBuffer));
                   assistantResponse += streamBuffer;
+                  streamBuffer = "";
                 }
                 break;
               }
@@ -1343,59 +1358,80 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                     const parsed = JSON.parse(trimmed.slice(6));
                     const delta = parsed.choices[0]?.delta;
                     const text = delta?.content || "";
+                    // reasoning/reasoning_content = explicit thinking field from DeepSeek/Qwen
                     const reasoning = delta?.reasoning || delta?.reasoning_content || "";
 
                     if (reasoning) {
-                      if (!isThinking) {
-                        isThinking = true;
-                        controller.enqueue(encoder.encode("<thought>\n"));
-                      }
-                      assistantResponse += reasoning;
-                      controller.enqueue(encoder.encode(reasoning));
-                    } else if (text) {
-                      if (isThinking) {
-                        isThinking = false;
-                        controller.enqueue(encoder.encode("\n</thought>\n"));
-                        // Skip filler words that immediately follow thinking block
-                        const isFillerOnly = /^(Ok\.?\s*|Okay\.?\s*|Sure\.?\s*|Alright\.?\s*|Right\.?\s*|Got it\.?\s*|Understood\.?\s*|Well,?\s*)$/i.test(text.trim());
-                        if (isFillerOnly) continue;
-                      }
-
-                      // Buffer first 60 chars to detect thinking at stream start
-                      if (!untaggedThinkingChecked) {
-                        streamBuffer += text;
-                        if (streamBuffer.length >= 60) {
-                          untaggedThinkingChecked = true;
-                          const isThinkingStart = THINKING_STARTERS.some(p => p.test(streamBuffer));
-                          if (isThinkingStart) {
-                            isThinking = true;
-                            controller.enqueue(encoder.encode("<thought>\n" + streamBuffer));
-                            assistantResponse += streamBuffer;
-                          } else {
-                            controller.enqueue(encoder.encode(streamBuffer));
-                            assistantResponse += streamBuffer;
-                          }
-                          streamBuffer = "";
-                          continue;
-                        }
-                        continue; // still buffering
-                      }
-
-                      assistantResponse += text;
-                      controller.enqueue(encoder.encode(text));
+                      // Explicit reasoning field — SILENTLY DROP, never send to client
+                      thinkingDropBuffer += reasoning;
+                      isThinking = true;
+                      continue;
                     }
+
+                    if (!text) continue;
+
+                    if (isThinking) {
+                      // We were in thinking mode — check if this text ends the thinking block
+                      // Thinking ends when we see a double newline or a clearly "answer-like" start
+                      thinkingDropBuffer += text;
+                      // Check if thinking block has ended (double newline = paragraph break)
+                      if (thinkingDropBuffer.includes("\n\n") || thinkingDropBuffer.includes("\r\n\r\n")) {
+                        // Find where the actual answer starts (after the last double newline)
+                        const lastBreak = Math.max(
+                          thinkingDropBuffer.lastIndexOf("\n\n"),
+                          thinkingDropBuffer.lastIndexOf("\r\n\r\n")
+                        );
+                        const afterThinking = thinkingDropBuffer.substring(lastBreak).replace(/^\n+/, "").trim();
+                        thinkingDropBuffer = "";
+                        isThinking = false;
+                        untaggedThinkingChecked = true;
+                        if (afterThinking && afterThinking.length > 3) {
+                          // Strip any remaining filler from the start of the actual answer
+                          const cleanAnswer = afterThinking.replace(/^(Ok\.?\s*|Okay\.?\s*|Sure\.?\s*|Alright\.?\s*|Right\.?\s*|Got it\.?\s*|Understood\.?\s*|Well,?\s*)/i, "").trim();
+                          if (cleanAnswer) {
+                            controller.enqueue(encoder.encode(cleanAnswer));
+                            assistantResponse += cleanAnswer;
+                          }
+                        }
+                      }
+                      continue;
+                    }
+
+                    // Buffer first 200 chars to detect untagged thinking at stream start
+                    if (!untaggedThinkingChecked) {
+                      streamBuffer += text;
+                      if (streamBuffer.length >= 200) {
+                        untaggedThinkingChecked = true;
+                        const isThinkingStart = THINKING_STARTERS.some(p => p.test(streamBuffer.trimStart()));
+                        if (isThinkingStart) {
+                          // Silently drop — accumulate in thinkingDropBuffer instead
+                          isThinking = true;
+                          thinkingDropBuffer = streamBuffer;
+                          streamBuffer = "";
+                        } else {
+                          // Not thinking — flush buffer to client
+                          controller.enqueue(encoder.encode(streamBuffer));
+                          assistantResponse += streamBuffer;
+                          streamBuffer = "";
+                        }
+                      }
+                      continue;
+                    }
+
+                    // Normal text — send directly
+                    assistantResponse += text;
+                    controller.enqueue(encoder.encode(text));
                   } catch (e) { }
                 }
               }
             }
-          }
 
-          // 7. Save completed assistant response to Supabase
-          if (assistantResponse) {
-            // 🔍 Self-Reflection Critic — runs only in Brain Trust mode
-            if (isBrainTrust && !hasImage && assistantResponse.length > 200) {
-              try {
-                const criticPrompt = `You are a ruthless quality critic reviewing an AI-generated business strategy response.
+            // 7. Save completed assistant response to Supabase
+            if (assistantResponse) {
+              // 🔍 Self-Reflection Critic — runs only in Brain Trust mode
+              if (isBrainTrust && !hasImage && assistantResponse.length > 200) {
+                try {
+                  const criticPrompt = `You are a ruthless quality critic reviewing an AI-generated business strategy response.
 
 Review this response and provide a BRIEF quality assessment (max 3 bullet points):
 - What is STRONG about this response?
@@ -1407,70 +1443,70 @@ Response to review (first 1000 chars):
 
 Keep your critique to 3 bullet points max. Be sharp and specific.`;
 
-                const criticResult = await groqChatWithFallback(
-                  {
-                    model: "llama-3.1-8b-instant",
-                    messages: [{ role: "user", content: criticPrompt }],
-                    temperature: 0.3,
-                    max_tokens: 300,
-                  },
-                  dbUser?.id
-                ).catch(() => null);
+                  const criticResult = await groqChatWithFallback(
+                    {
+                      model: "llama-3.1-8b-instant",
+                      messages: [{ role: "user", content: criticPrompt }],
+                      temperature: 0.3,
+                      max_tokens: 300,
+                    },
+                    dbUser?.id
+                  ).catch(() => null);
 
-                if (criticResult) {
-                  const criticText = criticResult.choices[0]?.message?.content?.trim();
-                  if (criticText) {
-                    const criticBlock = `\n\n---\n\n> 🔍 **Quality Review** *(Self-Reflection Critic)*\n${criticText.split("\n").map((l: string) => `> ${l}`).join("\n")}`;
-                    assistantResponse += criticBlock;
-                    controller.enqueue(encoder.encode(criticBlock));
-                    console.log("[SelfReflection] ✅ Critic review appended");
+                  if (criticResult) {
+                    const criticText = criticResult.choices[0]?.message?.content?.trim();
+                    if (criticText) {
+                      const criticBlock = `\n\n---\n\n> 🔍 **Quality Review** *(Self-Reflection Critic)*\n${criticText.split("\n").map((l: string) => `> ${l}`).join("\n")}`;
+                      assistantResponse += criticBlock;
+                      controller.enqueue(encoder.encode(criticBlock));
+                      console.log("[SelfReflection] ✅ Critic review appended");
+                    }
                   }
+                } catch (criticErr) {
+                  console.warn("[SelfReflection] Critic failed (non-critical):", criticErr);
                 }
-              } catch (criticErr) {
-                console.warn("[SelfReflection] Critic failed (non-critical):", criticErr);
               }
+
+              // 🎯 Confidence Check — fire-and-forget, non-blocking
+              // Runs AFTER stream closes so it never delays first token
+              if (!isBrainTrust && !hasImage && assistantResponse.length > 150) {
+                checkResponseConfidence(message, assistantResponse, agentId || "general", dbUser?.id)
+                  .then((confidence) => {
+                    if (confidence?.isWeak && confidence.issues.length > 0) {
+                      console.log(`[Confidence] Score: ${confidence.score}/10 — weak response detected`);
+                      // Note: can't enqueue to stream after it's closed, so just log
+                    }
+                  })
+                  .catch(() => { });
+              }
+
+              const finalSavedText = (isBrainTrust && !hasImage) ? `> 🧠 **BRAIN TRUST LOGS**\n> 📝 Trinity drafted -> 🕵️ Gemma critiqued -> ✨ ${synthModel.split("/")[1]} synthesized.\n\n---\n\n${assistantResponse}` : assistantResponse;
+              const { error: assistantSaveError } = await supabase
+                .from("messages")
+                .insert({ chat_id: activeChatId, role: "assistant", content: finalSavedText });
+              if (assistantSaveError) console.error("Save error:", assistantSaveError);
+
+              // 🧠 Background memory extraction — runs after response is saved, non-blocking
+              extractAndSaveMemory(dbUser.id, message, assistantResponse).catch((memErr) => {
+                console.warn("[Memory] Background extraction failed (non-critical):", memErr?.message);
+              });
+
+              // 📊 Track agent usage for adaptive UI — fire-and-forget
+              trackAgentUsage(dbUser.id, agentId || "daily-innovation-idea-agent", message.length, toneId || "brutally-honest").catch(() => { });
             }
-
-            // 🎯 Confidence Check — fire-and-forget, non-blocking
-            // Runs AFTER stream closes so it never delays first token
-            if (!isBrainTrust && !hasImage && assistantResponse.length > 150) {
-              checkResponseConfidence(message, assistantResponse, agentId || "general", dbUser?.id)
-                .then((confidence) => {
-                  if (confidence?.isWeak && confidence.issues.length > 0) {
-                    console.log(`[Confidence] Score: ${confidence.score}/10 — weak response detected`);
-                    // Note: can't enqueue to stream after it's closed, so just log
-                  }
-                })
-                .catch(() => { });
+          } catch (streamErr: any) {
+            console.error("Stream Error:", streamErr);
+            // Send a special signal if all API keys are exhausted so the frontend can show a proper notification
+            if (streamErr?.name === "ApiKeyExhaustedError" || streamErr?.message?.includes("exhausted") || streamErr?.message?.includes("All models and API keys")) {
+              controller.enqueue(encoder.encode("\n__API_KEY_EXHAUSTED__"));
+            } else {
+              controller.enqueue(encoder.encode("\n[Error: Stream interrupted. Please try again.]"));
             }
-
-            const finalSavedText = (isBrainTrust && !hasImage) ? `> 🧠 **BRAIN TRUST LOGS**\n> 📝 Trinity drafted -> 🕵️ Gemma critiqued -> ✨ ${synthModel.split("/")[1]} synthesized.\n\n---\n\n${assistantResponse}` : assistantResponse;
-            const { error: assistantSaveError } = await supabase
-              .from("messages")
-              .insert({ chat_id: activeChatId, role: "assistant", content: finalSavedText });
-            if (assistantSaveError) console.error("Save error:", assistantSaveError);
-
-            // 🧠 Background memory extraction — runs after response is saved, non-blocking
-            extractAndSaveMemory(dbUser.id, message, assistantResponse).catch((memErr) => {
-              console.warn("[Memory] Background extraction failed (non-critical):", memErr?.message);
-            });
-
-            // 📊 Track agent usage for adaptive UI — fire-and-forget
-            trackAgentUsage(dbUser.id, agentId || "daily-innovation-idea-agent", message.length, toneId || "brutally-honest").catch(() => { });
+          } finally {
+            controller.close();
           }
-        } catch (streamErr: any) {
-          console.error("Stream Error:", streamErr);
-          // Send a special signal if all API keys are exhausted so the frontend can show a proper notification
-          if (streamErr?.name === "ApiKeyExhaustedError" || streamErr?.message?.includes("exhausted") || streamErr?.message?.includes("All models and API keys")) {
-            controller.enqueue(encoder.encode("\n__API_KEY_EXHAUSTED__"));
-          } else {
-            controller.enqueue(encoder.encode("\n[Error: Stream interrupted. Please try again.]"));
-          }
-        } finally {
-          controller.close();
-        }
-      },
-    });
+        },
+      });
 
     return new Response(readableStream, {
       headers: {
