@@ -1242,6 +1242,8 @@ export default function Dashboard() {
   const [customAgents, setCustomAgents] = useState<CustomAgent[]>([]);
   const [customAgentModalOpen, setCustomAgentModalOpen] = useState(false);
   const [pdfAgentModalOpen, setPdfAgentModalOpen] = useState(false);
+  const [dynamicTemplates, setDynamicTemplates] = useState<{ icon: string; label: string; idea: string }[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [newPdfAgentName, setNewPdfAgentName] = useState("");
@@ -1510,6 +1512,21 @@ export default function Dashboard() {
   const handleAgentChange = (agentId: string) => {
     setSelectedAgentId(agentId);
     localStorage.setItem("kacha_selected_agent", agentId);
+  };
+
+  const fetchDynamicTemplates = async () => {
+    setIsLoadingTemplates(true);
+    try {
+      const res = await fetch("/api/agents/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.templates?.length) setDynamicTemplates(data.templates);
+      }
+    } catch { /* silent — static fallback still shows */ }
+    finally { setIsLoadingTemplates(false); }
   };
 
   const handleGenerateAll = async () => {
@@ -3326,6 +3343,7 @@ export default function Dashboard() {
                             onClick={() => {
                               setCustomAgentModalOpen(true);
                               setAgentDropdownOpen(false);
+                              fetchDynamicTemplates();
                             }}
                             className={`w-[calc(100%-8px)] mx-1 flex items-center justify-center gap-2 p-2 rounded-lg border-dashed border transition duration-200 text-xs font-black uppercase tracking-wider mb-2 ${themeMode === "black"
                               ? "border-emerald-500/25 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/40"
@@ -4876,8 +4894,8 @@ export default function Dashboard() {
             setNewAgentIcon("🚀");
           };
 
-          // Quick-start templates
-          const TEMPLATES = [
+          // Quick-start templates — static fallback, overridden by dynamic ones
+          const STATIC_TEMPLATES = [
             { icon: "💼", label: "Sales Coach", idea: "A high-performance B2B sales coach who helps craft cold emails, handle objections, build pipelines, and close deals faster using SPIN and Challenger Sale frameworks." },
             { icon: "⚖️", label: "Contract Reviewer", idea: "A corporate legal expert who reviews contracts, spots risky clauses, drafts NDAs and service agreements, and ensures compliance with local regulations." },
             { icon: "🏋️", label: "Fitness Coach", idea: "A certified personal trainer who creates personalised workout plans, tracks progress, gives nutrition advice, and motivates users to hit their fitness goals." },
@@ -4885,6 +4903,7 @@ export default function Dashboard() {
             { icon: "🎨", label: "Brand Designer", idea: "A senior brand strategist who helps define brand identity, create visual guidelines, write brand voice documents, and position products in competitive markets." },
             { icon: "🧑‍💻", label: "Code Reviewer", idea: "A senior software engineer who reviews code for security vulnerabilities, performance issues, and best practices, then rewrites it to production-grade quality." },
           ];
+          const TEMPLATES = dynamicTemplates.length > 0 ? dynamicTemplates : STATIC_TEMPLATES;
 
           return (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
@@ -4924,11 +4943,36 @@ export default function Dashboard() {
                     <div className="space-y-5">
                       {/* Quick-start templates */}
                       <div>
-                        <p className={`text-[10px] font-black uppercase tracking-widest mb-2.5 ${dk ? "text-neutral-500" : "text-neutral-400"}`}>
-                          ⚡ Quick Start — Pick a template
-                        </p>
+                        <div className="flex items-center justify-between mb-2.5">
+                          <p className={`text-[10px] font-black uppercase tracking-widest ${dk ? "text-neutral-500" : "text-neutral-400"}`}>
+                            ⚡ Quick Start — Pick a template
+                          </p>
+                          <button
+                            type="button"
+                            onClick={fetchDynamicTemplates}
+                            disabled={isLoadingTemplates}
+                            title="Generate new template ideas"
+                            className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black border transition-all ${isLoadingTemplates
+                              ? (dk ? "border-white/8 text-neutral-600 cursor-not-allowed" : "border-neutral-200 text-neutral-400 cursor-not-allowed")
+                              : (dk ? "border-emerald-500/30 bg-emerald-500/8 text-emerald-400 hover:bg-emerald-500/15" : "border-emerald-300 bg-emerald-50 text-emerald-600 hover:bg-emerald-100")
+                              }`}
+                          >
+                            {isLoadingTemplates
+                              ? <><Loader2 size={10} className="animate-spin" /> Generating...</>
+                              : <><RefreshCw size={10} className={dynamicTemplates.length > 0 ? "" : ""} /> New Ideas</>
+                            }
+                          </button>
+                        </div>
                         <div className="grid grid-cols-3 gap-2">
-                          {TEMPLATES.map(t => (
+                          {isLoadingTemplates ? (
+                            // Skeleton loading
+                            Array.from({ length: 6 }).map((_, i) => (
+                              <div key={i} className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border animate-pulse ${dk ? "border-white/5 bg-white/[0.02]" : "border-neutral-200 bg-neutral-100"}`}>
+                                <div className={`w-8 h-8 rounded-lg ${dk ? "bg-white/8" : "bg-neutral-200"}`} />
+                                <div className={`w-14 h-2.5 rounded ${dk ? "bg-white/8" : "bg-neutral-200"}`} />
+                              </div>
+                            ))
+                          ) : (
                             <div
                               key={t.label}
                               className={`relative group/tpl flex flex-col items-center gap-1.5 p-3 rounded-2xl border text-center transition-all ${agentConceptPrompt === t.idea
@@ -4981,6 +5025,7 @@ export default function Dashboard() {
                               </button>
                             </div>
                           ))}
+                          )}
                         </div>
                       </div>
 
