@@ -5085,7 +5085,7 @@ export default function Dashboard() {
                           className={`w-full px-4 py-3 rounded-xl border outline-none text-xs resize-none leading-relaxed transition font-mono ${dk ? "bg-neutral-900/60 border-white/8 text-neutral-300 focus:border-emerald-500/50" : "bg-neutral-50 border-neutral-200 focus:border-emerald-400"}`}
                         />
                         <p className={`text-[10px] mt-1 ${dk ? "text-neutral-600" : "text-neutral-400"}`}>
-                          Edit the instructions to fine-tune your agent's behaviour and expertise.
+                          Edit the instructions to fine-tune your agent&apos;s behaviour and expertise.
                         </p>
                       </div>
 

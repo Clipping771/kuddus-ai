@@ -89,7 +89,7 @@ export default function AdminHub() {
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => { if (sessionStorage.getItem("kuddus_admin_auth") === "true") setAuth(true); }, []);
-  useEffect(() => { if (auth) fetchData(); }, [auth]);
+  useEffect(() => { if (auth) fetchData(); }, [auth, fetchData]);
 
   const showToast = (msg: string, type: "success" | "error") => {
     setToast({ msg, type });
