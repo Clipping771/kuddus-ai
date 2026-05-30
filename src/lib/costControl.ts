@@ -83,15 +83,15 @@ export function analyzeQueryComplexity(
     const msgLen = message.length;
     const lowerMsg = message.toLowerCase();
 
-    // DevMind agent always gets complex treatment
-    if (agentId === "devmind-agent") {
+    // DevMind agent gets complex treatment only for non-trivial messages
+    if (agentId === "devmind-agent" && msgLen > 60) {
         return {
             complexity: "complex",
             recommendedModel: "meta-llama/llama-3.3-70b-instruct:free",
             useGroq: true,
             groqModel: "llama-3.3-70b-versatile",
             reason: "DevMind agent — engineering precision required",
-            estimatedTokens: 4000,
+            estimatedTokens: 5000,
         };
     }
 

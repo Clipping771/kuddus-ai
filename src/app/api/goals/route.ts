@@ -57,6 +57,14 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "goal text is required" }, { status: 400 });
         }
 
+        const trimmedGoal = goalText.trim();
+        if (trimmedGoal.length < 5) {
+            return NextResponse.json({ error: "Goal description too short" }, { status: 400 });
+        }
+        if (trimmedGoal.length > 2000) {
+            return NextResponse.json({ error: "Goal description too long (max 2000 chars)" }, { status: 400 });
+        }
+
         const { data: dbUser } = await supabase
             .from("users").select("id").eq("clerk_id", clerkId).single();
         if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -64,7 +72,7 @@ export async function POST(req: Request) {
         // AI generates structured sub-tasks for the goal
         const prompt = `You are a goal decomposition expert. Break down this goal into actionable sub-tasks.
 
-Goal: "${goalText}"
+Goal: "${trimmedGoal}"
 
 Return ONLY a JSON object:
 {
@@ -105,7 +113,7 @@ Rules:
         // Fallback if AI fails
         if (!goalData) {
             goalData = {
-                title: goalText.substring(0, 60),
+                title: trimmedGoal.substring(0, 60),
                 category: "personal",
                 estimatedDays: 30,
                 subTasks: [
@@ -123,8 +131,8 @@ Rules:
             .from("user_goals")
             .insert({
                 user_id: dbUser.id,
-                title: goalData.title || goalText.substring(0, 60),
-                original_text: goalText,
+                title: goalData.title || trimmedGoal.substring(0, 60),
+                original_text: trimmedGoal,
                 category: goalData.category || "personal",
                 status: "active",
                 progress: 0,

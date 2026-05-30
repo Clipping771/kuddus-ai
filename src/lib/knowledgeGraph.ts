@@ -152,9 +152,12 @@ export async function getKnowledgeGraphContext(userId: string): Promise<string |
         for (const node of nodes) {
             const label = relationshipLabel(node.relationship);
             if (!grouped[label]) grouped[label] = [];
-            const attrs = Object.entries(node.attributes || {})
-                .map(([k, v]) => `${k}: ${v}`)
-                .join(", ");
+            const attrs = typeof node.attributes === "object" && node.attributes !== null
+                ? Object.entries(node.attributes)
+                    .filter(([, v]) => v && typeof v === "string")
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join(", ")
+                : "";
             grouped[label].push(attrs ? `${node.entity} (${attrs})` : node.entity);
         }
 

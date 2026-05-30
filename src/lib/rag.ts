@@ -179,7 +179,7 @@ export async function ingestDocument(
                         user_id: userId,
                         chunk_index: chunkIndex,
                         content: chunkText,
-                        embedding: embedding ? JSON.stringify(embedding) : null,
+                        embedding: embedding || null,
                         token_count: Math.ceil(chunkText.length / 4),
                     };
                 })

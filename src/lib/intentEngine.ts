@@ -61,7 +61,7 @@ const INTENT_TO_AGENT: Record<IntentType, string> = {
 const INTENT_TO_MODEL: Record<IntentType, string> = {
     question: "meta-llama/llama-3.3-70b-instruct:free",
     research: "meta-llama/llama-3.3-70b-instruct:free",
-    coding: "anthropic/claude-3.5-sonnet",              // best for code
+    coding: "meta-llama/llama-3.3-70b-instruct:free",   // free, strong for code
     writing: "meta-llama/llama-3.3-70b-instruct:free",
     business: "meta-llama/llama-3.3-70b-instruct:free",
     planning: "meta-llama/llama-3.3-70b-instruct:free",

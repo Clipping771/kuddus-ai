@@ -111,7 +111,7 @@ export async function performWebSearch(
       .sort((a, b) => (b.score || 0) - (a.score || 0));
 
     const formattedResults = sortedResults
-      .map((r, i) => `[${i + 1}] **${r.title}**\nSource: ${r.url}\n${r.content.substring(0, 400)}`)
+      .map((r, i) => `[${i + 1}] **${r.title}**\nSource: ${r.url}\n${r.content.substring(0, 600)}`)
       .join("\n\n");
 
     const tavilyContext = `## 🔍 REAL-TIME WEB DATA (${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })})

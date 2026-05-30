@@ -976,6 +976,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
     }
 
+    // Guard against extremely long messages that would overflow context
+    if (message.length > 50000) {
+      return NextResponse.json({ error: "Message too long. Please shorten your message." }, { status: 400 });
+    }
+
     // Dynamic Agent Routing — if enableAutoRouting is true and no specific agent was chosen,
     // automatically classify the best agent based on message content
     let agentId = rawAgentId;
@@ -2171,14 +2176,10 @@ Keep your critique to 3 bullet points max. Be sharp and specific.`;
                   dbUser?.id
                 );
                 if (verification.improved && verification.finalResponse) {
-                  // Stream a diff marker then the improved content
-                  const diffBlock = `\n\n---\n\n> ✅ **Response verified & improved** *(Smart Verification Layer)*\n\n`;
-                  controller.enqueue(encoder.encode(diffBlock));
-                  // Replace the streamed content with improved version
-                  // We can't un-stream, so we append a clear separator + improved version
-                  controller.enqueue(encoder.encode(verification.finalResponse));
-                  assistantResponse = assistantResponse + diffBlock + verification.finalResponse;
-                  console.log(`[Verification] ✅ Improved response appended for intent: ${intentResult.intent}`);
+                  // Silently upgrade: save improved version to DB, don't re-stream
+                  // User already saw the streamed response; improved version is stored for history
+                  assistantResponse = verification.finalResponse;
+                  console.log(`[Verification] ✅ Silently upgraded response for intent: ${intentResult.intent}`);
                 }
               } catch (verifyErr) {
                 console.warn("[Verification] Failed (non-critical):", verifyErr);

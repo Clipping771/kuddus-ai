@@ -176,8 +176,10 @@ export async function extractAndSaveMemory(
     userMessage: string,
     assistantResponse: string
 ): Promise<void> {
-    // Skip extraction for very short exchanges — not enough signal
-    if (userMessage.length < 30 || assistantResponse.length < 50) return;
+    // Skip extraction for short exchanges or pure questions — not enough signal for facts
+    if (userMessage.length < 60 || assistantResponse.length < 100) return;
+    // Skip pure questions that won't contain user facts
+    if (/^(what|how|why|when|where|who|can you|could you|please|help me)\b/i.test(userMessage.trim()) && userMessage.length < 120) return;
 
     // Skip if message is just an image or document attachment
     if (userMessage.startsWith("[IMAGE_BASE64:") || userMessage.startsWith("[ATTACHED DOCUMENT:")) return;

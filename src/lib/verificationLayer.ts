@@ -120,10 +120,12 @@ export async function verifyAndImprove(
     try {
         // ── Step 1: Critic ────────────────────────────────────────────────────
         const criticPrompt = CRITIC_PROMPTS[intent] || DEFAULT_CRITIC_PROMPT;
+        // Use stronger model for coding — security issues need real intelligence
+        const criticModel = intent === "coding" ? "llama-3.3-70b-versatile" : "llama-3.1-8b-instant";
 
         const criticCompletion = await groqChatWithFallback(
             {
-                model: "llama-3.1-8b-instant",
+                model: criticModel,
                 messages: [
                     {
                         role: "system",
