@@ -99,11 +99,11 @@ export function analyzeQueryComplexity(
     if (msgLen < 40 || SIMPLE_SIGNALS.some((r) => r.test(message))) {
         return {
             complexity: "simple",
-            recommendedModel: "mistralai/mistral-7b-instruct:free", // Non-thinking, fast
+            recommendedModel: "mistralai/mistral-7b-instruct:free", // OR fallback if Groq unavailable
             useGroq: true,
-            groqModel: "llama-3.1-8b-instant",
+            groqModel: "llama-3.1-8b-instant", // fastest Groq model
             reason: "Short/simple query — fast model sufficient",
-            estimatedTokens: 500,
+            estimatedTokens: 400,
         };
     }
 
@@ -112,11 +112,11 @@ export function analyzeQueryComplexity(
     if (hasComplexKeyword || msgLen > 500) {
         return {
             complexity: "complex",
-            recommendedModel: "meta-llama/llama-3.3-70b-instruct:free", // Non-thinking, powerful
+            recommendedModel: "meta-llama/llama-3.3-70b-instruct:free",
             useGroq: true,
             groqModel: "llama-3.3-70b-versatile",
             reason: hasComplexKeyword ? "Complex domain keywords detected" : "Long message — detailed response needed",
-            estimatedTokens: 4000,
+            estimatedTokens: 3000,
         };
     }
 
@@ -127,7 +127,7 @@ export function analyzeQueryComplexity(
         useGroq: true,
         groqModel: "llama-3.3-70b-versatile",
         reason: "Standard business query",
-        estimatedTokens: 2000,
+        estimatedTokens: 1500,
     };
 }
 
@@ -136,10 +136,10 @@ export function analyzeQueryComplexity(
  */
 export function getMaxTokensForComplexity(complexity: QueryComplexity): number {
     switch (complexity) {
-        case "simple": return 800;
-        case "medium": return 2000;
-        case "complex": return 4000;
-        case "vision": return 2500;
-        default: return 2000;
+        case "simple": return 400;
+        case "medium": return 1500;
+        case "complex": return 3000;
+        case "vision": return 2000;
+        default: return 1500;
     }
 }

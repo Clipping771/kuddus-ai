@@ -1183,6 +1183,17 @@ ${agentSystemPrompt}`;
       agentSystemPrompt = `${toneBlock}${agentSystemPrompt}`;
     }
 
+    // ── Response length control based on query complexity ──
+    const msgLen = message.replace(/\[IMAGE_BASE64:[^\]]+\]/g, "").trim().length;
+    if (msgLen < 20) {
+      // Very short message (hi, hello, thanks, etc.) — short reply only
+      agentSystemPrompt += `\n\n## RESPONSE LENGTH RULE\nThis is a very short/simple message. Reply in 1-3 sentences MAX. Do NOT produce a full structured report. Be natural and conversational.`;
+    } else if (msgLen < 80) {
+      // Short message — moderate reply
+      agentSystemPrompt += `\n\n## RESPONSE LENGTH RULE\nKeep your response focused and concise. Use structure only if it genuinely helps. Avoid padding, filler sections, or unnecessary headers.`;
+    }
+    // For longer messages, let the agent use its full output format
+
     // 5a. Inject all pre-fetched context into system prompt
     if (webSearchContext) {
       agentSystemPrompt += `\n\n${webSearchContext}`;
@@ -1388,6 +1399,8 @@ Apply the following highly advanced analysis steps:
     }
 
     const primaryModel = resolvedModelId;
+    const queryComplexity = analyzeQueryComplexity(message, Boolean(hasImage), !!isBrainTrust, agentId);
+    const isSimpleQuery = queryComplexity.complexity === "simple";
 
     // Brain Trust: Groq-first model pool (no quota issues), OpenRouter as fallback
     // Groq handles all sync calls — only synthesis stream uses OpenRouter
@@ -1767,202 +1780,200 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
               }
             }
           } else {
-            // NORMAL SINGLE-MODEL PIPELINE
-            let selectedModel = hasImage ? (primaryModel || "google/gemini-2.5-flash") : primaryModel;
-            const fallbackModels = hasImage
-              ? [
-                primaryModel,
-                // Free vision-capable models (valid as of 2026)
-                "google/gemma-3-27b-it:free",
-                "meta-llama/llama-3.2-11b-vision-instruct:free",
-                "mistralai/mistral-7b-instruct:free",
-                // Last resort auto-router
-                "openrouter/free",
-              ]
-              : [
-                primaryModel,
-                // Top free text models — NO thinking models in this list
-                "meta-llama/llama-3.3-70b-instruct:free",
-                "mistralai/mistral-7b-instruct:free",
-                "google/gemma-3-27b-it:free",
-                "nousresearch/hermes-3-llama-3.1-405b:free",
-                "openrouter/free",
+            // NORMAL SINGLE-MODEL PIPELINE — Groq first (fastest), OpenRouter fallback
+            const maxTok = getMaxTokensForComplexity(queryComplexity.complexity);
+            const temp = isSimpleQuery ? 0.4 : 0.7;
+
+            // ── TIER 1: Groq streaming (sub-second first token, no quota issues) ──
+            let groqStreamed = false;
+            if (process.env.GROQ_API_KEY && !hasImage) {
+              const groqModel = isSimpleQuery ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile";
+              try {
+                console.log(`[API Chat] 🚀 Groq stream: "${groqModel}" (${queryComplexity.complexity})`);
+                const groqMsgs = sanitizeMessagesForGroq(formattedMessages);
+                const groqStream = await groqStreamWithFallback(
+                  { model: groqModel, messages: groqMsgs, temperature: temp, max_tokens: maxTok, stream: true },
+                  dbUser?.id
+                ) as AsyncIterable<Groq.Chat.ChatCompletionChunk>;
+                for await (const chunk of groqStream) {
+                  const text = chunk.choices[0]?.delta?.content || "";
+                  if (text) { assistantResponse += text; controller.enqueue(encoder.encode(text)); }
+                }
+                groqStreamed = true;
+                console.log(`[API Chat] ✅ Groq stream done (${assistantResponse.length} chars)`);
+              } catch (groqErr: any) {
+                console.warn(`[API Chat] Groq stream failed, falling back to OpenRouter:`, groqErr.message);
+                assistantResponse = ""; // reset — will retry via OpenRouter
+              }
+            }
+
+            // ── TIER 2: OpenRouter fallback (if Groq unavailable or failed) ──
+            if (!groqStreamed) {
+              let selectedModel = hasImage ? (primaryModel || "google/gemini-2.5-flash") : primaryModel;
+              const fallbackModels = hasImage
+                ? [primaryModel, "google/gemma-3-27b-it:free", "meta-llama/llama-3.2-11b-vision-instruct:free", "mistralai/mistral-7b-instruct:free", "openrouter/free"]
+                : [primaryModel, "meta-llama/llama-3.3-70b-instruct:free", "mistralai/mistral-7b-instruct:free", "google/gemma-3-27b-it:free", "openrouter/free"];
+
+              let response: any;
+              let lastError: any;
+              for (let i = 0; i < fallbackModels.length; i++) {
+                selectedModel = fallbackModels[i];
+                try {
+                  console.log(`[API Chat] OR stream: "${selectedModel}"`);
+                  const { response: res, usedModel } = await openrouterFetchWithFallback(
+                    [selectedModel],
+                    { messages: formattedMessages, stream: true, max_tokens: maxTok, thinking: { type: "disabled" }, temperature: temp },
+                    dbUser.id
+                  );
+                  response = res; selectedModel = usedModel;
+                  console.log(`[API Chat] ✅ OR model "${selectedModel}" connected`);
+                  break;
+                } catch (err: any) {
+                  console.error(`[API Chat] ❌ OR model "${selectedModel}" failed:`, err.message);
+                  lastError = err; response = undefined;
+                }
+              }
+              if (!response) throw new ApiKeyExhaustedError(lastError?.message || "All models exhausted");
+
+              const reader = response.body?.getReader();
+              const decoder = new TextDecoder();
+              let buffer = "";
+              let isThinking = false;
+              let streamBuffer = "";
+              let untaggedThinkingChecked = false;
+              let thinkingDropBuffer = ""; // accumulates thinking text — NEVER sent to client
+
+              // All known thinking starters — any model, any format
+              // When detected at stream start, ALL content is silently dropped until a paragraph break
+              const THINKING_STARTERS = [
+                /^(We (have|need|must|should) (a |to )?respond)/i,
+                /^(We need to respond)/i,
+                /^(The user (is asking|said|wants|asked|wrote|has))/i,
+                /^(User (is asking|said|wants|asked|wrote))/i,
+                /^(Okay,?\s+let['']s\s+(see|think|analyze|check))/i,
+                /^(Okay,?\s+(I need|the user|so))/i,
+                /^(Ok,?\s+(I need|the user|so|let))/i,
+                /^(First,?\s+I\s+(need|should|must|will))/i,
+                /^(Let\s+me\s+(think|analyze|consider|check|see|re-read|re-check|look))/i,
+                /^(I\s+need\s+to\s+(adhere|follow|check|respond|provide|analyze|re-read|think))/i,
+                /^(As\s+(a specialist|the AI|Kacha Morich|an AI|a legal|a CFO|a dev))/i,
+                /^(Since\s+the\s+user)/i,
+                /^(Need\s+to\s+respond)/i,
+                /^(They\s+(provided|want|need|asked))/i,
+                /^(Also\s+(adhere|follow|check))/i,
+                /^(Wait,?\s)/i,
+                /^(Hmm,?\s)/i,
+                /^(So,?\s+the\s+response\s+should)/i,
+                /^(The\s+response\s+should)/i,
+                /^(Checking\s+the\s+rules)/i,
+                /^(Self.?check)/i,
+                /^(My role is)/i,
+                /^(I am (acting|operating|working) as)/i,
+                /^(Based on (my|the) (role|instructions|system prompt))/i,
+                /^(According to (my|the) (role|instructions))/i,
+                /^(The (tone|instruction|rule) (says|requires|states))/i,
+                /^(I (should|must|will|can) (respond|reply|answer|provide))/i,
+                /^(For (this|a) (greeting|simple|short|quick))/i,
+                /^(Since (this|it) (is|seems|appears) (a |to be )?(simple|short|greeting|hi|hello))/i,
+                /^(The (user|message|query) (is|seems|appears|says|just))/i,
+                /^(Perhaps|Maybe) ["']?(Hello|Hi|Hey)/i,
+                /^(So (the |my )?(final |actual )?(answer|response|reply))/i,
+                /^(Final (answer|response|reply):)/i,
               ];
 
-            let response: any;
-            let lastError: any;
-            for (let i = 0; i < fallbackModels.length; i++) {
-              selectedModel = fallbackModels[i];
-              try {
-                console.log(`[API Chat] Dispatching stream request directly to selected model: "${selectedModel}"`);
-                const maxTok = getMaxTokensForComplexity(
-                  analyzeQueryComplexity(message, Boolean(hasImage), false, agentId).complexity
-                );
-                const { response: res, usedModel } = await openrouterFetchWithFallback(
-                  [selectedModel],
-                  {
-                    messages: formattedMessages,
-                    stream: true,
-                    max_tokens: maxTok,
-                    // Disable thinking/reasoning for ALL models — prevents internal monologue leaking
-                    thinking: { type: "disabled" },
-                    // Lower temperature reduces verbose/thinking responses
-                    temperature: maxTok <= 800 ? 0.3 : 0.7,
-                  },
-                  dbUser.id
-                );
-                response = res;
-                selectedModel = usedModel;
-                console.log(`[API Chat] ✅ Model "${selectedModel}" connected successfully`);
-                break;
-              } catch (err: any) {
-                console.error(`[API Chat] ❌ Model "${selectedModel}" failed:`, err.message || err);
-                lastError = err;
-                response = undefined;
-              }
-            }
-            if (!response) {
-              throw new ApiKeyExhaustedError(lastError?.message || "All fallback models and API keys exhausted");
-            }
-
-            const reader = response.body?.getReader();
-            const decoder = new TextDecoder();
-            let buffer = "";
-            let isThinking = false;
-            let streamBuffer = "";
-            let untaggedThinkingChecked = false;
-            let thinkingDropBuffer = ""; // accumulates thinking text — NEVER sent to client
-
-            // All known thinking starters — any model, any format
-            // When detected at stream start, ALL content is silently dropped until a paragraph break
-            const THINKING_STARTERS = [
-              /^(We (have|need|must|should) (a |to )?respond)/i,
-              /^(We need to respond)/i,
-              /^(The user (is asking|said|wants|asked|wrote|has))/i,
-              /^(User (is asking|said|wants|asked|wrote))/i,
-              /^(Okay,?\s+let['']s\s+(see|think|analyze|check))/i,
-              /^(Okay,?\s+(I need|the user|so))/i,
-              /^(Ok,?\s+(I need|the user|so|let))/i,
-              /^(First,?\s+I\s+(need|should|must|will))/i,
-              /^(Let\s+me\s+(think|analyze|consider|check|see|re-read|re-check|look))/i,
-              /^(I\s+need\s+to\s+(adhere|follow|check|respond|provide|analyze|re-read|think))/i,
-              /^(As\s+(a specialist|the AI|Kacha Morich|an AI|a legal|a CFO|a dev))/i,
-              /^(Since\s+the\s+user)/i,
-              /^(Need\s+to\s+respond)/i,
-              /^(They\s+(provided|want|need|asked))/i,
-              /^(Also\s+(adhere|follow|check))/i,
-              /^(Wait,?\s)/i,
-              /^(Hmm,?\s)/i,
-              /^(So,?\s+the\s+response\s+should)/i,
-              /^(The\s+response\s+should)/i,
-              /^(Checking\s+the\s+rules)/i,
-              /^(Self.?check)/i,
-              /^(My role is)/i,
-              /^(I am (acting|operating|working) as)/i,
-              /^(Based on (my|the) (role|instructions|system prompt))/i,
-              /^(According to (my|the) (role|instructions))/i,
-              /^(The (tone|instruction|rule) (says|requires|states))/i,
-              /^(I (should|must|will|can) (respond|reply|answer|provide))/i,
-              /^(For (this|a) (greeting|simple|short|quick))/i,
-              /^(Since (this|it) (is|seems|appears) (a |to be )?(simple|short|greeting|hi|hello))/i,
-              /^(The (user|message|query) (is|seems|appears|says|just))/i,
-              /^(Perhaps|Maybe) ["']?(Hello|Hi|Hey)/i,
-              /^(So (the |my )?(final |actual )?(answer|response|reply))/i,
-              /^(Final (answer|response|reply):)/i,
-            ];
-
-            while (reader) {
-              const { done, value } = await reader.read();
-              if (done) {
-                if (isThinking) {
-                  // Thinking was active at end — don't send anything, just close
-                  isThinking = false;
+              while (reader) {
+                const { done, value } = await reader.read();
+                if (done) {
+                  if (isThinking) {
+                    // Thinking was active at end — don't send anything, just close
+                    isThinking = false;
+                  }
+                  // Flush any remaining stream buffer (only if not in thinking mode)
+                  if (streamBuffer && !isThinking) {
+                    controller.enqueue(encoder.encode(streamBuffer));
+                    assistantResponse += streamBuffer;
+                    streamBuffer = "";
+                  }
+                  break;
                 }
-                // Flush any remaining stream buffer (only if not in thinking mode)
-                if (streamBuffer && !isThinking) {
-                  controller.enqueue(encoder.encode(streamBuffer));
-                  assistantResponse += streamBuffer;
-                  streamBuffer = "";
-                }
-                break;
-              }
-              buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split("\n");
-              buffer = lines.pop() || "";
-              for (const line of lines) {
-                const trimmed = line.trim();
-                if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
-                  try {
-                    const parsed = JSON.parse(trimmed.slice(6));
-                    const delta = parsed.choices[0]?.delta;
-                    const text = delta?.content || "";
-                    // reasoning/reasoning_content = explicit thinking field from DeepSeek/Qwen
-                    const reasoning = delta?.reasoning || delta?.reasoning_content || "";
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop() || "";
+                for (const line of lines) {
+                  const trimmed = line.trim();
+                  if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
+                    try {
+                      const parsed = JSON.parse(trimmed.slice(6));
+                      const delta = parsed.choices[0]?.delta;
+                      const text = delta?.content || "";
+                      // reasoning/reasoning_content = explicit thinking field from DeepSeek/Qwen
+                      const reasoning = delta?.reasoning || delta?.reasoning_content || "";
 
-                    if (reasoning) {
-                      // Explicit reasoning field — SILENTLY DROP, never send to client
-                      thinkingDropBuffer += reasoning;
-                      isThinking = true;
-                      continue;
-                    }
+                      if (reasoning) {
+                        // Explicit reasoning field — SILENTLY DROP, never send to client
+                        thinkingDropBuffer += reasoning;
+                        isThinking = true;
+                        continue;
+                      }
 
-                    if (!text) continue;
+                      if (!text) continue;
 
-                    if (isThinking) {
-                      // We were in thinking mode — check if this text ends the thinking block
-                      // Thinking ends when we see a double newline or a clearly "answer-like" start
-                      thinkingDropBuffer += text;
-                      // Check if thinking block has ended (double newline = paragraph break)
-                      if (thinkingDropBuffer.includes("\n\n") || thinkingDropBuffer.includes("\r\n\r\n")) {
-                        // Find where the actual answer starts (after the last double newline)
-                        const lastBreak = Math.max(
-                          thinkingDropBuffer.lastIndexOf("\n\n"),
-                          thinkingDropBuffer.lastIndexOf("\r\n\r\n")
-                        );
-                        const afterThinking = thinkingDropBuffer.substring(lastBreak).replace(/^\n+/, "").trim();
-                        thinkingDropBuffer = "";
-                        isThinking = false;
-                        untaggedThinkingChecked = true;
-                        if (afterThinking && afterThinking.length > 3) {
-                          // Strip any remaining filler from the start of the actual answer
-                          const cleanAnswer = afterThinking.replace(/^(Ok\.?\s*|Okay\.?\s*|Sure\.?\s*|Alright\.?\s*|Right\.?\s*|Got it\.?\s*|Understood\.?\s*|Well,?\s*)/i, "").trim();
-                          if (cleanAnswer) {
-                            controller.enqueue(encoder.encode(cleanAnswer));
-                            assistantResponse += cleanAnswer;
+                      if (isThinking) {
+                        // We were in thinking mode — check if this text ends the thinking block
+                        // Thinking ends when we see a double newline or a clearly "answer-like" start
+                        thinkingDropBuffer += text;
+                        // Check if thinking block has ended (double newline = paragraph break)
+                        if (thinkingDropBuffer.includes("\n\n") || thinkingDropBuffer.includes("\r\n\r\n")) {
+                          // Find where the actual answer starts (after the last double newline)
+                          const lastBreak = Math.max(
+                            thinkingDropBuffer.lastIndexOf("\n\n"),
+                            thinkingDropBuffer.lastIndexOf("\r\n\r\n")
+                          );
+                          const afterThinking = thinkingDropBuffer.substring(lastBreak).replace(/^\n+/, "").trim();
+                          thinkingDropBuffer = "";
+                          isThinking = false;
+                          untaggedThinkingChecked = true;
+                          if (afterThinking && afterThinking.length > 3) {
+                            // Strip any remaining filler from the start of the actual answer
+                            const cleanAnswer = afterThinking.replace(/^(Ok\.?\s*|Okay\.?\s*|Sure\.?\s*|Alright\.?\s*|Right\.?\s*|Got it\.?\s*|Understood\.?\s*|Well,?\s*)/i, "").trim();
+                            if (cleanAnswer) {
+                              controller.enqueue(encoder.encode(cleanAnswer));
+                              assistantResponse += cleanAnswer;
+                            }
                           }
                         }
+                        continue;
                       }
-                      continue;
-                    }
 
-                    // Buffer first 200 chars to detect untagged thinking at stream start
-                    if (!untaggedThinkingChecked) {
-                      streamBuffer += text;
-                      if (streamBuffer.length >= 200) {
-                        untaggedThinkingChecked = true;
-                        const isThinkingStart = THINKING_STARTERS.some(p => p.test(streamBuffer.trimStart()));
-                        if (isThinkingStart) {
-                          // Silently drop — accumulate in thinkingDropBuffer instead
-                          isThinking = true;
-                          thinkingDropBuffer = streamBuffer;
-                          streamBuffer = "";
-                        } else {
-                          // Not thinking — flush buffer to client
-                          controller.enqueue(encoder.encode(streamBuffer));
-                          assistantResponse += streamBuffer;
-                          streamBuffer = "";
+                      // Buffer first 200 chars to detect untagged thinking at stream start
+                      if (!untaggedThinkingChecked) {
+                        streamBuffer += text;
+                        if (streamBuffer.length >= 200) {
+                          untaggedThinkingChecked = true;
+                          const isThinkingStart = THINKING_STARTERS.some(p => p.test(streamBuffer.trimStart()));
+                          if (isThinkingStart) {
+                            // Silently drop — accumulate in thinkingDropBuffer instead
+                            isThinking = true;
+                            thinkingDropBuffer = streamBuffer;
+                            streamBuffer = "";
+                          } else {
+                            // Not thinking — flush buffer to client
+                            controller.enqueue(encoder.encode(streamBuffer));
+                            assistantResponse += streamBuffer;
+                            streamBuffer = "";
+                          }
                         }
+                        continue;
                       }
-                      continue;
-                    }
 
-                    // Normal text — send directly
-                    assistantResponse += text;
-                    controller.enqueue(encoder.encode(text));
-                  } catch (e) { }
+                      // Normal text — send directly
+                      assistantResponse += text;
+                      controller.enqueue(encoder.encode(text));
+                    } catch (e) { }
+                  }
                 }
               }
-            }
+            } // end if (!groqStreamed) OpenRouter fallback
           } // end else (NORMAL SINGLE-MODEL PIPELINE)
 
           // 7. Save completed assistant response to Supabase
