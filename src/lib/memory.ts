@@ -97,17 +97,72 @@ export async function getUserMemoryContext(userId: string): Promise<string | nul
 
         if (sections.length === 0) return null;
 
-        return `## 🧠 LONG-TERM MEMORY (What you already know about this user)
-This user has interacted with you before. Use this context to personalize your response — reference their business, goals, and preferences naturally without being robotic about it.
-
-${sections.join("\n\n")}
-
----
-INSTRUCTION: Incorporate this context naturally. If the user's question relates to their known business or goals, reference it. Do NOT list these facts back to the user — just use them to give more relevant, personalized advice.`;
+        return buildActiveMemoryPrompt(sections, topMemories);
     } catch (err) {
         console.error("[Memory] getUserMemoryContext error:", err);
         return null;
     }
+}
+
+/**
+ * Build an ACTIVE memory prompt — not just injecting facts, but telling the AI
+ * HOW to use them: adapt tone, expertise level, examples, and recommendations.
+ *
+ * This is the difference between "memory stored" and "memory utilized".
+ */
+function buildActiveMemoryPrompt(sections: string[], memories: any[]): string {
+    // Derive personalization rules from memory content
+    const allMemoryText = memories.map((m: any) => `${m.key}: ${m.value}`).join(" ").toLowerCase();
+
+    const personalizationRules: string[] = [];
+
+    // Expertise level adaptation
+    if (allMemoryText.includes("developer") || allMemoryText.includes("engineer") || allMemoryText.includes("cto") || allMemoryText.includes("technical")) {
+        personalizationRules.push("• **Expertise**: User is technical — use technical terms freely, skip basic explanations, go deep on implementation details.");
+    } else if (allMemoryText.includes("student") || allMemoryText.includes("beginner") || allMemoryText.includes("learning") || allMemoryText.includes("new to")) {
+        personalizationRules.push("• **Expertise**: User is learning — explain concepts clearly, use analogies, avoid jargon without explanation.");
+    } else if (allMemoryText.includes("founder") || allMemoryText.includes("ceo") || allMemoryText.includes("entrepreneur") || allMemoryText.includes("startup")) {
+        personalizationRules.push("• **Expertise**: User is a founder/entrepreneur — focus on execution, ROI, and business impact. Skip theory.");
+    }
+
+    // Industry-specific examples
+    const industryMatch = allMemoryText.match(/industry[:\s]+([a-z\s]+?)(?:\.|,|;|$)/);
+    const businessMatch = allMemoryText.match(/(?:company|business|startup)[_\s](?:name|type)?[:\s]+([a-z\s]+?)(?:\.|,|;|$)/);
+    if (industryMatch || businessMatch) {
+        const context = industryMatch?.[1] || businessMatch?.[1] || "";
+        if (context.trim()) {
+            personalizationRules.push(`• **Examples**: Use examples from the ${context.trim()} industry/context when possible.`);
+        }
+    }
+
+    // Goal-oriented advice
+    if (allMemoryText.includes("goal") || allMemoryText.includes("want to") || allMemoryText.includes("trying to") || allMemoryText.includes("working on")) {
+        personalizationRules.push("• **Goals**: Connect advice to their stated goals. Every recommendation should move them closer to what they're working toward.");
+    }
+
+    // Language preference
+    if (allMemoryText.includes("bangla") || allMemoryText.includes("bengali") || allMemoryText.includes("bangladesh")) {
+        personalizationRules.push("• **Language**: User is Bangladeshi — Bangla/Banglish mix is natural and welcome.");
+    }
+
+    const personalizationBlock = personalizationRules.length > 0
+        ? `\n\n**Active Personalization Rules** (apply these NOW):\n${personalizationRules.join("\n")}`
+        : "";
+
+    return `## 🧠 LONG-TERM MEMORY — Active Intelligence Layer
+
+You know this user. Use this knowledge to give advice that feels personal, not generic.
+
+${sections.join("\n\n")}
+${personalizationBlock}
+
+---
+**MEMORY UTILIZATION RULES** (non-negotiable):
+1. **Never give generic advice** — always connect to their specific situation, business, or goals.
+2. **Adapt your tone** — match their expertise level (technical/business/beginner) based on what you know.
+3. **Reference context naturally** — if they ask about pricing and you know their industry, use that. Don't say "as I know from our previous conversation" — just use it.
+4. **Personalize examples** — use examples relevant to their industry, company stage, or goals.
+5. **Never list these facts back** — use them silently to make your response more relevant.`;
 }
 
 /**

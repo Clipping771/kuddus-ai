@@ -14,6 +14,9 @@ import { detectLanguage } from "@/lib/languageDetect";
 import { trackAgentUsage } from "@/lib/userBehavior";
 import { orchestrateAgents, buildCollaborativePrompt } from "@/lib/orchestrator";
 import { checkResponseConfidence } from "@/lib/confidenceCheck";
+import { classifyIntent, buildIntentPrefix } from "@/lib/intentEngine";
+import { verifyAndImprove, shouldVerify } from "@/lib/verificationLayer";
+import { extractKnowledgeGraph, getKnowledgeGraphContext } from "@/lib/knowledgeGraph";
 
 // ── Shared output rules injected into EVERY agent (no identity, no "Executive Board") ──
 const SHARED_OUTPUT_RULES = `## CRITICAL OUTPUT RULES (NON-NEGOTIABLE)
@@ -24,6 +27,15 @@ const SHARED_OUTPUT_RULES = `## CRITICAL OUTPUT RULES (NON-NEGOTIABLE)
 - Adapt to user's language: Bangla → reply in Bangla, English → reply in English, mixed → match the mix
 - Complete every task fully — full reports, full code, full documents, full strategies. No half-measures.
 - NEVER say "How can I assist you today?" as a standalone response — always add value immediately.
+
+## RESPONSE QUALITY STANDARDS (what separates good from unforgettable)
+- **Be specific, never generic** — "increase revenue by 23% by cutting CAC from $45 to $32" beats "improve your revenue"
+- **Lead with the insight, not the setup** — the most valuable thing goes FIRST, not buried at the end
+- **Use real numbers** — estimates, ranges, benchmarks. "Around $5K-$15K to launch" beats "it depends"
+- **Anticipate the next question** — answer what they asked AND what they'll ask next
+- **One concrete Next Step** — every strategic response ends with exactly ONE thing to do in the next 48 hours
+- **Surprise them** — include at least one non-obvious insight, counterintuitive fact, or angle they didn't consider
+- **Match energy** — casual question → conversational answer. Serious business question → sharp, structured, no fluff
 
 ## DOCUMENT ARTIFACT RULES
 When the user explicitly asks you to generate a document, diagram, or spreadsheet, wrap the artifact inside the correct code fence:
@@ -40,16 +52,24 @@ When the user provides an image or document:
 - Analyze visual details and give sharp, role-specific advice based on what you see.`;
 
 // ── General Purpose fallback — only used when NO specialist agent is active ──
-const GENERAL_PURPOSE_IDENTITY = `You are **Kacha Morich AI** 🌶️ — a sharp, versatile AI assistant.
-You are direct, confident, and highly professional. You naturally mix Bangla and English when the user does.
+const GENERAL_PURPOSE_IDENTITY = `You are **Kacha Morich AI** 🌶️ — a sharp, direct, and deeply knowledgeable AI assistant.
+You think like a senior consultant, write like a sharp journalist, and advise like a trusted friend who happens to know everything.
+You naturally mix Bangla and English when the user does — never forced, always natural.
 You answer every question fully — writing, coding, analysis, research, translation, math, strategy — anything.
-When asked "who are you" or "what can you do", give a sharp self-introduction covering your capabilities.
+
+## What makes you different
+- You give specific answers, not generic ones. Real numbers, real examples, real next steps.
+- You anticipate what the user will ask next and answer that too.
+- You challenge assumptions when they're wrong — respectfully but directly.
+- You always include one insight the user didn't expect.
+- When asked "who are you", give a sharp, confident self-introduction — not a list of features.
 
 ## Output Format
-- Use clear headings (###), bullet points, and tables where relevant.
-- Be concise for simple questions, detailed for complex ones.
-- End strategic responses with a concrete **Next Step** the user can act on immediately.
-- Never give vague or generic advice. Every word must add value.`;
+- Lead with the most valuable insight — don't bury it
+- Use clear headings (###), bullet points, and tables where they genuinely help
+- Short questions get short, punchy answers. Complex questions get thorough, structured responses.
+- End strategic responses with exactly ONE concrete Next Step the user can act on in 48 hours
+- Never pad responses with filler. Every sentence must earn its place.`;
 
 
 
@@ -1005,8 +1025,21 @@ export async function POST(req: Request) {
       const serializedTitle = `${cleanTitle} | agentId:${agentId || "daily-innovation-idea-agent"} | toneId:${toneId || "brutally-honest"}`;
       const insertPayload: any = { user_id: dbUser.id, title: serializedTitle };
 
-      if (agentId && !agentId.startsWith("custom-agent-") && /^[0-9a-f-]{36}$/i.test(agentId)) {
-        insertPayload.agent_id = agentId;
+      // Only store agent_id for custom agents that actually exist in DB
+      // Built-in agents use string IDs (not UUIDs), so we skip them
+      // For custom agent UUIDs — verify they exist first to avoid FK constraint errors
+      if (agentId && /^[0-9a-f-]{36}$/i.test(agentId)) {
+        // Verify this custom agent exists and belongs to this user
+        const { data: agentExists } = await supabase
+          .from("custom_agents")
+          .select("id")
+          .eq("id", agentId)
+          .eq("user_id", dbUser.id)
+          .single();
+        if (agentExists) {
+          insertPayload.agent_id = agentId;
+        }
+        // If agent doesn't exist (deleted/wrong user), skip agent_id — chat still works
       }
       const { data: newChat, error: chatError } = await supabase
         .from("chats").insert(insertPayload).select("*").single();
@@ -1025,13 +1058,15 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3. Save user message + fetch history IN PARALLEL — don't wait for save before fetching
-    const [, historyResult] = await Promise.all([
-      // Fire-and-forget message save (we don't need the result)
-      supabase.from("messages").insert({ chat_id: activeChatId, role: "user", content: message }),
-      // Fetch history simultaneously
-      supabase.from("messages").select("role, content").eq("chat_id", activeChatId).order("created_at", { ascending: true }),
-    ]);
+    // 3. Save user message FIRST, then fetch history — ensures current message is in DB
+    // before we fetch, so history is always complete and in order
+    await supabase.from("messages").insert({ chat_id: activeChatId, role: "user", content: message });
+
+    const historyResult = await supabase
+      .from("messages")
+      .select("role, content")
+      .eq("chat_id", activeChatId)
+      .order("created_at", { ascending: true });
 
     const history = historyResult.data;
     if (historyResult.error) console.error("History fetch error:", historyResult.error);
@@ -1128,7 +1163,7 @@ export async function POST(req: Request) {
     const needsSearch = needsWebSearch(message, agentId);
     const searchQuery = needsSearch ? extractSearchQuery(message, agentId) : "";
 
-    const [memoryContext, ragContext, webSearchContext, orchestrationResult] = await Promise.all([
+    const [memoryContext, ragContext, webSearchContext, orchestrationResult, intentResult, knowledgeGraphContext] = await Promise.all([
       getUserMemoryContext(dbUser.id).catch(() => null),
       hasImage ? Promise.resolve(null) : retrieveRelevantChunks(dbUser.id, message, agentId).catch(() => null),
       needsSearch ? performWebSearch(searchQuery, agentId).catch(() => null) : Promise.resolve(null),
@@ -1136,7 +1171,32 @@ export async function POST(req: Request) {
       (enableAutoRouting && message.length > 60)
         ? orchestrateAgents(message, agentId, dbUser.id).catch(() => null)
         : Promise.resolve(null) as Promise<null>,
+      // 🎯 Intent Engine — classify every message for smart routing
+      classifyIntent(message, agentId, dbUser.id).catch(() => null),
+      // 🕸️ Knowledge Graph — structured relationship context
+      getKnowledgeGraphContext(dbUser.id).catch(() => null),
     ] as const);
+
+    // Apply intent result — upgrade agent and model if confidence is high
+    let intentBasedModel: string | null = null;
+    if (intentResult && intentResult.confidence !== "low") {
+      // Only auto-route agent if user hasn't explicitly chosen one
+      if (enableAutoRouting && intentResult.suggestedAgent !== agentId && agentId === "daily-innovation-idea-agent") {
+        agentId = intentResult.suggestedAgent;
+        autoRoutedAgent = intentResult.suggestedAgent;
+        console.log(`[IntentEngine] 🎯 Routed to "${agentId}" based on intent: "${intentResult.intent}"`);
+      }
+      // Suggest a better model based on intent (only if user hasn't picked a specific model)
+      if (!modelId && intentResult.suggestedModel) {
+        intentBasedModel = intentResult.suggestedModel;
+        console.log(`[IntentEngine] 🤖 Suggested model: "${intentBasedModel}" for intent: "${intentResult.intent}"`);
+      }
+    }
+
+    if (needsSearch && webSearchContext) console.log("[WebSearch] ✅ Tavily results ready.");
+    if (memoryContext) console.log("[Memory] ✅ Memory context ready.");
+    if (ragContext) console.log("[RAG] ✅ RAG chunks ready.");
+    if (intentResult) console.log(`[IntentEngine] ✅ Intent: "${intentResult.intent}" (${intentResult.confidence})`);
 
     // Apply orchestration result — upgrade agent routing if confidence is high
     if (orchestrationResult && orchestrationResult.confidence !== "low") {
@@ -1146,10 +1206,6 @@ export async function POST(req: Request) {
         console.log(`[Orchestrator] ✅ Upgraded route to "${agentId}" — intent: "${orchestrationResult.intent}"`);
       }
     }
-
-    if (needsSearch && webSearchContext) console.log("[WebSearch] ✅ Tavily results ready.");
-    if (memoryContext) console.log("[Memory] ✅ Memory context ready.");
-    if (ragContext) console.log("[RAG] ✅ RAG chunks ready.");
 
     const customizedSharedRules = SHARED_OUTPUT_RULES.replace(/Nova AI/g, aiName).replace(/Kacha Morich AI/g, aiName);
     const customizedGeneralPurpose = GENERAL_PURPOSE_IDENTITY.replace(/Nova AI/g, aiName).replace(/Kacha Morich AI/g, aiName);
@@ -1208,12 +1264,15 @@ ${agentSystemPrompt}`;
     const msgLen = message.replace(/\[IMAGE_BASE64:[^\]]+\]/g, "").trim().length;
     if (msgLen < 20) {
       // Very short message (hi, hello, thanks, etc.) — short reply only
-      agentSystemPrompt += `\n\n## RESPONSE LENGTH RULE\nThis is a very short/simple message. Reply in 1-3 sentences MAX. Do NOT produce a full structured report. Be natural and conversational.`;
+      agentSystemPrompt += `\n\n## RESPONSE LENGTH RULE\nThis is a very short/simple message. Reply in 1-3 sentences MAX. Be warm, direct, and natural — like a smart friend, not a corporate assistant.`;
     } else if (msgLen < 80) {
-      // Short message — moderate reply
-      agentSystemPrompt += `\n\n## RESPONSE LENGTH RULE\nKeep your response focused and concise. Use structure only if it genuinely helps. Avoid padding, filler sections, or unnecessary headers.`;
+      // Short message — focused but complete
+      agentSystemPrompt += `\n\n## RESPONSE LENGTH RULE\nKeep your response focused. Use structure only if it genuinely helps. No padding, no unnecessary headers. But DO include a specific insight or number if relevant — don't sacrifice quality for brevity.`;
+    } else if (msgLen > 300) {
+      // Long, detailed question — give a full, thorough response
+      agentSystemPrompt += `\n\n## RESPONSE LENGTH RULE\nThis is a detailed question that deserves a thorough response. Be comprehensive — full analysis, full code, full strategy. Do NOT cut corners or truncate. Complete every section fully.`;
     }
-    // For longer messages, let the agent use its full output format
+    // Medium messages: let the agent use its natural output format
 
     // 5a. Inject all pre-fetched context into system prompt
     if (webSearchContext) {
@@ -1225,21 +1284,45 @@ ${agentSystemPrompt}`;
       agentSystemPrompt += `\n\n${memoryContext}`;
     }
 
+    // 5b2. 🕸️ Knowledge Graph injection — structured relationship context
+    if (knowledgeGraphContext) {
+      agentSystemPrompt += `\n\n${knowledgeGraphContext}`;
+    }
+
+    // 5b3. 🌟 Returning user personalization boost
+    // When we have memory AND knowledge graph, tell the AI to actively use it to surprise the user
+    if (memoryContext && knowledgeGraphContext) {
+      agentSystemPrompt += `\n\n## 🌟 PERSONALIZATION DIRECTIVE
+You know this user well. Use that knowledge to make this response feel personal and surprising:
+- Reference their specific situation without being asked (e.g. "Given that you're building EcoGrid...")
+- Connect your advice to their known goals
+- If their question relates to something they mentioned before, acknowledge the connection
+- Give advice that ONLY makes sense for their specific context — not generic advice that could apply to anyone
+This is what separates a great AI from a generic one.`;
+    }
+
     // 5c. 📄 RAG chunks injection
     if (ragContext) {
       agentSystemPrompt += `\n\n${ragContext}`;
     }
 
-    // 5d. 🎯 Proactive Follow-up — for complex strategy questions, AI asks clarifying questions first
+    // 5d. 🎯 Proactive Intelligence — smarter clarification logic
+    // Only ask clarifying questions when TRULY needed — not for every strategy question
     const isComplexStrategyQuestion = message.length > 80 && (
       /plan|strategy|startup|business|launch|build|create|develop|grow|scale|fund|invest|market|pitch/i.test(message) ||
       /পরিকল্পনা|কৌশল|স্টার্টআপ|ব্যবসা|তৈরি|বিনিয়োগ|বাজার/i.test(message)
     );
     const isFirstMessage = !history || history.length <= 2;
+    // Only ask clarifying questions if the message is genuinely vague (no specifics at all)
+    const hasSpecifics = /\d|budget|$|revenue|team|stage|market|industry|\bmy\b|\bour\b|\bwe\b/i.test(message);
 
-    if (isComplexStrategyQuestion && isFirstMessage) {
-      agentSystemPrompt += `\n\n## 🎯 PROACTIVE INTELLIGENCE PROTOCOL
-For this complex strategic question, if critical information is missing (budget, target market, timeline, team size, current stage), ask 1-2 focused clarifying questions BEFORE giving the full answer. Format: briefly acknowledge the question, ask the clarifying questions, then say you'll provide the full strategy once they answer. Keep clarifying questions to maximum 2.`;
+    if (isComplexStrategyQuestion && isFirstMessage && !hasSpecifics) {
+      agentSystemPrompt += `\n\n## 🎯 SMART CLARIFICATION PROTOCOL
+The question is broad and missing key context. Ask MAXIMUM 2 focused clarifying questions — the ones that would most change your advice. Format: give a brief, sharp answer based on what you know, THEN ask the 2 clarifying questions to sharpen it further. Never ask more than 2. Never ask obvious questions.`;
+    } else if (isComplexStrategyQuestion && isFirstMessage && hasSpecifics) {
+      // Has specifics — give full answer but acknowledge what you're assuming
+      agentSystemPrompt += `\n\n## 🎯 ASSUMPTION TRANSPARENCY
+Give the full, complete answer. If you're making assumptions about their situation, state them briefly at the start: "Assuming [X], here's the strategy:" — then dive in. This shows intelligence without asking unnecessary questions.`;
     }
 
     // 5e. 🌐 Language instruction — inject precise language rule based on detection
@@ -1250,6 +1333,14 @@ For this complex strategic question, if critical information is missing (budget,
     // 5f. Role reminder in system prompt (NOT in user messages — avoids triggering thinking)
     if (agentId && AGENT_INSTRUCTIONS[agentId]) {
       agentSystemPrompt += `\n\n## ACTIVE ROLE REMINDER\nYou are currently acting as the **${agentId}** specialist. Stay in this role for the entire conversation.${tonePrompt ? `\nTone: ${tonePrompt}` : ""}`;
+    }
+
+    // 5g. 🎯 Intent prefix — inject detected intent mode at the top of the prompt
+    if (intentResult && intentResult.confidence !== "low") {
+      const intentPrefix = buildIntentPrefix(intentResult);
+      if (intentPrefix) {
+        agentSystemPrompt = intentPrefix + agentSystemPrompt;
+      }
     }
 
     // 5f. 🤝 Collaborative mode — if orchestrator found collaborating agents
@@ -1329,9 +1420,10 @@ Apply the following highly advanced analysis steps:
     if (history && history.length > 0) {
       // 🧠 Conversation Summarization — only for long chats (skip for short ones = faster)
       let summary: string | null = null;
-      let historyToUse = history.slice(-15);
+      // Keep more history — 20 messages gives much better context than 15
+      let historyToUse = history.slice(-20);
 
-      if (history.length > 16) {
+      if (history.length > 20) {
         const summaryResult = await getOrCreateSummary(activeChatId, history, dbUser.id);
         summary = summaryResult.summary;
         if (summaryResult.summary) {
@@ -1347,15 +1439,17 @@ Apply the following highly advanced analysis steps:
         console.log("[Summarizer] ✅ Summary injected into context");
       }
 
-      historyToUse.forEach((msg, idx) => {
-        let msgContent = parseMessageContent(msg.role, msg.content);
+      // History now includes the current user message (saved before fetch)
+      // So we pass ALL of it — no need to add current message separately
+      historyToUse.forEach((msg) => {
+        const msgContent = parseMessageContent(msg.role, msg.content);
         formattedMessages.push({
           role: msg.role === "user" ? "user" : "assistant",
           content: msgContent,
         });
       });
     } else {
-      // Fallback if history query returns empty
+      // No history at all — just the current message
       const msgContent = parseMessageContent("user", message);
       formattedMessages.push({
         role: "user",
@@ -1364,7 +1458,10 @@ Apply the following highly advanced analysis steps:
     }
 
     // 6. Call OpenRouter API with Streaming OR Brain Trust Pipeline
-    let resolvedModelId = modelId || "meta-llama/llama-3.3-70b-instruct:free";
+    let resolvedModelId = modelId || intentBasedModel || "meta-llama/llama-3.3-70b-instruct:free";
+    if (intentBasedModel && !modelId) {
+      console.log(`[IntentEngine] 🤖 Using intent-based model: "${resolvedModelId}"`);
+    }
 
     // THINKING MODEL BLOCKLIST — these models show internal reasoning text to users
     // Redirect ALL thinking models to non-thinking equivalents (except Brain Trust)
@@ -1412,11 +1509,19 @@ Apply the following highly advanced analysis steps:
     }
 
     // 💰 Cost Control — if user hasn't manually selected a model (default), auto-select based on complexity
+    // Intent-based model suggestion is used as a hint, costControl makes the final call
     const isDefaultModel = !modelId || modelId === "meta-llama/llama-3.3-70b-instruct:free" || modelId === "google/gemma-4-31b-it";
     if (isDefaultModel) {
       const costRec = analyzeQueryComplexity(message, Boolean(hasImage), !!isBrainTrust, agentId);
-      resolvedModelId = costRec.recommendedModel;
-      console.log(`[CostControl] Complexity: ${costRec.complexity} → Model: ${resolvedModelId} (${costRec.reason})`);
+      // If intent engine suggested a specific model (e.g. claude for coding), prefer it
+      // Otherwise use costControl recommendation
+      if (intentBasedModel && intentResult?.confidence === "high" && intentResult?.intent === "coding") {
+        resolvedModelId = intentBasedModel;
+        console.log(`[IntentEngine] 🤖 Using intent-based model for coding: "${resolvedModelId}"`);
+      } else {
+        resolvedModelId = costRec.recommendedModel;
+        console.log(`[CostControl] Complexity: ${costRec.complexity} → Model: ${resolvedModelId} (${costRec.reason})`);
+      }
     }
 
     const primaryModel = resolvedModelId;
@@ -1457,6 +1562,11 @@ Apply the following highly advanced analysis steps:
         // If agent was auto-routed, send signal to frontend so UI can update the agent selector
         if (autoRoutedAgent) {
           controller.enqueue(encoder.encode(`__AUTO_ROUTED_AGENT__:${autoRoutedAgent}\n`));
+        }
+
+        // Send detected intent to frontend for intent-aware suggestions
+        if (intentResult && intentResult.intent !== "unknown") {
+          controller.enqueue(encoder.encode(`__INTENT__:${intentResult.intent}\n`));
         }
 
         // Sanitize messages for Groq: strips image/array content to plain text
@@ -1803,14 +1913,18 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
           } else {
             // NORMAL SINGLE-MODEL PIPELINE — Groq first (fastest), OpenRouter fallback
             const maxTok = getMaxTokensForComplexity(queryComplexity.complexity);
-            const temp = isSimpleQuery ? 0.4 : 0.7;
+            // Lower temp for complex/analytical queries = more focused, precise answers
+            // Higher temp for creative/writing queries = more varied, interesting output
+            const isCreativeIntent = intentResult?.intent === "writing" || intentResult?.intent === "creative";
+            const temp = isSimpleQuery ? 0.4 : isCreativeIntent ? 0.8 : 0.65;
 
             // ── TIER 1: Groq streaming (sub-second first token, no quota issues) ──
             let groqStreamed = false;
             if (process.env.GROQ_API_KEY && !hasImage) {
+              // Always use 70b for non-simple — quality difference is significant
               const groqModel = isSimpleQuery ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile";
               try {
-                console.log(`[API Chat] 🚀 Groq stream: "${groqModel}" (${queryComplexity.complexity})`);
+                console.log(`[API Chat] 🚀 Groq stream: "${groqModel}" (${queryComplexity.complexity}, temp: ${temp})`);
                 const groqMsgs = sanitizeMessagesForGroq(formattedMessages);
                 const groqStream = await groqStreamWithFallback(
                   { model: groqModel, messages: groqMsgs, temperature: temp, max_tokens: maxTok, stream: true },
@@ -2038,6 +2152,39 @@ Keep your critique to 3 bullet points max. Be sharp and specific.`;
               }
             }
 
+            // 🧠 Smart Verification Layer — Draft → Critic → Fix
+            // Runs AFTER stream completes for research/business/legal/coding intents
+            // Appends improved content to the stream if issues found
+            if (
+              !isBrainTrust &&
+              !hasImage &&
+              intentResult &&
+              shouldVerify(intentResult.intent, message.length) &&
+              assistantResponse.length > 300
+            ) {
+              try {
+                const verification = await verifyAndImprove(
+                  message,
+                  assistantResponse,
+                  intentResult.intent,
+                  agentId || "general",
+                  dbUser?.id
+                );
+                if (verification.improved && verification.finalResponse) {
+                  // Stream a diff marker then the improved content
+                  const diffBlock = `\n\n---\n\n> ✅ **Response verified & improved** *(Smart Verification Layer)*\n\n`;
+                  controller.enqueue(encoder.encode(diffBlock));
+                  // Replace the streamed content with improved version
+                  // We can't un-stream, so we append a clear separator + improved version
+                  controller.enqueue(encoder.encode(verification.finalResponse));
+                  assistantResponse = assistantResponse + diffBlock + verification.finalResponse;
+                  console.log(`[Verification] ✅ Improved response appended for intent: ${intentResult.intent}`);
+                }
+              } catch (verifyErr) {
+                console.warn("[Verification] Failed (non-critical):", verifyErr);
+              }
+            }
+
             // 🎯 Confidence Check — fire-and-forget, non-blocking
             // Runs AFTER stream closes so it never delays first token
             if (!isBrainTrust && !hasImage && assistantResponse.length > 150) {
@@ -2045,7 +2192,6 @@ Keep your critique to 3 bullet points max. Be sharp and specific.`;
                 .then((confidence) => {
                   if (confidence?.isWeak && confidence.issues.length > 0) {
                     console.log(`[Confidence] Score: ${confidence.score}/10 — weak response detected`);
-                    // Note: can't enqueue to stream after it's closed, so just log
                   }
                 })
                 .catch(() => { });
@@ -2061,6 +2207,9 @@ Keep your critique to 3 bullet points max. Be sharp and specific.`;
             extractAndSaveMemory(dbUser.id, message, assistantResponse).catch((memErr) => {
               console.warn("[Memory] Background extraction failed (non-critical):", memErr?.message);
             });
+
+            // 🕸️ Background knowledge graph extraction — non-blocking
+            extractKnowledgeGraph(dbUser.id, message, assistantResponse).catch(() => { });
 
             // 📊 Track agent usage for adaptive UI — fire-and-forget
             trackAgentUsage(dbUser.id, agentId || "daily-innovation-idea-agent", message.length, toneId || "brutally-honest").catch(() => { });

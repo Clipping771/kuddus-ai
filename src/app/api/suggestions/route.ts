@@ -1,9 +1,9 @@
 /**
- * Smart Suggestions API
+ * Smart Suggestions API — Intent-Aware
  * POST /api/suggestions
  *
  * After each AI response, generates 3 context-aware follow-up questions
- * based on the conversation. Shows as clickable chips below the response.
+ * based on the conversation AND detected intent.
  *
  * Uses Groq (fast) → OpenRouter fallback
  */
@@ -16,6 +16,42 @@ import { openrouterFetchWithFallback } from "@/lib/openrouter";
 
 export const dynamic = "force-dynamic";
 
+// Intent-specific suggestion templates — used when AI generation fails
+const INTENT_SUGGESTIONS: Record<string, { en: string[]; bn: string[] }> = {
+    research: {
+        en: ["Show me the TAM/SAM/SOM breakdown", "Who are the top 3 competitors?", "What are the key market trends?"],
+        bn: ["TAM/SAM/SOM বিশ্লেষণ দেখাও", "শীর্ষ ৩ প্রতিযোগী কারা?", "মূল মার্কেট ট্রেন্ড কী?"],
+    },
+    business: {
+        en: ["Build a financial projection model", "What's the break-even point?", "Create a go-to-market strategy"],
+        bn: ["আর্থিক প্রজেকশন মডেল তৈরি করো", "ব্রেক-ইভেন পয়েন্ট কত?", "গো-টু-মার্কেট স্ট্র্যাটেজি তৈরি করো"],
+    },
+    coding: {
+        en: ["Show me the complete working code", "What are the security vulnerabilities?", "How do I test this properly?"],
+        bn: ["সম্পূর্ণ কোড দেখাও", "নিরাপত্তা দুর্বলতা কী?", "কীভাবে টেস্ট করব?"],
+    },
+    legal: {
+        en: ["Draft the full contract", "What are the key risk clauses?", "What jurisdiction applies here?"],
+        bn: ["সম্পূর্ণ চুক্তি তৈরি করো", "মূল ঝুঁকির ধারাগুলো কী?", "কোন আইনি এখতিয়ার প্রযোজ্য?"],
+    },
+    marketing: {
+        en: ["Create a 30-day content calendar", "What's the optimal ad budget allocation?", "Write 3 ad copy variations"],
+        bn: ["৩০ দিনের কন্টেন্ট ক্যালেন্ডার তৈরি করো", "সর্বোত্তম বিজ্ঞাপন বাজেট বরাদ্দ কী?", "৩টি বিজ্ঞাপন কপি লেখো"],
+    },
+    planning: {
+        en: ["Create a detailed sprint plan", "What are the top 3 risks?", "Build a RACI matrix for this"],
+        bn: ["বিস্তারিত স্প্রিন্ট প্ল্যান তৈরি করো", "শীর্ষ ৩ ঝুঁকি কী?", "RACI ম্যাট্রিক্স তৈরি করো"],
+    },
+    writing: {
+        en: ["Write 3 different hook variations", "Optimize this for LinkedIn", "Create a content repurposing plan"],
+        bn: ["৩টি ভিন্ন হুক লেখো", "LinkedIn-এর জন্য অপ্টিমাইজ করো", "কন্টেন্ট রিপার্পোজিং প্ল্যান তৈরি করো"],
+    },
+    hr: {
+        en: ["Write the full job description", "Create interview questions", "Build a 30-60-90 day plan"],
+        bn: ["সম্পূর্ণ জব ডেসক্রিপশন লেখো", "ইন্টারভিউ প্রশ্ন তৈরি করো", "৩০-৬০-৯০ দিনের প্ল্যান তৈরি করো"],
+    },
+};
+
 export async function POST(req: Request) {
     try {
         const { userId: clerkId } = await auth();
@@ -23,13 +59,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ suggestions: [] });
         }
 
-        const { userMessage, assistantResponse, agentId, language } = await req.json();
+        const { userMessage, assistantResponse, agentId, language, intent } = await req.json();
 
         if (!userMessage || !assistantResponse) {
             return NextResponse.json({ suggestions: [] });
         }
 
-        // Get DB user for key rotation
         const { data: dbUser } = await supabase
             .from("users")
             .select("id")
@@ -38,28 +73,36 @@ export async function POST(req: Request) {
 
         const isBangla = language === "bn" || /[\u0980-\u09FF]/.test(userMessage);
 
+        // Intent-aware prompt — generates more relevant suggestions
+        const intentContext = intent && intent !== "unknown"
+            ? `The conversation is about: ${intent}. Generate suggestions that go DEEPER into this specific domain.`
+            : "";
+
         const systemPrompt = `You are a smart follow-up question generator for an AI business assistant.
-Based on the conversation below, generate exactly 3 short, highly relevant follow-up questions the user might want to ask next.
+Based on the conversation below, generate exactly 3 short, highly relevant follow-up questions.
 
 Rules:
 - Questions must be directly related to what was just discussed
 - Each question should explore a different angle (deeper dive / related topic / practical next step)
-- Keep each question SHORT — max 10 words
+- Keep each question SHORT — max 12 words
+- Make them ACTIONABLE — things the AI can actually do, not just explain
 - ${isBangla ? "Write questions in Bangla (Bengali script)" : "Write questions in English"}
+- ${intentContext}
 - Return ONLY a valid JSON array of 3 strings. No explanation, no markdown.
 
 Example output:
-["How do I calculate the break-even point?", "What funding options are available?", "Can you create a financial model for this?"]`;
+["Build a financial model for this", "What are the top 3 risks?", "Create a step-by-step action plan"]`;
 
         const userPrompt = `User asked: "${userMessage.substring(0, 300)}"
-AI responded about: "${assistantResponse.substring(0, 400)}"
-Agent type: ${agentId || "general"}
+AI responded: "${assistantResponse.substring(0, 400)}"
+Agent: ${agentId || "general"}
+Intent: ${intent || "general"}
 
 Generate 3 follow-up questions:`;
 
         let suggestions: string[] = [];
 
-        // Tier 1: Groq — fast, no quota issues
+        // Tier 1: Groq
         try {
             const completion = await groqChatWithFallback(
                 {
@@ -83,14 +126,14 @@ Generate 3 follow-up questions:`;
                 }
             }
         } catch (groqErr) {
-            console.warn("[Suggestions] Groq failed, trying OpenRouter:", groqErr);
+            console.warn("[Suggestions] Groq failed:", groqErr);
         }
 
         // Tier 2: OpenRouter fallback
         if (suggestions.length === 0) {
             try {
                 const { response: res } = await openrouterFetchWithFallback(
-                    ["qwen/qwen3-8b:free", "mistralai/mistral-7b-instruct:free"],
+                    ["mistralai/mistral-7b-instruct:free", "meta-llama/llama-3.1-8b-instruct:free"],
                     {
                         messages: [
                             { role: "system", content: systemPrompt },
@@ -116,9 +159,9 @@ Generate 3 follow-up questions:`;
             }
         }
 
-        // Fallback: agent-specific static suggestions
+        // Tier 3: Intent-based static fallback
         if (suggestions.length === 0) {
-            suggestions = getStaticFallbackSuggestions(agentId, isBangla);
+            suggestions = getIntentFallback(intent, agentId, isBangla);
         }
 
         return NextResponse.json({ suggestions: suggestions.slice(0, 3) });
@@ -128,10 +171,17 @@ Generate 3 follow-up questions:`;
     }
 }
 
-function getStaticFallbackSuggestions(agentId: string, isBangla: boolean): string[] {
-    const fallbacks: Record<string, { en: string[]; bn: string[] }> = {
+function getIntentFallback(intent: string, agentId: string, isBangla: boolean): string[] {
+    // Try intent-based first
+    const intentFallback = INTENT_SUGGESTIONS[intent];
+    if (intentFallback) {
+        return isBangla ? intentFallback.bn : intentFallback.en;
+    }
+
+    // Agent-based fallback
+    const agentFallbacks: Record<string, { en: string[]; bn: string[] }> = {
         "devmind-agent": {
-            en: ["Can you show me the complete code?", "What are the security risks?", "How do I test this?"],
+            en: ["Show me the complete code", "What are the security risks?", "How do I test this?"],
             bn: ["সম্পূর্ণ কোড দেখাও", "নিরাপত্তা ঝুঁকি কী?", "কীভাবে টেস্ট করব?"],
         },
         "personal-cfo-finance-agent": {
@@ -142,16 +192,10 @@ function getStaticFallbackSuggestions(agentId: string, isBangla: boolean): strin
             en: ["Draft the full pitch deck", "What valuation is realistic?", "Which investors to target?"],
             bn: ["পিচ ডেক তৈরি করো", "কত ভ্যালুয়েশন সঠিক?", "কোন বিনিয়োগকারীকে টার্গেট করব?"],
         },
-        "research-agent": {
-            en: ["Show market size data", "Who are the top competitors?", "What are the growth trends?"],
-            bn: ["মার্কেট সাইজ দেখাও", "প্রধান প্রতিযোগী কারা?", "গ্রোথ ট্রেন্ড কী?"],
-        },
     };
 
-    const agentFallback = fallbacks[agentId];
-    if (agentFallback) {
-        return isBangla ? agentFallback.bn : agentFallback.en;
-    }
+    const agentFallback = agentFallbacks[agentId];
+    if (agentFallback) return isBangla ? agentFallback.bn : agentFallback.en;
 
     return isBangla
         ? ["আরো বিস্তারিত বলো", "একটা উদাহরণ দাও", "পরবর্তী পদক্ষেপ কী?"]

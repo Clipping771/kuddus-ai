@@ -99,11 +99,11 @@ export function analyzeQueryComplexity(
     if (msgLen < 40 || SIMPLE_SIGNALS.some((r) => r.test(message))) {
         return {
             complexity: "simple",
-            recommendedModel: "mistralai/mistral-7b-instruct:free", // OR fallback if Groq unavailable
+            recommendedModel: "mistralai/mistral-7b-instruct:free",
             useGroq: true,
-            groqModel: "llama-3.1-8b-instant", // fastest Groq model
+            groqModel: "llama-3.1-8b-instant",
             reason: "Short/simple query — fast model sufficient",
-            estimatedTokens: 400,
+            estimatedTokens: 600,
         };
     }
 
@@ -116,7 +116,7 @@ export function analyzeQueryComplexity(
             useGroq: true,
             groqModel: "llama-3.3-70b-versatile",
             reason: hasComplexKeyword ? "Complex domain keywords detected" : "Long message — detailed response needed",
-            estimatedTokens: 3000,
+            estimatedTokens: 5000,
         };
     }
 
@@ -127,7 +127,7 @@ export function analyzeQueryComplexity(
         useGroq: true,
         groqModel: "llama-3.3-70b-versatile",
         reason: "Standard business query",
-        estimatedTokens: 1500,
+        estimatedTokens: 2500,
     };
 }
 
@@ -136,10 +136,10 @@ export function analyzeQueryComplexity(
  */
 export function getMaxTokensForComplexity(complexity: QueryComplexity): number {
     switch (complexity) {
-        case "simple": return 400;
-        case "medium": return 1500;
-        case "complex": return 3000;
-        case "vision": return 2000;
-        default: return 1500;
+        case "simple": return 600;    // was 400 — enough for a proper short answer
+        case "medium": return 2500;   // was 1500 — room for full structured response
+        case "complex": return 5000;  // was 3000 — full reports, full code, no cutoffs
+        case "vision": return 3000;   // was 2000 — detailed image analysis
+        default: return 2500;
     }
 }

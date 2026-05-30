@@ -15,9 +15,9 @@ import { groqChatWithFallback } from "@/lib/groq";
 import { openrouterFetchWithFallback } from "@/lib/openrouter";
 import { supabase } from "@/lib/supabase";
 
-const SUMMARY_THRESHOLD = 16; // summarize when history exceeds this
-const MESSAGES_TO_SUMMARIZE = 10; // compress this many old messages
-const MESSAGES_TO_KEEP = 8; // always keep this many recent messages
+const SUMMARY_THRESHOLD = 20; // summarize when history exceeds this
+const MESSAGES_TO_SUMMARIZE = 12; // compress this many old messages
+const MESSAGES_TO_KEEP = 10; // always keep this many recent messages
 
 export interface ConversationSummary {
     summary: string;
@@ -101,13 +101,16 @@ async function generateSummary(
         })
         .join("\n\n");
 
-    const prompt = `Summarize this conversation segment concisely. Capture:
-- Key topics discussed
-- Important decisions or conclusions reached
-- Specific facts mentioned (numbers, names, business details)
-- What the user is trying to accomplish
+    const prompt = `Summarize this conversation segment. Capture EVERYTHING that matters for continuity:
+- Exact business/project details (names, numbers, revenue, team size, stage)
+- Specific decisions made and conclusions reached
+- What the user is building or trying to accomplish
+- Their expertise level and communication style
+- Any constraints, preferences, or context they mentioned
+- Open questions or next steps discussed
 
-Keep it under 200 words. Write in the same language as the conversation.
+Be precise — use exact numbers and names, not vague descriptions.
+Keep it under 250 words. Write in the same language as the conversation.
 
 Conversation:
 ${conversationText}
@@ -118,10 +121,10 @@ Summary:`;
     try {
         const completion = await groqChatWithFallback(
             {
-                model: "llama-3.1-8b-instant",
+                model: "llama-3.3-70b-versatile", // 70b for accurate, detail-preserving summaries
                 messages: [{ role: "user", content: prompt }],
                 temperature: 0.1,
-                max_tokens: 300,
+                max_tokens: 400,
             },
             userId
         );
@@ -134,8 +137,8 @@ Summary:`;
     // OpenRouter fallback
     try {
         const { response: res } = await openrouterFetchWithFallback(
-            ["qwen/qwen3-8b:free", "mistralai/mistral-7b-instruct:free"],
-            { messages: [{ role: "user", content: prompt }], stream: false, max_tokens: 300 },
+            ["mistralai/mistral-7b-instruct:free", "meta-llama/llama-3.1-8b-instruct:free"],
+            { messages: [{ role: "user", content: prompt }], stream: false, max_tokens: 350 },
             userId
         );
         const data = await res.json();
@@ -152,11 +155,11 @@ Summary:`;
  * Format summary as a system context block for injection into messages array.
  */
 export function formatSummaryForContext(summary: string): string {
-    return `## 📋 CONVERSATION SUMMARY (Earlier Context)
-The following is a summary of the earlier part of this conversation. Use it to maintain continuity:
+    return `## 📋 EARLIER CONVERSATION CONTEXT
+This is a compressed summary of what was discussed before. Use it to maintain full continuity — reference specific details, build on previous advice, and never repeat what was already covered.
 
 ${summary}
 
 ---
-NOTE: The above is a compressed summary. The recent messages below are the actual conversation.`;
+The recent messages below are the actual live conversation. Continue from where things left off.`;
 }

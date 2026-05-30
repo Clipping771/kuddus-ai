@@ -105,21 +105,21 @@ export async function performWebSearch(
 
     if (!data.results || data.results.length === 0) return null;
 
-    // Format results for LLM injection
-    const formattedResults = data.results
+    // Format results for LLM injection — prioritize high-score results
+    const sortedResults = data.results
       .slice(0, maxResults)
-      .map((r, i) => `[${i + 1}] **${r.title}**\nSource: ${r.url}\n${r.content}`)
+      .sort((a, b) => (b.score || 0) - (a.score || 0));
+
+    const formattedResults = sortedResults
+      .map((r, i) => `[${i + 1}] **${r.title}**\nSource: ${r.url}\n${r.content.substring(0, 400)}`)
       .join("\n\n");
 
-    const tavilyContext = `## 🔍 REAL-TIME WEB SEARCH RESULTS
-Query: "${query}"
-Retrieved: ${new Date().toUTCString()}
-
-${data.answer ? `**Quick Answer:** ${data.answer}\n\n` : ""}**Detailed Sources:**
+    const tavilyContext = `## 🔍 REAL-TIME WEB DATA (${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })})
+${data.answer ? `**Direct Answer:** ${data.answer}\n\n` : ""}**Sources:**
 ${formattedResults}
 
 ---
-INSTRUCTION: Use the above real-time data to ground your response with accurate, current information. Always cite sources when using specific facts, prices, or statistics from these results.`;
+INSTRUCTION: Integrate this real-time data naturally into your response. Use specific numbers, names, and facts from these sources. Cite sources inline as [1], [2] etc. when quoting specific data points. Do NOT just list the sources — weave the data into your analysis.`;
 
     return tavilyContext;
   } catch (err) {
