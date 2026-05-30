@@ -1082,9 +1082,10 @@ const TONES_LIST = [
 // Fallback models shown before dynamic list loads
 // NOTE: Thinking models (DeepSeek R1, Qwen3) excluded — they show internal reasoning text
 const FALLBACK_MODELS = [
+  { id: "groq-default", name: "Groq (Default)", icon: "⚡", badge: "Fastest", isFree: true },
   { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B", icon: "🦙", badge: "Free", isFree: true },
-  { id: "google/gemma-3-27b-it:free", name: "Google Gemma 27B", icon: "💎", badge: "Free", isFree: true },
-  { id: "mistralai/mistral-7b-instruct:free", name: "Mistral 7B", icon: "🌊", badge: "Free", isFree: true },
+  { id: "google/gemma-4-31b-it:free", name: "Google Gemma 4 31B", icon: "💎", badge: "Free", isFree: true },
+  { id: "google/gemma-3-12b-it:free", name: "Google Gemma 3 12B", icon: "💎", badge: "Free", isFree: true },
   { id: "microsoft/phi-4-reasoning-plus:free", name: "Phi-4 Reasoning", icon: "🧠", badge: "Free", isFree: true },
   { id: "nousresearch/hermes-3-llama-3.1-405b:free", name: "Hermes 3 405B", icon: "🧠", badge: "Max Power", isFree: true },
   { id: "google/gemini-2.5-flash-preview", name: "Gemini 2.5 Flash", icon: "💎", badge: "Fast", isFree: false },
@@ -1093,13 +1094,21 @@ const FALLBACK_MODELS = [
 // Categorized model list for the dropdown
 const CATEGORIZED_MODELS = [
   {
+    category: "⚡ Groq Default",
+    desc: "Direct Groq — fastest responses, no quota issues",
+    color: "emerald",
+    models: [
+      { id: "groq-default", name: "Groq (Default)", provider: "Groq", badge: "Fastest", isFree: true },
+    ],
+  },
+  {
     category: "🚀 Fast & Free",
     desc: "Best for quick answers, greetings, simple tasks",
     color: "emerald",
     models: [
       { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B", provider: "Meta", badge: "Recommended", isFree: true },
-      { id: "mistralai/mistral-7b-instruct:free", name: "Mistral 7B", provider: "Mistral", badge: "Lightweight", isFree: true },
-      { id: "google/gemma-3-27b-it:free", name: "Gemma 3 27B", provider: "Google", badge: "Balanced", isFree: true },
+      { id: "google/gemma-4-31b-it:free", name: "Gemma 4 31B", provider: "Google", badge: "Balanced", isFree: true },
+      { id: "google/gemma-3-12b-it:free", name: "Gemma 3 12B", provider: "Google", badge: "Lightweight", isFree: true },
     ],
   },
   {
@@ -1109,7 +1118,7 @@ const CATEGORIZED_MODELS = [
     models: [
       { id: "nousresearch/hermes-3-llama-3.1-405b:free", name: "Hermes 3 405B", provider: "NousResearch", badge: "Max Power", isFree: true },
       { id: "microsoft/phi-4-reasoning-plus:free", name: "Phi-4 Reasoning+", provider: "Microsoft", badge: "Analytical", isFree: true },
-      { id: "meta-llama/llama-3.1-70b-instruct:free", name: "Llama 3.1 70B", provider: "Meta", badge: "Stable", isFree: true },
+      { id: "cognitivecomputations/dolphin3.0-mistral-24b:free", name: "Dolphin Mistral 24B", provider: "CogComp", badge: "Uncensored", isFree: true },
     ],
   },
   {
@@ -1182,7 +1191,7 @@ export default function Dashboard() {
   const [controlBarVisible, setControlBarVisible] = useState(true);
   const [headerVisible, setHeaderVisible] = useState(true);
 
-  const [selectedModelId, setSelectedModelId] = useState<string>("google/gemma-4-31b-it");
+  const [selectedModelId, setSelectedModelId] = useState<string>("google/gemma-4-31b-it:free");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({
     "🚀 Fast & Free": false,
@@ -2330,7 +2339,9 @@ export default function Dashboard() {
       .then(res => res.json())
       .then(data => {
         if (data.models && data.models.length > 0) {
-          setModelsList(data.models);
+          // Always prepend the Groq Default option so it's available regardless of OpenRouter list
+          const groqDefault = { id: "groq-default", name: "Groq (Default)", icon: "⚡", badge: "Fastest", isFree: true };
+          setModelsList([groqDefault, ...data.models.filter((m: any) => m.id !== "groq-default")]);
         }
       })
       .catch(err => console.error("Failed to fetch models:", err))
@@ -3619,9 +3630,10 @@ export default function Dashboard() {
 
                             const isThinking = (id: string) => id.includes("deepseek-r1") || id.includes("qwen3") || id.includes("thinking") || id.includes("-r1");
                             const cats = [
-                              { label: "🚀 Fast & Free", desc: "Quick answers", color: "emerald", filter: (m: any) => m.isFree && !isThinking(m.id) && (m.id.includes("llama") || m.id.includes("mistral") || m.id.includes("gemma") || m.id.includes("hermes") || m.id.includes("phi") || m.id.includes("command")) },
+                              { label: "⚡ Groq Default", desc: "Fastest — direct Groq, no quota issues", color: "emerald", filter: (m: any) => m.id === "groq-default" },
+                              { label: "🚀 Fast & Free", desc: "Quick answers", color: "emerald", filter: (m: any) => m.isFree && !isThinking(m.id) && m.id !== "groq-default" && (m.id.includes("llama") || m.id.includes("mistral") || m.id.includes("gemma") || m.id.includes("hermes") || m.id.includes("phi") || m.id.includes("command")) },
                               { label: "⚡ Reasoning", desc: "Shows thinking — use with Brain Trust", color: "amber", filter: (m: any) => isThinking(m.id) },
-                              { label: "🌐 Other Free", desc: "More free models", color: "violet", filter: (m: any) => m.isFree && !isThinking(m.id) && !m.id.includes("llama") && !m.id.includes("mistral") && !m.id.includes("gemma") && !m.id.includes("hermes") && !m.id.includes("phi") && !m.id.includes("command") },
+                              { label: "🌐 Other Free", desc: "More free models", color: "violet", filter: (m: any) => m.isFree && !isThinking(m.id) && m.id !== "groq-default" && !m.id.includes("llama") && !m.id.includes("mistral") && !m.id.includes("gemma") && !m.id.includes("hermes") && !m.id.includes("phi") && !m.id.includes("command") },
                               { label: "💎 Premium", desc: "Paid — fastest & most capable", color: "blue", filter: (m: any) => !m.isFree },
                             ];
                             const cMap: Record<string, string> = { emerald: themeMode === "black" ? "text-emerald-400" : "text-emerald-600", amber: themeMode === "black" ? "text-amber-400" : "text-amber-600", violet: themeMode === "black" ? "text-violet-400" : "text-violet-600", blue: themeMode === "black" ? "text-blue-400" : "text-blue-600" };

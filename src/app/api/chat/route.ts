@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabase";
 import { needsWebSearch, performWebSearch, extractSearchQuery } from "@/lib/search";
-import { openrouterFetchWithFallback, ApiKeyExhaustedError } from "@/lib/openrouter";
+import { openrouterFetchWithFallback, ApiKeyExhaustedError, isModelDead } from "@/lib/openrouter";
 import Groq from "groq-sdk";
 import { groqChatWithFallback, groqStreamWithFallback, getGroqKeys } from "@/lib/groq";
 import { getUserMemoryContext, extractAndSaveMemory } from "@/lib/memory";
@@ -1463,7 +1463,9 @@ Apply the following highly advanced analysis steps:
     }
 
     // 6. Call OpenRouter API with Streaming OR Brain Trust Pipeline
-    let resolvedModelId = modelId || intentBasedModel || "meta-llama/llama-3.3-70b-instruct:free";
+    // "groq-default" is a special virtual model ID — user explicitly wants Groq
+    const isGroqDefault = modelId === "groq-default";
+    let resolvedModelId = isGroqDefault ? "meta-llama/llama-3.3-70b-instruct:free" : (modelId || intentBasedModel || "meta-llama/llama-3.3-70b-instruct:free");
     if (intentBasedModel && !modelId) {
       console.log(`[IntentEngine] 🤖 Using intent-based model: "${resolvedModelId}"`);
     }
@@ -1490,8 +1492,22 @@ Apply the following highly advanced analysis steps:
     }
 
     // Fix other stale model IDs
-    if (resolvedModelId === "google/gemma-4-31b-it" || resolvedModelId === "google/gemma-4-31b-it:free") {
-      resolvedModelId = "google/gemma-3-27b-it:free";
+    if (resolvedModelId === "google/gemma-4-31b-it") {
+      // gemma-4-31b-it (without :free) → use the free variant directly
+      console.log(`[ModelGuard] Remapping "google/gemma-4-31b-it" → "google/gemma-4-31b-it:free"`);
+      resolvedModelId = "google/gemma-4-31b-it:free";
+    } else if (resolvedModelId === "google/gemma-3-27b-it:free" || resolvedModelId === "google/gemma-3-27b-it") {
+      console.log(`[ModelGuard] Remapping dead "google/gemma-3-27b-it:free" → "google/gemma-4-31b-it:free"`);
+      resolvedModelId = "google/gemma-4-31b-it:free";
+    } else if (resolvedModelId === "mistralai/mistral-7b-instruct:free") {
+      console.log(`[ModelGuard] Remapping dead "mistralai/mistral-7b-instruct:free" → "cognitivecomputations/dolphin3.0-mistral-24b:free"`);
+      resolvedModelId = "cognitivecomputations/dolphin3.0-mistral-24b:free";
+    } else if (resolvedModelId === "minimax/minimax-m2.5:free" || resolvedModelId === "minimax/minimax-m1:free" || resolvedModelId.startsWith("minimax/")) {
+      console.log(`[ModelGuard] Remapping dead minimax model "${resolvedModelId}" → "google/gemma-4-31b-it:free"`);
+      resolvedModelId = "google/gemma-4-31b-it:free";
+    } else if (resolvedModelId === "openai/gpt-oss-120b:free" || resolvedModelId === "openai/gpt-oss-20b:free") {
+      console.log(`[ModelGuard] Remapping unreliable "${resolvedModelId}" → "meta-llama/llama-3.3-70b-instruct:free"`);
+      resolvedModelId = "meta-llama/llama-3.3-70b-instruct:free";
     } else if (
       resolvedModelId === "deepseek/deepseek-v4-flash" ||
       resolvedModelId === "deepseek/deepseek-v4-flash:free" ||
@@ -1515,7 +1531,9 @@ Apply the following highly advanced analysis steps:
 
     // 💰 Cost Control — if user hasn't manually selected a model (default), auto-select based on complexity
     // Intent-based model suggestion is used as a hint, costControl makes the final call
-    const isDefaultModel = !modelId || modelId === "meta-llama/llama-3.3-70b-instruct:free" || modelId === "google/gemma-4-31b-it";
+    // NOTE: "google/gemma-4-31b-it" is a user-selectable model — do NOT treat it as default
+    // NOTE: "groq-default" means user explicitly wants Groq — skip cost control override
+    const isDefaultModel = !modelId || modelId === "meta-llama/llama-3.3-70b-instruct:free";
     if (isDefaultModel) {
       const costRec = analyzeQueryComplexity(message, Boolean(hasImage), !!isBrainTrust, agentId);
       // If intent engine suggested a specific model (e.g. claude for coding), prefer it
@@ -1541,16 +1559,18 @@ Apply the following highly advanced analysis steps:
       "llama-3.1-8b-instant",
     ];
 
-    // OpenRouter free models pool for Brain Trust (valid as of 2026)
+    // OpenRouter free models pool for Brain Trust (valid as of 2025)
     // NOTE: Qwen3 removed — outputs uncontrollable thinking text even with system prompt suppression
+    // NOTE: mistral-7b-instruct:free and gemma-3-27b-it:free removed — 404 on OpenRouter
     const BRAIN_TRUST_OR_POOL = [
       "deepseek/deepseek-r1-0528:free",
       "meta-llama/llama-3.3-70b-instruct:free",
-      "mistralai/mistral-7b-instruct:free",
-      "google/gemma-3-27b-it:free",
+      "google/gemma-4-31b-it:free",
+      "google/gemma-3-12b-it:free",
       "deepseek/deepseek-r1:free",
       "microsoft/phi-4-reasoning-plus:free",
       "nousresearch/hermes-3-llama-3.1-405b:free",
+      "cognitivecomputations/dolphin3.0-mistral-24b:free",
       "openrouter/free",
     ];
 
@@ -1614,11 +1634,16 @@ Apply the following highly advanced analysis steps:
           }
 
           // Tier 2: OpenRouter pool — rotate through all free models to spread quota usage
-          // Each call picks the next model in the pool (round-robin)
+          // Each call picks the next model in the pool (round-robin), skipping dead ones
           const poolSize = BRAIN_TRUST_OR_POOL.length;
           for (let attempt = 0; attempt < poolSize; attempt++) {
             const currentModel = BRAIN_TRUST_OR_POOL[orPoolIndex % poolSize];
             orPoolIndex++;
+            // Skip models already known to be dead
+            if (isModelDead(currentModel)) {
+              console.log(`[Sync OR Pool] ⏭️ Skipping dead model: "${currentModel}"`);
+              continue;
+            }
             try {
               console.log(`[Sync OR Pool] Trying model: "${currentModel}" for role: "${roleName || 'Agent'}"`);
               const { response: res } = await openrouterFetchWithFallback(
@@ -1692,10 +1717,10 @@ Apply the following highly advanced analysis steps:
             const freeModels = [
               "meta-llama/llama-3.3-70b-instruct:free",
               "deepseek/deepseek-r1-0528:free",
-              "mistralai/mistral-7b-instruct:free",
-              "google/gemma-3-27b-it:free",
-              "qwen/qwen3-8b:free",
+              "google/gemma-4-31b-it:free",
+              "google/gemma-3-12b-it:free",
               "microsoft/phi-4-reasoning-plus:free",
+              "cognitivecomputations/dolphin3.0-mistral-24b:free",
             ];
 
             // Expert name display map
@@ -1924,8 +1949,12 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
             const temp = isSimpleQuery ? 0.4 : isCreativeIntent ? 0.8 : 0.65;
 
             // ── TIER 1: Groq streaming (sub-second first token, no quota issues) ──
+            // Skip Groq if the user explicitly selected a specific model (non-default)
+            // so their chosen model (e.g. gemma, deepseek, etc.) is actually used
+            // Exception: if user selected "groq-default", always use Groq
+            const userExplicitlySelectedModel = !!modelId && modelId !== "meta-llama/llama-3.3-70b-instruct:free" && !isGroqDefault;
             let groqStreamed = false;
-            if (process.env.GROQ_API_KEY && !hasImage) {
+            if (process.env.GROQ_API_KEY && !hasImage && (!userExplicitlySelectedModel || isGroqDefault)) {
               // Always use 70b for non-simple — quality difference is significant
               const groqModel = isSimpleQuery ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile";
               try {
@@ -1951,8 +1980,8 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
             if (!groqStreamed) {
               let selectedModel = hasImage ? (primaryModel || "google/gemini-2.5-flash") : primaryModel;
               const fallbackModels = hasImage
-                ? [primaryModel, "google/gemma-3-27b-it:free", "meta-llama/llama-3.2-11b-vision-instruct:free", "mistralai/mistral-7b-instruct:free", "openrouter/free"]
-                : [primaryModel, "meta-llama/llama-3.3-70b-instruct:free", "mistralai/mistral-7b-instruct:free", "google/gemma-3-27b-it:free", "openrouter/free"];
+                ? [primaryModel, "google/gemma-4-31b-it:free", "meta-llama/llama-3.2-11b-vision-instruct:free", "google/gemma-3-12b-it:free", "openrouter/free"]
+                : [primaryModel, "meta-llama/llama-3.3-70b-instruct:free", "google/gemma-4-31b-it:free", "google/gemma-3-12b-it:free", "cognitivecomputations/dolphin3.0-mistral-24b:free", "openrouter/free"];
 
               let response: any;
               let lastError: any;

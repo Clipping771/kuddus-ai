@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { getDeadModels } from "@/lib/openrouter";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +8,22 @@ export const dynamic = "force-dynamic";
 let cachedModels: any[] | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+// Models confirmed dead/broken on OpenRouter — filtered out of the list
+// Update this list whenever a model starts returning 404
+const DEAD_MODELS = new Set([
+    "mistralai/mistral-7b-instruct:free",
+    "google/gemma-3-27b-it:free",
+    "google/gemma-3-27b-it",
+    "meta-llama/llama-3.1-70b-instruct:free",
+    "minimax/minimax-m2.5:free",
+    "minimax/minimax-m1:free",
+    "openai/gpt-oss-120b:free",   // frequently 404
+    "openai/gpt-oss-20b:free",    // frequently 404
+    "qwen/qwen3-8b:free",         // outputs uncontrollable thinking text
+    "qwen/qwen3-14b:free",        // outputs uncontrollable thinking text
+    "qwen/qwen3-32b:free",        // outputs uncontrollable thinking text
+]);
 
 // Icon mapping based on provider/model name
 function getModelIcon(modelId: string): string {
@@ -63,7 +80,11 @@ export async function GET(req: Request) {
         // Return cached models if still fresh
         const now = Date.now();
         if (cachedModels && now - cacheTime < CACHE_TTL) {
-            let models = cachedModels;
+            // Re-filter cached list against current dead model registry
+            // (registry may have grown since cache was built)
+            const runtimeDeadModels = getDeadModels();
+            const allDeadModels = new Set([...DEAD_MODELS, ...runtimeDeadModels]);
+            let models = cachedModels.filter((m: any) => !allDeadModels.has(m.id));
             if (freeOnly) models = models.filter((m: any) => m.isFree);
             if (search) models = models.filter((m: any) =>
                 m.name.toLowerCase().includes(search) || m.id.toLowerCase().includes(search)
@@ -87,8 +108,13 @@ export async function GET(req: Request) {
         const rawModels = data.data || [];
 
         // Transform and enrich model data
+        // Merge static blocklist with dynamic runtime dead model registry
+        const runtimeDeadModels = getDeadModels();
+        const allDeadModels = new Set([...DEAD_MODELS, ...runtimeDeadModels]);
+
         const models = rawModels
             .filter((m: any) => m.id && m.name) // filter out invalid entries
+            .filter((m: any) => !allDeadModels.has(m.id)) // filter out known dead/broken models
             .map((m: any) => {
                 const isFree = m.id.endsWith(":free") ||
                     (m.pricing?.prompt === "0" && m.pricing?.completion === "0");
