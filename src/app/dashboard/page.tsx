@@ -2602,10 +2602,10 @@ export default function Dashboard() {
           const restText = lines.slice(1).join("\n");
           accumulatedResponse += restText;
         } else if (chunk.includes("__INTENT__:") || chunk.includes("__AUTO_ROUTED_AGENT__:")) {
-          // Strip internal metadata signals — never shown to user
+          // Strip internal metadata signals — global replace handles any position in chunk
           const filtered = chunk
-            .replace(/^__INTENT__:[^\n]*\n?/m, "")
-            .replace(/^__AUTO_ROUTED_AGENT__:[^\n]*\n?/m, "")
+            .replace(/__INTENT__:[^\n]*\n?/g, "")
+            .replace(/__AUTO_ROUTED_AGENT__:[^\n]*\n?/g, "")
             .trim();
           if (filtered) accumulatedResponse += filtered;
         } else {
@@ -2762,9 +2762,12 @@ export default function Dashboard() {
             hasHeaderIdParsed = true;
           }
 
-          // Accumulate the rest of the text
-          const restText = lines.slice(1).join("\n");
-          accumulatedResponse += restText;
+          // Accumulate the rest of the text — strip any metadata signals first
+          const restText = lines.slice(1).join("\n")
+            .replace(/^__INTENT__:[^\n]*\n?/m, "")
+            .replace(/^__AUTO_ROUTED_AGENT__:[^\n]*\n?/m, "")
+            .trim();
+          if (restText) accumulatedResponse += restText;
           setMessages((prev) => {
             const updated = [...prev];
             if (updated.length > 0) {
@@ -2792,7 +2795,7 @@ export default function Dashboard() {
             }
           }
           // Don't add this metadata line to the response text
-          const filteredChunk = chunk.replace(/^__AUTO_ROUTED_AGENT__:[^\n]*\n?/m, "");
+          const filteredChunk = chunk.replace(/__AUTO_ROUTED_AGENT__:[^\n]*\n?/g, "").replace(/__INTENT__:[^\n]*\n?/g, "").trim();
           if (filteredChunk) {
             accumulatedResponse += filteredChunk;
             setMessages((prev) => {
@@ -2808,8 +2811,8 @@ export default function Dashboard() {
 
         // Intent signal — internal metadata, never shown to user
         if (chunk.includes("__INTENT__:")) {
-          // Strip it silently — used internally for suggestions
-          const filteredChunk = chunk.replace(/^__INTENT__:[^\n]*\n?/m, "").trim();
+          // Strip it silently — global replace handles mid-chunk occurrences
+          const filteredChunk = chunk.replace(/__INTENT__:[^\n]*\n?/g, "").trim();
           if (filteredChunk) {
             accumulatedResponse += filteredChunk;
             setMessages((prev) => {
