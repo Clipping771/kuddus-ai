@@ -1425,13 +1425,14 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                 }
               }
             }
+          } // end else (NORMAL SINGLE-MODEL PIPELINE)
 
-            // 7. Save completed assistant response to Supabase
-            if (assistantResponse) {
-              // 🔍 Self-Reflection Critic — runs only in Brain Trust mode
-              if (isBrainTrust && !hasImage && assistantResponse.length > 200) {
-                try {
-                  const criticPrompt = `You are a ruthless quality critic reviewing an AI-generated business strategy response.
+          // 7. Save completed assistant response to Supabase
+          if (assistantResponse) {
+            // 🔍 Self-Reflection Critic — runs only in Brain Trust mode
+            if (isBrainTrust && !hasImage && assistantResponse.length > 200) {
+              try {
+                const criticPrompt = `You are a ruthless quality critic reviewing an AI-generated business strategy response.
 
 Review this response and provide a BRIEF quality assessment (max 3 bullet points):
 - What is STRONG about this response?
@@ -1443,70 +1444,70 @@ Response to review (first 1000 chars):
 
 Keep your critique to 3 bullet points max. Be sharp and specific.`;
 
-                  const criticResult = await groqChatWithFallback(
-                    {
-                      model: "llama-3.1-8b-instant",
-                      messages: [{ role: "user", content: criticPrompt }],
-                      temperature: 0.3,
-                      max_tokens: 300,
-                    },
-                    dbUser?.id
-                  ).catch(() => null);
+                const criticResult = await groqChatWithFallback(
+                  {
+                    model: "llama-3.1-8b-instant",
+                    messages: [{ role: "user", content: criticPrompt }],
+                    temperature: 0.3,
+                    max_tokens: 300,
+                  },
+                  dbUser?.id
+                ).catch(() => null);
 
-                  if (criticResult) {
-                    const criticText = criticResult.choices[0]?.message?.content?.trim();
-                    if (criticText) {
-                      const criticBlock = `\n\n---\n\n> 🔍 **Quality Review** *(Self-Reflection Critic)*\n${criticText.split("\n").map((l: string) => `> ${l}`).join("\n")}`;
-                      assistantResponse += criticBlock;
-                      controller.enqueue(encoder.encode(criticBlock));
-                      console.log("[SelfReflection] ✅ Critic review appended");
-                    }
+                if (criticResult) {
+                  const criticText = criticResult.choices[0]?.message?.content?.trim();
+                  if (criticText) {
+                    const criticBlock = `\n\n---\n\n> 🔍 **Quality Review** *(Self-Reflection Critic)*\n${criticText.split("\n").map((l: string) => `> ${l}`).join("\n")}`;
+                    assistantResponse += criticBlock;
+                    controller.enqueue(encoder.encode(criticBlock));
+                    console.log("[SelfReflection] ✅ Critic review appended");
                   }
-                } catch (criticErr) {
-                  console.warn("[SelfReflection] Critic failed (non-critical):", criticErr);
                 }
+              } catch (criticErr) {
+                console.warn("[SelfReflection] Critic failed (non-critical):", criticErr);
               }
-
-              // 🎯 Confidence Check — fire-and-forget, non-blocking
-              // Runs AFTER stream closes so it never delays first token
-              if (!isBrainTrust && !hasImage && assistantResponse.length > 150) {
-                checkResponseConfidence(message, assistantResponse, agentId || "general", dbUser?.id)
-                  .then((confidence) => {
-                    if (confidence?.isWeak && confidence.issues.length > 0) {
-                      console.log(`[Confidence] Score: ${confidence.score}/10 — weak response detected`);
-                      // Note: can't enqueue to stream after it's closed, so just log
-                    }
-                  })
-                  .catch(() => { });
-              }
-
-              const finalSavedText = (isBrainTrust && !hasImage) ? `> 🧠 **BRAIN TRUST LOGS**\n> 📝 Trinity drafted -> 🕵️ Gemma critiqued -> ✨ ${synthModel.split("/")[1]} synthesized.\n\n---\n\n${assistantResponse}` : assistantResponse;
-              const { error: assistantSaveError } = await supabase
-                .from("messages")
-                .insert({ chat_id: activeChatId, role: "assistant", content: finalSavedText });
-              if (assistantSaveError) console.error("Save error:", assistantSaveError);
-
-              // 🧠 Background memory extraction — runs after response is saved, non-blocking
-              extractAndSaveMemory(dbUser.id, message, assistantResponse).catch((memErr) => {
-                console.warn("[Memory] Background extraction failed (non-critical):", memErr?.message);
-              });
-
-              // 📊 Track agent usage for adaptive UI — fire-and-forget
-              trackAgentUsage(dbUser.id, agentId || "daily-innovation-idea-agent", message.length, toneId || "brutally-honest").catch(() => { });
             }
-          } catch (streamErr: any) {
-            console.error("Stream Error:", streamErr);
-            // Send a special signal if all API keys are exhausted so the frontend can show a proper notification
-            if (streamErr?.name === "ApiKeyExhaustedError" || streamErr?.message?.includes("exhausted") || streamErr?.message?.includes("All models and API keys")) {
-              controller.enqueue(encoder.encode("\n__API_KEY_EXHAUSTED__"));
-            } else {
-              controller.enqueue(encoder.encode("\n[Error: Stream interrupted. Please try again.]"));
+
+            // 🎯 Confidence Check — fire-and-forget, non-blocking
+            // Runs AFTER stream closes so it never delays first token
+            if (!isBrainTrust && !hasImage && assistantResponse.length > 150) {
+              checkResponseConfidence(message, assistantResponse, agentId || "general", dbUser?.id)
+                .then((confidence) => {
+                  if (confidence?.isWeak && confidence.issues.length > 0) {
+                    console.log(`[Confidence] Score: ${confidence.score}/10 — weak response detected`);
+                    // Note: can't enqueue to stream after it's closed, so just log
+                  }
+                })
+                .catch(() => { });
             }
-          } finally {
-            controller.close();
+
+            const finalSavedText = (isBrainTrust && !hasImage) ? `> 🧠 **BRAIN TRUST LOGS**\n> 📝 Trinity drafted -> 🕵️ Gemma critiqued -> ✨ ${synthModel.split("/")[1]} synthesized.\n\n---\n\n${assistantResponse}` : assistantResponse;
+            const { error: assistantSaveError } = await supabase
+              .from("messages")
+              .insert({ chat_id: activeChatId, role: "assistant", content: finalSavedText });
+            if (assistantSaveError) console.error("Save error:", assistantSaveError);
+
+            // 🧠 Background memory extraction — runs after response is saved, non-blocking
+            extractAndSaveMemory(dbUser.id, message, assistantResponse).catch((memErr) => {
+              console.warn("[Memory] Background extraction failed (non-critical):", memErr?.message);
+            });
+
+            // 📊 Track agent usage for adaptive UI — fire-and-forget
+            trackAgentUsage(dbUser.id, agentId || "daily-innovation-idea-agent", message.length, toneId || "brutally-honest").catch(() => { });
           }
-        },
-      });
+        } catch (streamErr: any) {
+          console.error("Stream Error:", streamErr);
+          // Send a special signal if all API keys are exhausted so the frontend can show a proper notification
+          if (streamErr?.name === "ApiKeyExhaustedError" || streamErr?.message?.includes("exhausted") || streamErr?.message?.includes("All models and API keys")) {
+            controller.enqueue(encoder.encode("\n__API_KEY_EXHAUSTED__"));
+          } else {
+            controller.enqueue(encoder.encode("\n[Error: Stream interrupted. Please try again.]"));
+          }
+        } finally {
+          controller.close();
+        }
+      },
+    });
 
     return new Response(readableStream, {
       headers: {
