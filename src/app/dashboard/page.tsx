@@ -4929,18 +4929,57 @@ export default function Dashboard() {
                         </p>
                         <div className="grid grid-cols-3 gap-2">
                           {TEMPLATES.map(t => (
-                            <button
+                            <div
                               key={t.label}
-                              type="button"
-                              onClick={() => setAgentConceptPrompt(t.idea)}
-                              className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border text-center transition-all hover:scale-[1.02] active:scale-95 ${agentConceptPrompt === t.idea
+                              className={`relative group/tpl flex flex-col items-center gap-1.5 p-3 rounded-2xl border text-center transition-all ${agentConceptPrompt === t.idea
                                 ? (dk ? "border-emerald-500/50 bg-emerald-500/10" : "border-emerald-400 bg-emerald-50")
                                 : (dk ? "border-white/8 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]" : "border-neutral-200 bg-neutral-50 hover:border-emerald-300 hover:bg-emerald-50/50")
                                 }`}
                             >
-                              <span className="text-xl">{t.icon}</span>
-                              <span className={`text-[10px] font-bold leading-tight ${dk ? "text-neutral-300" : "text-neutral-700"}`}>{t.label}</span>
-                            </button>
+                              {/* Click card = fill textarea */}
+                              <button
+                                type="button"
+                                onClick={() => setAgentConceptPrompt(t.idea)}
+                                className="flex flex-col items-center gap-1.5 w-full"
+                              >
+                                <span className="text-xl">{t.icon}</span>
+                                <span className={`text-[10px] font-bold leading-tight ${dk ? "text-neutral-300" : "text-neutral-700"}`}>{t.label}</span>
+                              </button>
+
+                              {/* ⚡ Round generate button — appears on hover */}
+                              <button
+                                type="button"
+                                title={`Generate ${t.label} agent instantly`}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  setAgentConceptPrompt(t.idea);
+                                  setIsGeneratingAll(true);
+                                  try {
+                                    const res = await fetch("/api/agents/generate", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ idea: t.idea }),
+                                    });
+                                    if (res.ok) {
+                                      const data = await res.json();
+                                      if (data.name) setNewAgentName(data.name);
+                                      if (data.banglaName) setNewAgentBanglaName(data.banglaName);
+                                      else if (data.name) setNewAgentBanglaName(data.name);
+                                      if (data.banglaDesc) setNewAgentBanglaDesc(data.banglaDesc);
+                                      if (data.icon) setNewAgentIcon(data.icon);
+                                      if (data.instructions) setNewAgentInstructions(data.instructions);
+                                    }
+                                  } catch { /* silent */ }
+                                  finally { setIsGeneratingAll(false); }
+                                }}
+                                className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-lg transition-all
+                                  opacity-0 group-hover/tpl:opacity-100 scale-75 group-hover/tpl:scale-100
+                                  ${dk ? "bg-emerald-500 text-black hover:bg-emerald-400" : "bg-emerald-500 text-white hover:bg-emerald-600"}
+                                `}
+                              >
+                                ⚡
+                              </button>
+                            </div>
                           ))}
                         </div>
                       </div>
