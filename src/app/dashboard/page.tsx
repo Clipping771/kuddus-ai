@@ -2601,6 +2601,13 @@ export default function Dashboard() {
           if (resolvedId) { setActiveChatId(resolvedId); hasHeaderIdParsed = true; }
           const restText = lines.slice(1).join("\n");
           accumulatedResponse += restText;
+        } else if (chunk.includes("__INTENT__:") || chunk.includes("__AUTO_ROUTED_AGENT__:")) {
+          // Strip internal metadata signals — never shown to user
+          const filtered = chunk
+            .replace(/^__INTENT__:[^\n]*\n?/m, "")
+            .replace(/^__AUTO_ROUTED_AGENT__:[^\n]*\n?/m, "")
+            .trim();
+          if (filtered) accumulatedResponse += filtered;
         } else {
           accumulatedResponse += chunk;
         }
@@ -2786,6 +2793,23 @@ export default function Dashboard() {
           }
           // Don't add this metadata line to the response text
           const filteredChunk = chunk.replace(/^__AUTO_ROUTED_AGENT__:[^\n]*\n?/m, "");
+          if (filteredChunk) {
+            accumulatedResponse += filteredChunk;
+            setMessages((prev) => {
+              const updated = [...prev];
+              if (updated.length > 0) {
+                updated[updated.length - 1] = { role: "assistant", content: accumulatedResponse };
+              }
+              return updated;
+            });
+          }
+          continue;
+        }
+
+        // Intent signal — internal metadata, never shown to user
+        if (chunk.includes("__INTENT__:")) {
+          // Strip it silently — used internally for suggestions
+          const filteredChunk = chunk.replace(/^__INTENT__:[^\n]*\n?/m, "").trim();
           if (filteredChunk) {
             accumulatedResponse += filteredChunk;
             setMessages((prev) => {
