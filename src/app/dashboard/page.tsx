@@ -4965,14 +4965,13 @@ export default function Dashboard() {
                         </div>
                         <div className="grid grid-cols-3 gap-2">
                           {isLoadingTemplates ? (
-                            // Skeleton loading
                             Array.from({ length: 6 }).map((_, i) => (
                               <div key={i} className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border animate-pulse ${dk ? "border-white/5 bg-white/[0.02]" : "border-neutral-200 bg-neutral-100"}`}>
                                 <div className={`w-8 h-8 rounded-lg ${dk ? "bg-white/8" : "bg-neutral-200"}`} />
                                 <div className={`w-14 h-2.5 rounded ${dk ? "bg-white/8" : "bg-neutral-200"}`} />
                               </div>
                             ))
-                          ) : (
+                          ) : TEMPLATES.map(t => (
                             <div
                               key={t.label}
                               className={`relative group/tpl flex flex-col items-center gap-1.5 p-3 rounded-2xl border text-center transition-all ${agentConceptPrompt === t.idea
@@ -4980,17 +4979,10 @@ export default function Dashboard() {
                                 : (dk ? "border-white/8 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]" : "border-neutral-200 bg-neutral-50 hover:border-emerald-300 hover:bg-emerald-50/50")
                                 }`}
                             >
-                              {/* Click card = fill textarea */}
-                              <button
-                                type="button"
-                                onClick={() => setAgentConceptPrompt(t.idea)}
-                                className="flex flex-col items-center gap-1.5 w-full"
-                              >
+                              <button type="button" onClick={() => setAgentConceptPrompt(t.idea)} className="flex flex-col items-center gap-1.5 w-full">
                                 <span className="text-xl">{t.icon}</span>
                                 <span className={`text-[10px] font-bold leading-tight ${dk ? "text-neutral-300" : "text-neutral-700"}`}>{t.label}</span>
                               </button>
-
-                              {/* ⚡ Round generate button — appears on hover */}
                               <button
                                 type="button"
                                 title={`Generate ${t.label} agent instantly`}
@@ -5016,16 +5008,12 @@ export default function Dashboard() {
                                   } catch { /* silent */ }
                                   finally { setIsGeneratingAll(false); }
                                 }}
-                                className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-lg transition-all
-                                  opacity-0 group-hover/tpl:opacity-100 scale-75 group-hover/tpl:scale-100
-                                  ${dk ? "bg-emerald-500 text-black hover:bg-emerald-400" : "bg-emerald-500 text-white hover:bg-emerald-600"}
-                                `}
+                                className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-lg transition-all opacity-0 group-hover/tpl:opacity-100 scale-75 group-hover/tpl:scale-100 ${dk ? "bg-emerald-500 text-black hover:bg-emerald-400" : "bg-emerald-500 text-white hover:bg-emerald-600"}`}
                               >
                                 ⚡
                               </button>
                             </div>
                           ))}
-                          )}
                         </div>
                       </div>
 
