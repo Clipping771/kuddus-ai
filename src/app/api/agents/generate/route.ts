@@ -282,12 +282,13 @@ export async function POST(req: Request) {
     if (nameOnly) {
       const isBangla = /[\u0980-\u09FF]/.test(idea);
 
-      // Extract file name and content preview — supports both formats:
-      // "File: X. Content preview: Y"  (with content)
-      // "File: X. No content preview..." (filename only)
-      const fileMatch = idea.match(/^File:\s*"([^"]+)"\.\s*Content preview:\s*"([\s\S]*)"$/);
-      const fileMatchNoContent = idea.match(/^File:\s*"([^"]+)"\./);
-      const fileName = fileMatch ? fileMatch[1] : (fileMatchNoContent ? fileMatchNoContent[1] : idea);
+      // Parse the idea string — supports formats:
+      // "File: "X". Content preview: "Y""
+      // "File: "X". Generate a smart..."
+      // plain text fallback
+      const fileMatch = idea.match(/File:\s*"([^"]+)"\.\s*Content preview:\s*"([\s\S]*)"/);
+      const fileMatchNoContent = idea.match(/File:\s*"([^"]+)"\./);
+      const fileName = fileMatch ? fileMatch[1] : (fileMatchNoContent ? fileMatchNoContent[1] : idea.substring(0, 60));
       const contentPreview = fileMatch ? fileMatch[2] : "";
 
       const namePrompt = isBangla
@@ -298,15 +299,19 @@ ${contentPreview ? `কন্টেন্ট: "${contentPreview.substring(0, 800
 ${contentPreview ? "এই ডকুমেন্টের CONTENT বিশ্লেষণ করে" : "ফাইলের নাম দেখে"} একটি স্মার্ট AI এজেন্টের নাম তৈরি করো।
 নামটি হবে ২-৪ শব্দের, বিষয়ভিত্তিক ও অর্থবহ।
 শুধু নামটি লেখো।`
-        : `Analyze this PDF and generate a smart 2-4 word AI agent name based on its THEME.
+        : `You are naming an AI agent based on a PDF document.
 
-File: "${fileName}"
-${contentPreview ? `Content (read this to understand the theme): "${contentPreview.substring(0, 800)}"` : ""}
+File name: "${fileName}"
+${contentPreview ? `Document content (first 800 chars): "${contentPreview.substring(0, 800)}"` : ""}
 
-- Identify the subject domain and target audience from the content
-- Generate a name like: "Clinical Medicine Expert", "Oxford Medicine Advisor", "Business Law Guide"
-- DO NOT repeat the filename
-- Return ONLY the 2-4 word name`;
+Task: Generate a smart, theme-based 2-4 word name for an AI expert agent that specializes in this document's subject.
+
+Rules:
+- Base the name on the CONTENT theme, NOT the filename
+- Format: "[Subject] Expert" or "[Subject] Advisor" or "[Subject] Guide"
+- Examples: "Clinical Medicine Expert", "Mobile Trading Advisor", "Contract Law Guide", "Python Development Expert"
+- DO NOT repeat the filename words verbatim
+- Return ONLY the 2-4 word name, nothing else`;
 
       // Tier 1: Try Groq (env key)
       if (process.env.GROQ_API_KEY) {

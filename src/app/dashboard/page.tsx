@@ -1570,10 +1570,10 @@ export default function Dashboard() {
   const handlePdfFileSelect = async (file: File) => {
     setPdfFile(file);
 
-    // Step 1: Smart filename cleaning — strip numbers, edition, year, copy info
+    // Step 1: Clean filename as immediate placeholder
     const rawName = file.name.replace(/\.pdf$/i, "");
     const cleanName = rawName
-      .replace(/^\d+/g, "")                          // strip leading numbers (e.g. "82050xford" → "xford")
+      .replace(/^\d+/g, "")
       .replace(/[-_,،]/g, " ")
       .replace(/\b(copy|edition|ed|vol|volume|part|chapter|10th|9th|8th|7th|6th|5th|4th|3rd|2nd|1st|\d{4}|\d+)\b/gi, "")
       .replace(/\s+/g, " ")
@@ -1586,39 +1586,31 @@ export default function Dashboard() {
     setNewPdfAgentName(cleanName);
     setIsGeneratingPdfName(true);
 
-    // Step 2: Read PDF content deeply for theme-based name generation
+    // Step 2: Parse PDF content client-side, then send to AI for theme-based naming
     try {
-      let pdfSnippet = "";
+      let pdfText = "";
       try {
         const { parseAnyFile } = await import("@/lib/fileParser");
+        // parseAnyFile returns a plain string directly
         const parsed = await parseAnyFile(file);
-        // Take first 1500 chars — enough to understand the book's theme
-        pdfSnippet = (parsed as any).text?.slice(0, 1500).replace(/\s+/g, " ").trim() || "";
+        if (typeof parsed === "string") {
+          pdfText = parsed.slice(0, 1200).replace(/\s+/g, " ").trim();
+        }
       } catch {
-        // If parsing fails, fall back to filename only
+        // parsing failed — will use filename only
       }
 
-      const ideaForName = pdfSnippet
-        ? `A PDF document has been uploaded. Analyze its CONTENT to determine the theme and generate a smart agent name.
-
-File name: "${cleanName}"
-Content (first 1500 chars): "${pdfSnippet}"
-
-Based on the ACTUAL CONTENT (not just the filename), identify:
-1. What is this document about? (subject/domain)
-2. Who is the target audience? (students, doctors, engineers, etc.)
-3. What expertise would an AI agent need to answer questions about this?
-
-Generate a smart 2-4 word agent name that reflects the document's THEME and PURPOSE.
-Examples: "Clinical Medicine Expert", "Oxford Medicine Advisor", "Surgical Techniques Guide", "Business Strategy Coach"
-Return ONLY the name, nothing else.`
-        : `File: "${cleanName}". Generate a smart 2-4 word expert agent name based on the filename topic. Return ONLY the name.`;
+      // Build the idea string in the format the API expects
+      const ideaForName = pdfText
+        ? `File: "${cleanName}". Content preview: "${pdfText}"`
+        : `File: "${cleanName}". Generate a smart expert agent name based on the filename topic.`;
 
       const res = await fetch("/api/agents/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idea: ideaForName, nameOnly: true }),
       });
+
       if (res.ok) {
         const data = await res.json();
         if (data.name && data.name.trim()) {
@@ -1626,7 +1618,7 @@ Return ONLY the name, nothing else.`
         }
       }
     } catch {
-      // Keep the filename-derived name — already set above
+      // Keep the filename-derived name
     } finally {
       setIsGeneratingPdfName(false);
     }
