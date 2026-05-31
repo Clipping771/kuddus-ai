@@ -274,10 +274,10 @@ const LOADING_MESSAGES: Record<string, string[]> = {
     "🎯 Building business models...",
   ],
   "ethical-hacker-agent": [
-    "🔍 Scanning attack surface...",
-    "🛡️ Analyzing vulnerabilities...",
-    "⚡ Checking latest CVEs...",
-    "🎯 Crafting pentest strategy...",
+    "💀 Mapping the attack surface...",
+    "🔴 Analyzing threat actor TTPs...",
+    "🛡️ Building defense strategy...",
+    "⚡ Checking latest CVEs & exploits...",
   ],
   "brain-trust": [
     "🧠 Assembling Executive Board...",
@@ -1070,17 +1070,17 @@ const AGENTS_LIST = [
   },
   {
     id: "ethical-hacker-agent",
-    name: "Ethical Hacker & Cybersecurity Expert",
-    banglaName: "Ethical Hacker & Cybersecurity Expert",
-    desc: "Advanced pentesting, CVE analysis, red team tactics, CTF help & security hardening — for authorized testing only",
-    banglaDesc: "Advanced pentesting, CVE analysis, red team tactics, CTF help & security hardening — for authorized testing only",
+    name: "Ghost — Elite Hacker & Cyber Warfare Expert",
+    banglaName: "Ghost — Elite Hacker & Cyber Warfare Expert",
+    desc: "Black hat tactics, APT techniques, red team ops, malware analysis & deep defense — know your enemy to destroy them",
+    banglaDesc: "Black hat tactics, APT techniques, red team ops, malware analysis & deep defense — know your enemy to destroy them",
     icon: ShieldCheck,
-    placeholder: "Describe your target scope, CTF challenge, or security question — authorized testing only...",
+    placeholder: "Ask about any attack technique, APT group, CVE, malware, red team tactic, or how to defend against it...",
     suggestions: [
-      "How do I enumerate an Active Directory environment and find attack paths with BloodHound?",
-      "Walk me through a full web app pentest methodology for a bug bounty target.",
-      "What are the latest techniques for bypassing EDR/AV detection in 2025?",
-      "Help me solve this HackTheBox machine — I'm stuck on privilege escalation."
+      "How does a real APT group like Lazarus or APT29 breach a corporate network? Full kill chain.",
+      "Explain Golden Ticket attacks on Active Directory and exactly how to detect and stop them.",
+      "How does ransomware like LockBit actually work — infection to encryption? And how do I defend?",
+      "What are the latest EDR evasion techniques black hats are using in 2025?"
     ]
   }
 ];
