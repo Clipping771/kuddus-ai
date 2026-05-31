@@ -98,7 +98,6 @@ Rules:
                     attributes: n.attributes || {},
                 }),
                 category: "context",
-                importance_score: 0.8, // Graph nodes are high importance
                 updated_at: new Date().toISOString(),
             }));
 

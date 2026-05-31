@@ -239,8 +239,8 @@ If no facts to extract, return: []`;
                 const { response: res } = await openrouterFetchWithFallback(
                     [
                         "meta-llama/llama-3.3-70b-instruct:free",
-                        "mistralai/mistral-7b-instruct:free",
-                        "qwen/qwen3-8b:free",
+                        "google/gemma-4-31b-it:free",
+                        "google/gemma-3-12b-it:free",
                     ],
                     {
                         messages: [{ role: "user", content: extractionPrompt }],
