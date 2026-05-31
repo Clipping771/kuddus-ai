@@ -1416,8 +1416,8 @@ export async function POST(req: Request) {
     }
 
     // Guard against extremely long messages that would overflow context
-    if (message.length > 50000) {
-      return NextResponse.json({ error: "Message too long. Please shorten your message." }, { status: 400 });
+    if (message.length > 80000) {
+      return NextResponse.json({ error: "Message too long. Please shorten your message or use a smaller document." }, { status: 400 });
     }
 
     // Dynamic Agent Routing — if enableAutoRouting is true and no specific agent was chosen,

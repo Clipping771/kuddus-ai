@@ -2690,7 +2690,13 @@ export default function Dashboard() {
     const currentAttachments = [...attachedFiles];
     if (currentAttachments.length > 0) {
       const documentsBlock = currentAttachments.map(
-        (att) => `[ATTACHED DOCUMENT: ${att.name}]\n\`\`\`\n${att.content}\n\`\`\``
+        (att) => {
+          // Cap each document at 25k chars to prevent API crashes on large PDFs
+          const cappedContent = att.content.length > 25000
+            ? att.content.substring(0, 25000) + "\n\n[Content truncated — document too large. Showing first 25,000 characters.]"
+            : att.content;
+          return `[ATTACHED DOCUMENT: ${att.name}]\n\`\`\`\n${cappedContent}\n\`\`\``;
+        }
       ).join("\n\n");
       messageToSend = `${documentsBlock}\n\nUser Prompt: ${userMessageContent || "Please analyze the extracted documents above based on your specialized agent role."}`;
       setAttachedFiles([]);
