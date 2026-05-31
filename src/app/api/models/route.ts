@@ -83,7 +83,7 @@ export async function GET(req: Request) {
             // Re-filter cached list against current dead model registry
             // (registry may have grown since cache was built)
             const runtimeDeadModels = getDeadModels();
-            const allDeadModels = new Set([...DEAD_MODELS, ...runtimeDeadModels]);
+            const allDeadModels = new Set([...Array.from(DEAD_MODELS), ...Array.from(runtimeDeadModels)]);
             let models = cachedModels.filter((m: any) => !allDeadModels.has(m.id));
             if (freeOnly) models = models.filter((m: any) => m.isFree);
             if (search) models = models.filter((m: any) =>
@@ -110,7 +110,7 @@ export async function GET(req: Request) {
         // Transform and enrich model data
         // Merge static blocklist with dynamic runtime dead model registry
         const runtimeDeadModels = getDeadModels();
-        const allDeadModels = new Set([...DEAD_MODELS, ...runtimeDeadModels]);
+        const allDeadModels = new Set([...Array.from(DEAD_MODELS), ...Array.from(runtimeDeadModels)]);
 
         const models = rawModels
             .filter((m: any) => m.id && m.name) // filter out invalid entries

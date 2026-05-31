@@ -55,13 +55,13 @@ export function isModelDead(modelId: string): boolean {
 export function getDeadModels(): Set<string> {
     // Prune expired entries first
     const now = Date.now();
-    for (const [id, ts] of deadModelTimestamps.entries()) {
+    for (const [id, ts] of Array.from(deadModelTimestamps.entries())) {
         if (now - ts > DEAD_MODEL_TTL) {
             deadModelRegistry.delete(id);
             deadModelTimestamps.delete(id);
         }
     }
-    return new Set(deadModelRegistry);
+    return new Set(Array.from(deadModelRegistry));
 }
 
 /** Fetch active API keys from database for a specific user */
