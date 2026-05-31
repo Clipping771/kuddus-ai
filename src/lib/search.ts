@@ -25,6 +25,7 @@ const ALWAYS_SEARCH_AGENTS = new Set([
   "pain-point-scraper-agent",   // always needs real complaints data
   "research-agent",             // always needs current market data
   "competitor-spy-agent",       // always needs current competitor info
+  "ethical-hacker-agent",       // always needs latest CVEs, tools, techniques
 ]);
 
 // Keywords that trigger web search in any agent
@@ -75,8 +76,8 @@ export async function performWebSearch(
   }
 
   // Customize search depth for research-heavy agents
-  const searchDepth = (agentId === "crypto-stock-researcher" || agentId === "pain-point-scraper-agent" || agentId === "research-agent") ? "advanced" : "basic";
-  const maxResults = (agentId === "crypto-stock-researcher" || agentId === "pain-point-scraper-agent" || agentId === "research-agent") ? 8 : 5;
+  const searchDepth = (agentId === "crypto-stock-researcher" || agentId === "pain-point-scraper-agent" || agentId === "research-agent" || agentId === "ethical-hacker-agent") ? "advanced" : "basic";
+  const maxResults = (agentId === "crypto-stock-researcher" || agentId === "pain-point-scraper-agent" || agentId === "research-agent" || agentId === "ethical-hacker-agent") ? 8 : 5;
 
   try {
     const response = await fetch("https://api.tavily.com/search", {
@@ -144,6 +145,11 @@ export function extractSearchQuery(message: string, agentId?: string): string {
   // For pain point scraper, add Reddit/forum context to get real complaints
   if (agentId === "pain-point-scraper-agent") {
     return `${clean} complaints problems frustrations Reddit forum reviews`;
+  }
+
+  // For ethical hacker, focus on latest CVEs, tools, and security research
+  if (agentId === "ethical-hacker-agent") {
+    return `${clean} CVE exploit vulnerability pentest 2025 security research`;
   }
 
   // For competitor spy, add competitor-specific context

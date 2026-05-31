@@ -273,6 +273,12 @@ const LOADING_MESSAGES: Record<string, string[]> = {
     "💰 Mapping market gaps...",
     "🎯 Building business models...",
   ],
+  "ethical-hacker-agent": [
+    "🔍 Scanning attack surface...",
+    "🛡️ Analyzing vulnerabilities...",
+    "⚡ Checking latest CVEs...",
+    "🎯 Crafting pentest strategy...",
+  ],
   "brain-trust": [
     "🧠 Assembling Executive Board...",
     "📝 Architect drafting master plan...",
@@ -1060,6 +1066,21 @@ const AGENTS_LIST = [
     suggestions: [
       "Find out what people are complaining about most regarding modern dating apps.",
       "What are the biggest frustrations small business owners have with their accounting software?"
+    ]
+  },
+  {
+    id: "ethical-hacker-agent",
+    name: "Ethical Hacker & Cybersecurity Expert",
+    banglaName: "Ethical Hacker & Cybersecurity Expert",
+    desc: "Advanced pentesting, CVE analysis, red team tactics, CTF help & security hardening — for authorized testing only",
+    banglaDesc: "Advanced pentesting, CVE analysis, red team tactics, CTF help & security hardening — for authorized testing only",
+    icon: ShieldCheck,
+    placeholder: "Describe your target scope, CTF challenge, or security question — authorized testing only...",
+    suggestions: [
+      "How do I enumerate an Active Directory environment and find attack paths with BloodHound?",
+      "Walk me through a full web app pentest methodology for a bug bounty target.",
+      "What are the latest techniques for bypassing EDR/AV detection in 2025?",
+      "Help me solve this HackTheBox machine — I'm stuck on privilege escalation."
     ]
   }
 ];
