@@ -1668,8 +1668,11 @@ Apply the following highly advanced analysis steps:
       console.log(`[ModelGuard] Remapping dead "google/gemma-3-27b-it:free" → "google/gemma-4-31b-it:free"`);
       resolvedModelId = "google/gemma-4-31b-it:free";
     } else if (resolvedModelId === "mistralai/mistral-7b-instruct:free") {
-      console.log(`[ModelGuard] Remapping dead "mistralai/mistral-7b-instruct:free" → "cognitivecomputations/dolphin3.0-mistral-24b:free"`);
-      resolvedModelId = "cognitivecomputations/dolphin3.0-mistral-24b:free";
+      console.log(`[ModelGuard] Remapping dead "mistralai/mistral-7b-instruct:free" → "google/gemma-4-31b-it:free"`);
+      resolvedModelId = "google/gemma-4-31b-it:free";
+    } else if (resolvedModelId === "cognitivecomputations/dolphin3.0-mistral-24b:free" && isModelDead("cognitivecomputations/dolphin3.0-mistral-24b:free")) {
+      console.log(`[ModelGuard] Remapping dead "dolphin3.0-mistral-24b:free" → "google/gemma-4-31b-it:free"`);
+      resolvedModelId = "google/gemma-4-31b-it:free";
     } else if (resolvedModelId === "minimax/minimax-m2.5:free" || resolvedModelId === "minimax/minimax-m1:free" || resolvedModelId.startsWith("minimax/")) {
       console.log(`[ModelGuard] Remapping dead minimax model "${resolvedModelId}" → "google/gemma-4-31b-it:free"`);
       resolvedModelId = "google/gemma-4-31b-it:free";
@@ -1727,10 +1730,9 @@ Apply the following highly advanced analysis steps:
       "llama-3.1-8b-instant",
     ];
 
-    // OpenRouter free models pool for Brain Trust (valid as of 2025)
-    // NOTE: Qwen3 removed — outputs uncontrollable thinking text even with system prompt suppression
-    // NOTE: mistral-7b-instruct:free and gemma-3-27b-it:free removed — 404 on OpenRouter
-    const BRAIN_TRUST_OR_POOL = [
+    // OpenRouter free models pool for Brain Trust — filtered at construction time to exclude dead models
+    // Any model that returned 404 is auto-removed from the pool immediately, no wasted retries
+    const BRAIN_TRUST_OR_POOL_ALL = [
       "deepseek/deepseek-r1-0528:free",
       "meta-llama/llama-3.3-70b-instruct:free",
       "google/gemma-4-31b-it:free",
@@ -1741,6 +1743,8 @@ Apply the following highly advanced analysis steps:
       "cognitivecomputations/dolphin3.0-mistral-24b:free",
       "openrouter/free",
     ];
+    // Filter dead models out NOW — don't include them in the pool at all
+    const BRAIN_TRUST_OR_POOL = BRAIN_TRUST_OR_POOL_ALL.filter(m => !isModelDead(m));
 
     const synthModel = primaryModel; // The user's selected model synthesizes the final response
 
@@ -1801,17 +1805,11 @@ Apply the following highly advanced analysis steps:
             }
           }
 
-          // Tier 2: OpenRouter pool — rotate through all free models to spread quota usage
-          // Each call picks the next model in the pool (round-robin), skipping dead ones
+          // Tier 2: OpenRouter pool — rotate through all live models (dead ones already filtered out at construction)
           const poolSize = BRAIN_TRUST_OR_POOL.length;
           for (let attempt = 0; attempt < poolSize; attempt++) {
             const currentModel = BRAIN_TRUST_OR_POOL[orPoolIndex % poolSize];
             orPoolIndex++;
-            // Skip models already known to be dead
-            if (isModelDead(currentModel)) {
-              console.log(`[Sync OR Pool] ⏭️ Skipping dead model: "${currentModel}"`);
-              continue;
-            }
             try {
               console.log(`[Sync OR Pool] Trying model: "${currentModel}" for role: "${roleName || 'Agent'}"`);
               const { response: res } = await openrouterFetchWithFallback(
@@ -1889,7 +1887,7 @@ Apply the following highly advanced analysis steps:
               "google/gemma-3-12b-it:free",
               "microsoft/phi-4-reasoning-plus:free",
               "cognitivecomputations/dolphin3.0-mistral-24b:free",
-            ];
+            ].filter(m => !isModelDead(m)); // remove dead models at construction time
 
             // Expert name display map
             const expertDisplayNames: Record<string, string> = {
@@ -2148,9 +2146,10 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
             // ── TIER 2: OpenRouter fallback (if Groq unavailable or failed) ──
             if (!groqStreamed) {
               let selectedModel = hasImage ? (primaryModel || "google/gemini-2.5-flash") : primaryModel;
-              const fallbackModels = hasImage
+              const fallbackModels = (hasImage
                 ? [primaryModel, "google/gemma-4-31b-it:free", "meta-llama/llama-3.2-11b-vision-instruct:free", "google/gemma-3-12b-it:free", "openrouter/free"]
-                : [primaryModel, "meta-llama/llama-3.3-70b-instruct:free", "google/gemma-4-31b-it:free", "google/gemma-3-12b-it:free", "cognitivecomputations/dolphin3.0-mistral-24b:free", "openrouter/free"];
+                : [primaryModel, "meta-llama/llama-3.3-70b-instruct:free", "google/gemma-4-31b-it:free", "google/gemma-3-12b-it:free", "cognitivecomputations/dolphin3.0-mistral-24b:free", "openrouter/free"]
+              ).filter(m => m === "openrouter/free" || !isModelDead(m)); // keep openrouter/free as last resort, filter dead models
 
               let response: any;
               let lastError: any;
