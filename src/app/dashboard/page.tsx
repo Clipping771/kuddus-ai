@@ -2420,62 +2420,146 @@ export default function Dashboard() {
       const agentLabel = activeAgent?.name || "AI Assistant";
       const dateStr = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
-      // ── Clone the live rendered chat DOM (tables are already rendered by ReactMarkdown) ──
-      const sourceEl = pdfExportRef.current;
-      const clone = sourceEl.cloneNode(true) as HTMLElement;
-
-      // Override theme styles to force light/readable PDF colours
-      clone.style.cssText = [
-        "position:fixed", "left:-9999px", "top:0",
-        "width:760px", "background:#ffffff", "color:#111111",
-        "font-family:Arial,sans-serif",
-        "font-size:13px", "line-height:1.75",
-        "padding:24px", "box-sizing:border-box",
+      // ── Build off-screen HTML container with Bengali-compatible font ──
+      const container = document.createElement("div");
+      container.style.cssText = [
+        "position:absolute", "left:0", "top:-9999px",
+        "width:794px", "background:#ffffff", "color:#111111",
+        "font-family:'Noto Sans Bengali','Noto Sans',Arial,sans-serif",
+        "font-size:13px", "line-height:1.75", "padding:0",
       ].join(";");
 
-      // Force all descendant text to be dark on white using injected style tag
-      // (setting inline style="" doesn't override Tailwind CSS classes)
-      const styleOverride = document.createElement("style");
-      styleOverride.textContent = `
-        * { color: #111111 !important; background-color: transparent !important;
-            box-shadow: none !important; backdrop-filter: none !important;
-            animation: none !important; transition: none !important;
-            border-color: #e5e7eb !important; }
-        button, svg, [data-copy-btn], [data-action-bar] { display: none !important; }
-        table { border-collapse: collapse !important; width: 100% !important; margin: 12px 0 !important; font-size: 12px !important; }
-        th { background-color: #e11d48 !important; color: #ffffff !important; font-weight: bold !important; padding: 8px !important; border: 1px solid #d1d5db !important; text-align: left !important; }
-        td { padding: 8px !important; border: 1px solid #d1d5db !important; color: #111111 !important; }
-        tr:nth-child(even) td { background-color: #f9fafb !important; }
-        pre, code { background-color: #f4f4f4 !important; color: #111111 !important; }
-        strong { color: #111111 !important; }
-        h1,h2,h3,h4,h5,h6 { color: #111111 !important; }
-        a { color: #2563eb !important; }
-        blockquote { border-color: #d1d5db !important; color: #374151 !important; }
-      `;
-      clone.appendChild(styleOverride);
+      // Google Font for Bengali
+      const fontLink = document.createElement("link");
+      fontLink.rel = "stylesheet";
+      fontLink.href = "https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;700&family=Noto+Sans:wght@400;700&display=swap";
+      container.appendChild(fontLink);
 
-      // Build outer wrapper with header
-      const wrapper = document.createElement("div");
-      wrapper.style.cssText = "position:fixed;left:-9999px;top:0;width:794px;background:#ffffff;font-family:Arial,sans-serif;";
-
+      // Header bar
       const header = document.createElement("div");
-      header.style.cssText = "background:#e11d48;color:#fff;padding:14px 24px;font-size:14px;font-weight:700;display:flex;justify-content:space-between;align-items:center;";
+      header.style.cssText = "background:#e11d48;color:#fff;padding:12px 24px;font-size:14px;font-weight:700;display:flex;justify-content:space-between;align-items:center;";
       header.innerHTML = `<span>🌶️ ${aiName.toUpperCase()} — Conversation Export</span><span style="font-size:11px;font-weight:400;opacity:0.85">Agent: ${agentLabel} &nbsp;|&nbsp; ${dateStr} &nbsp;|&nbsp; ${messages.length} messages</span>`;
+      container.appendChild(header);
 
+      // Messages body
+      const body = document.createElement("div");
+      body.style.cssText = "padding:16px 24px;";
+
+      for (const msg of messages) {
+        if (!msg.content || msg.content.trim() === "") continue;
+        const isUser = msg.role === "user";
+
+        // Clean content — strip internal metadata, keep readable text
+        let cleanContent = msg.content
+          .replace(/\[IMAGE_BASE64:[^\]]+\]/g, "[📷 Image]")
+          .replace(/\[ATTACHED DOCUMENT:[^\]]+\]/g, "[📄 Document]")
+          .replace(/<thought>[\s\S]*?<\/thought>/g, "")
+          .replace(/__[A-Z_]+__:[^\n]*/g, "")
+          .trim();
+
+        // ── Convert markdown to HTML ──
+
+        // 1. Code blocks first (protect from other replacements)
+        const codeBlocks: string[] = [];
+        cleanContent = cleanContent.replace(/```([\s\S]*?)```/g, (_m, code) => {
+          const placeholder = `%%CODEBLOCK${codeBlocks.length}%%`;
+          codeBlocks.push(`<pre style="background:#f4f4f4;border:1px solid #ddd;border-radius:6px;padding:10px;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:8px 0;">${code.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`);
+          return placeholder;
+        });
+
+        // 2. Markdown tables — must run BEFORE newline→<br/> conversion
+        const tableBlocks: string[] = [];
+        cleanContent = cleanContent.replace(
+          /(?:^|\n)((?:\|.*?\|\r?(?:\n|$))+)/g,
+          (_match, tableContent) => {
+            const rows = tableContent.trim().split(/\r?\n/).filter((r: string) => r.trim().startsWith("|"));
+            if (rows.length < 2) return _match;
+
+            const isSeparator = (row: string) => /^\|[\s\-:|]+\|$/.test(row.trim().replace(/[^|:\-\s]/g, ""));
+            const parseRow = (row: string) =>
+              row.trim().replace(/^\||\|$/g, "").split("|").map(cell => cell.trim());
+
+            // html2canvas table width calculation bug workaround: force explicit pixel widths!
+            const headerCells = parseRow(rows[0]);
+            const totalCols = headerCells.length || 1;
+            const availableWidthPx = 712; // 794 container - 48 padding
+            const cellWidthPx = Math.floor(availableWidthPx / totalCols);
+
+            // Use simple float layout with explicit widths
+            let html = `<div style="margin:16px 0; width:${availableWidthPx}px; border-top:1px solid #d1d5db; border-left:1px solid #d1d5db; font-size:12px; background-color:#ffffff; box-sizing:border-box;">`;
+            let headerDone = false;
+
+            for (let i = 0; i < rows.length; i++) {
+              if (isSeparator(rows[i])) continue; // skip separator row
+              const cells = parseRow(rows[i]);
+              
+              const isHeader = !headerDone && (i === 0 || (i === 1 && isSeparator(rows[0])));
+              if (isHeader) headerDone = true;
+
+              const rowBg = isHeader ? "#e11d48" : (i % 2 === 0 ? "#f9fafb" : "#ffffff");
+              const color = isHeader ? "#ffffff" : "#111111";
+              const weight = isHeader ? "bold" : "normal";
+
+              html += `<div style="width:100%; clear:both; background-color:${rowBg}; color:${color}; box-sizing:border-box;">`;
+              
+              html += cells.map(c => `<div style="float:left; width:${cellWidthPx}px; padding:8px 10px; border-bottom:1px solid #d1d5db; border-right:1px solid #d1d5db; font-weight:${weight}; text-align:left; word-break:break-word; box-sizing:border-box;">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</div>`).join("");
+              html += `<div style="clear:both;"></div></div>`;
+            }
+            html += `</div>`;
+            
+            const placeholder = `%%TABLEBLOCK${tableBlocks.length}%%`;
+            tableBlocks.push(html);
+            return _match.replace(tableContent, `\n${placeholder}\n`);
+          }
+        );
+
+        // 3. Headings, bold, italic
+        cleanContent = cleanContent
+          .replace(/#{1,6}\s+(.+)/g, "<strong style='font-size:14px;'>$1</strong>")
+          .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+          .replace(/\*(.+?)\*/g, "<em>$1</em>");
+
+        // 4. Newlines → <br/> (skip lines inside tables — already converted)
+        cleanContent = cleanContent.replace(/\n/g, "<br/>");
+
+        // 5. Restore code blocks and tables
+        codeBlocks.forEach((block, i) => {
+          cleanContent = cleanContent.replace(`%%CODEBLOCK${i}%%`, () => block);
+        });
+        tableBlocks.forEach((block, i) => {
+          cleanContent = cleanContent.replace(`%%TABLEBLOCK${i}%%`, () => block);
+        });
+
+        const msgBlock = document.createElement("div");
+        msgBlock.style.cssText = "margin-bottom:18px;border-bottom:1px solid #e5e7eb;padding-bottom:14px;";
+
+        const roleEl = document.createElement("div");
+        roleEl.style.cssText = `font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px;color:${isUser ? "#2563eb" : "#059669"};`;
+        roleEl.textContent = isUser ? "YOU" : aiName.toUpperCase();
+
+        const contentEl = document.createElement("div");
+        contentEl.style.cssText = "font-size:13px;color:#1f2937;line-height:1.75;";
+        contentEl.innerHTML = cleanContent;
+
+        msgBlock.appendChild(roleEl);
+        msgBlock.appendChild(contentEl);
+        body.appendChild(msgBlock);
+      }
+
+      // Footer
       const footer = document.createElement("div");
-      footer.style.cssText = "border-top:1px solid #e5e7eb;padding:10px 24px;font-size:10px;color:#9ca3af;text-align:center;margin-top:16px;";
+      footer.style.cssText = "border-top:1px solid #e5e7eb;padding:10px 24px;font-size:10px;color:#9ca3af;text-align:center;";
       footer.textContent = `Generated by ${aiName} — ${new Date().toLocaleString()}`;
 
-      wrapper.appendChild(header);
-      wrapper.appendChild(clone);
-      wrapper.appendChild(footer);
-      document.body.appendChild(wrapper);
+      container.appendChild(body);
+      container.appendChild(footer);
+      document.body.appendChild(container);
 
-      // Brief delay to let browser paint the cloned DOM
-      await new Promise(r => setTimeout(r, 400));
+      // Wait for Google Font to load
+      await new Promise(r => setTimeout(r, 900));
 
-      // Capture with html2canvas
-      const canvas = await html2canvas(wrapper, {
+      // Capture with html2canvas — renders via browser so all fonts work
+      const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
@@ -2484,7 +2568,7 @@ export default function Dashboard() {
         width: 794,
       });
 
-      document.body.removeChild(wrapper);
+      document.body.removeChild(container);
 
       // Build PDF — slice canvas into A4 pages
       const pdf = new jsPDF("p", "mm", "a4");
@@ -4097,7 +4181,7 @@ export default function Dashboard() {
               </div>
             ) : (
               /* Historical & Streamed Messages */
-              <div ref={pdfExportRef} className="max-w-3xl mx-auto w-full space-y-8 pb-12 overflow-x-hidden">
+              <div className="max-w-3xl mx-auto w-full space-y-8 pb-12 overflow-x-hidden">
                 {messages.map((msg, index) => {
                   // If it is AI's response
                   if (msg.role === "assistant") {
