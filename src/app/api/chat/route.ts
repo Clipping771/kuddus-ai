@@ -1409,7 +1409,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { message, chatId, agentId: rawAgentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust, boardSize = 16, customInstructions, enableAutoRouting, isCollabMode } = await req.json();
+    const { message, chatId, agentId: rawAgentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust, boardSize = 16, customInstructions, enableAutoRouting, isCollabMode, userMaxTokens } = await req.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
@@ -2064,7 +2064,7 @@ Apply the following highly advanced analysis steps:
             try {
               console.log(`[Sync Groq] Trying model: "${groqModel}" for role: "${roleName || 'Agent'}"`);
               const completion = await groqChatWithFallback(
-                { model: groqModel, messages: groqMsgs, temperature: 0.7, max_tokens: 1800 },
+                { model: groqModel, messages: groqMsgs, temperature: 0.7, max_tokens: 3000 },
                 dbUser?.id
               );
               const content = completion.choices[0]?.message?.content || "";
@@ -2086,7 +2086,7 @@ Apply the following highly advanced analysis steps:
               console.log(`[Sync OR Pool] Trying model: "${currentModel}" for role: "${roleName || 'Agent'}"`);
               const { response: res } = await openrouterFetchWithFallback(
                 [currentModel],
-                { messages: msgs, stream: false, max_tokens: 1800 },
+                { messages: msgs, stream: false, max_tokens: 3000 },
                 dbUser.id
               );
               const data = await res.json();
@@ -2270,7 +2270,7 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                     model: "llama-3.3-70b-versatile",
                     messages: groqSynthMsgs,
                     temperature: 0.7,
-                    max_tokens: 4000,
+                    max_tokens: 8000,
                     stream: true,
                   },
                   dbUser?.id
@@ -2306,7 +2306,7 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                   console.log(`[API Chat] Dispatching Brain Trust Synthesis stream request to model: "${selectedSynthModel}"`);
                   const { response: res, usedModel } = await openrouterFetchWithFallback(
                     [selectedSynthModel],
-                    { messages: synthMessages, stream: true, max_tokens: 4000, temperature: 0.7 },
+                    { messages: synthMessages, stream: true, max_tokens: 8000, temperature: 0.7 },
                     dbUser.id
                   );
                   synthRes = res;
@@ -2381,7 +2381,10 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
             }
           } else {
             // NORMAL SINGLE-MODEL PIPELINE — Groq first (fastest), OpenRouter fallback
-            const maxTok = getMaxTokensForComplexity(queryComplexity.complexity);
+            // userMaxTokens: user-defined override from Settings (takes priority over auto-calc)
+            const maxTok = (userMaxTokens && typeof userMaxTokens === "number" && userMaxTokens >= 256 && userMaxTokens <= 32000)
+              ? userMaxTokens
+              : getMaxTokensForComplexity(queryComplexity.complexity);
             // Lower temp for complex/analytical queries = more focused, precise answers
             // Higher temp for creative/writing queries = more varied, interesting output
             const isCreativeIntent = intentResult?.intent === "writing" || intentResult?.intent === "creative";

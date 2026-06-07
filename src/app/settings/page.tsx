@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useUser, UserButton } from "@clerk/nextjs";
-import { Key, Plus, Trash2, Power, PowerOff, ArrowLeft, Copy, Check, Zap, AlertTriangle, Brain, FileText } from "lucide-react";
+import { Key, Plus, Trash2, Power, PowerOff, ArrowLeft, Copy, Check, Zap, AlertTriangle, Brain, FileText, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 
 interface ApiKey {
@@ -13,7 +13,7 @@ interface ApiKey {
     created_at: string;
 }
 
-type Tab = "openrouter" | "groq" | "danger";
+type Tab = "openrouter" | "groq" | "response" | "danger";
 
 // ── Moved outside component to prevent remount on every keystroke ──
 const AddModal = ({
@@ -66,6 +66,28 @@ const AddModal = ({
 export default function SettingsPage() {
     const { user } = useUser();
     const [activeTab, setActiveTab] = useState<Tab>("openrouter");
+
+    // Token limit state — loaded from localStorage
+    const [tokenLimit, setTokenLimit] = useState<number>(4096);
+    const [tokenSaved, setTokenSaved] = useState(false);
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem("kacha_max_tokens");
+            if (saved) {
+                const parsed = parseInt(saved);
+                if (!isNaN(parsed) && parsed >= 256 && parsed <= 32000) setTokenLimit(parsed);
+            }
+        } catch { }
+    }, []);
+
+    const handleSaveTokenLimit = () => {
+        try {
+            localStorage.setItem("kacha_max_tokens", String(tokenLimit));
+            setTokenSaved(true);
+            setTimeout(() => setTokenSaved(false), 2000);
+        } catch { }
+    };
 
     // OpenRouter state
     const [orKeys, setOrKeys] = useState<ApiKey[]>([]);
@@ -290,23 +312,25 @@ export default function SettingsPage() {
             <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
 
                 {/* Tabs */}
-                <div className="flex gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06] mb-8 w-fit">
+                <div className="flex gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06] mb-8 w-fit flex-wrap">
                     {([
                         { id: "openrouter", label: "OpenRouter", icon: <Key size={13} />, color: "text-amber-400" },
                         { id: "groq", label: "Groq", icon: <Zap size={13} />, color: "text-purple-400" },
+                        { id: "response", label: "Response", icon: <SlidersHorizontal size={13} />, color: "text-sky-400" },
                         { id: "danger", label: "Data", icon: <AlertTriangle size={13} />, color: "text-red-400" },
                     ] as { id: Tab; label: string; icon: React.ReactNode; color: string }[]).map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === tab.id
+                            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                                activeTab === tab.id
                                 ? "bg-white/10 text-white"
                                 : "text-neutral-500 hover:text-neutral-300"
-                                }`}
+                            }`}
                         >
                             <span className={activeTab === tab.id ? tab.color : ""}>{tab.icon}</span>
                             {tab.label}
-                            {tab.id !== "danger" && (
+                            {(tab.id === "openrouter" || tab.id === "groq") && (
                                 <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === tab.id ? "bg-white/10" : "bg-white/5"}`}>
                                     {tab.id === "openrouter" ? orKeys.filter(k => k.is_active).length : groqKeys.filter(k => k.is_active).length}
                                 </span>
@@ -444,7 +468,106 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_groq_keys_unique ON groq_keys(user_id, api
                     </div>
                 )}
 
-                {/* ── Danger Zone Tab ── */}
+                {/* ── Response Tab ── */}
+                {activeTab === "response" && (
+                    <div>
+                        {/* Info card */}
+                        <div className="mb-6 p-5 rounded-2xl bg-sky-500/5 border border-sky-500/15">
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 rounded-lg bg-sky-500/10 mt-0.5"><SlidersHorizontal size={16} className="text-sky-400" /></div>
+                                <div>
+                                    <h2 className="font-bold text-sky-400 mb-1">Response Token Limit</h2>
+                                    <p className="text-xs text-neutral-400 leading-relaxed">
+                                        Token limit controls how long the AI response can be. More tokens = longer, more complete responses — but slightly slower.
+                                        <br /><span className="text-neutral-500 mt-1 block">1 token ≈ 0.75 words. A full page ≈ 500 tokens.</span>
+                                    </p>
+                                    <div className="flex gap-2 mt-2.5">
+                                        <span className="px-2 py-1 rounded-lg bg-white/5 text-[11px] text-neutral-400">Current: <strong className="text-sky-400">{tokenLimit.toLocaleString()} tokens</strong></span>
+                                        <span className="px-2 py-1 rounded-lg bg-white/5 text-[11px] text-neutral-400">≈ {Math.round(tokenLimit * 0.75).toLocaleString()} words</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Slider */}
+                        <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.06] mb-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <label className="text-sm font-bold">Max Output Tokens</label>
+                                <span className="text-lg font-black text-sky-400 tabular-nums">{tokenLimit.toLocaleString()}</span>
+                            </div>
+
+                            <input
+                                type="range"
+                                min={256}
+                                max={32000}
+                                step={256}
+                                value={tokenLimit}
+                                onChange={e => setTokenLimit(Number(e.target.value))}
+                                className="w-full h-2 rounded-full appearance-none cursor-pointer accent-sky-400 bg-white/10"
+                                style={{ accentColor: "#38bdf8" }}
+                            />
+
+                            <div className="flex justify-between text-[10px] text-neutral-600 mt-1.5">
+                                <span>256</span>
+                                <span>8K</span>
+                                <span>16K</span>
+                                <span>32K</span>
+                            </div>
+
+                            {/* Quick presets */}
+                            <div className="flex flex-wrap gap-2 mt-5">
+                                {[
+                                    { label: "Short", value: 1024, desc: "Quick answers", color: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20" },
+                                    { label: "Medium", value: 4096, desc: "Standard (default)", color: "bg-sky-500/10 border-sky-500/20 text-sky-400 hover:bg-sky-500/20" },
+                                    { label: "Long", value: 8192, desc: "Full reports", color: "bg-violet-500/10 border-violet-500/20 text-violet-400 hover:bg-violet-500/20" },
+                                    { label: "Maximum", value: 16000, desc: "Huge outputs", color: "bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20" },
+                                ].map(preset => (
+                                    <button
+                                        key={preset.value}
+                                        onClick={() => setTokenLimit(preset.value)}
+                                        className={`flex flex-col items-start px-3 py-2 rounded-xl border transition-all text-left ${
+                                            tokenLimit === preset.value ? preset.color + " ring-1 ring-current" : "bg-white/5 border-white/10 text-neutral-400 hover:border-white/20"
+                                        }`}
+                                    >
+                                        <span className="text-xs font-black">{preset.label}</span>
+                                        <span className="text-[10px] opacity-70">{preset.value.toLocaleString()} · {preset.desc}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* What does this mean */}
+                        <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] mb-6">
+                            <h3 className="font-bold text-sm mb-3">What do these limits mean?</h3>
+                            <div className="space-y-2">
+                                {[
+                                    { range: "256–1K", use: "Greetings, one-liners, quick facts", color: "text-emerald-400" },
+                                    { range: "1K–4K", use: "Short explanations, brief plans, summaries", color: "text-sky-400" },
+                                    { range: "4K–8K", use: "Full business plans, complete code, detailed analysis", color: "text-violet-400" },
+                                    { range: "8K–16K", use: "Long research reports, full documents, extensive strategies", color: "text-amber-400" },
+                                    { range: "16K–32K", use: "Maximum output — very long content, may be slower", color: "text-red-400" },
+                                ].map(row => (
+                                    <div key={row.range} className="flex items-start gap-3">
+                                        <code className={`text-[11px] font-bold w-20 shrink-0 ${row.color}`}>{row.range}</code>
+                                        <span className="text-xs text-neutral-500">{row.use}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={handleSaveTokenLimit}
+                            className={`w-full py-3 rounded-xl font-black text-sm transition-all ${
+                                tokenSaved
+                                    ? "bg-emerald-500 text-white"
+                                    : "bg-sky-500 hover:bg-sky-400 text-white"
+                            }`}
+                        >
+                            {tokenSaved ? "✅ Saved!" : "Save Token Limit"}
+                        </button>
+                    </div>
+                )}
+
                 {activeTab === "danger" && (
                     <div className="space-y-4">
                         <div className="p-4 rounded-2xl bg-red-500/5 border border-red-500/20 mb-6">

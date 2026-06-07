@@ -136,10 +136,10 @@ export function analyzeQueryComplexity(
  */
 export function getMaxTokensForComplexity(complexity: QueryComplexity): number {
     switch (complexity) {
-        case "simple": return 600;    // was 400 — enough for a proper short answer
-        case "medium": return 2500;   // was 1500 — room for full structured response
-        case "complex": return 5000;  // was 3000 — full reports, full code, no cutoffs
-        case "vision": return 3000;   // was 2000 — detailed image analysis
-        default: return 2500;
+        case "simple": return 1024;   // short answers with a bit of room
+        case "medium": return 4096;   // full structured responses without cutoff
+        case "complex": return 8192;  // full reports, full code, full strategies
+        case "vision": return 4096;   // detailed image analysis
+        default: return 4096;
     }
 }

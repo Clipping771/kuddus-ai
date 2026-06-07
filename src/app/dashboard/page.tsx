@@ -2612,6 +2612,7 @@ export default function Dashboard() {
           boardSize: boardSize,
           customInstructions: customAgent ? customAgent.instructions : undefined,
           enableAutoRouting: enableAutoRouting,
+          userMaxTokens: (() => { try { const v = parseInt(localStorage.getItem("kacha_max_tokens") || ""); return isNaN(v) ? undefined : v; } catch { return undefined; } })(),
         }),
       });
 
@@ -2740,6 +2741,7 @@ export default function Dashboard() {
           boardSize: boardSize,
           customInstructions: customAgent ? customAgent.instructions : undefined,
           enableAutoRouting: enableAutoRouting,
+          userMaxTokens: (() => { try { const v = parseInt(localStorage.getItem("kacha_max_tokens") || ""); return isNaN(v) ? undefined : v; } catch { return undefined; } })(),
         }),
       });
 
