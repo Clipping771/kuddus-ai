@@ -2469,61 +2469,70 @@ export default function Dashboard() {
 
         // 2. Markdown tables — must run BEFORE newline→<br/> conversion
         const tableBlocks: string[] = [];
-        cleanContent = cleanContent.replace(
-          /(?:^|\n)((?:\|.*?\|\r?(?:\n|$))+)/g,
-          (_match, tableContent) => {
-            const rows = tableContent.trim().split(/\r?\n/).filter((r: string) => r.trim().startsWith("|"));
-            if (rows.length < 2) return _match;
-
-            const isSeparator = (row: string) => /^\|[\s\-:|]+\|$/.test(row.trim().replace(/[^|:\-\s]/g, ""));
-            const parseRow = (row: string) =>
-              row.trim().replace(/^\||\|$/g, "").split("|").map(cell => cell.trim());
-
-            // html2canvas table width calculation bug workaround: force explicit pixel widths!
-            const headerCells = parseRow(rows[0]);
-            const totalCols = headerCells.length || 1;
-            const availableWidthPx = 712; // 794 container - 48 padding
-            const cellWidthPx = Math.floor(availableWidthPx / totalCols);
-
-            // Use standard table with explicit pixel widths. This avoids html2canvas float collapsing bugs
-            // while also avoiding html2canvas percentage-width border-collapse bugs.
-            let html = `<table cellpadding="8" cellspacing="0" style="margin:16px 0; width:${availableWidthPx}px; table-layout:fixed; border-collapse:collapse; font-size:12px; background-color:#ffffff; border:1px solid #d1d5db;">`;
-            let headerDone = false;
-            let tbodyOpen = false;
-
-            for (let i = 0; i < rows.length; i++) {
-              if (isSeparator(rows[i])) continue; // skip separator row
-              const cells = parseRow(rows[i]);
-              
-              const isHeader = !headerDone && (i === 0 || (i === 1 && isSeparator(rows[0])));
-              if (isHeader) {
-                headerDone = true;
-                html += `<thead><tr style="background-color:#e11d48; color:#ffffff;">`;
-              } else {
-                if (!tbodyOpen) {
-                  html += (headerDone ? `</thead>` : '') + `<tbody>`;
-                  tbodyOpen = true;
-                }
-                const rowBg = (i % 2 === 0) ? "#f9fafb" : "#ffffff";
-                html += `<tr style="background-color:${rowBg}; color:#111111;">`;
-              }
-
-              const tag = isHeader ? "th" : "td";
-              const weight = isHeader ? "bold" : "normal";
-              const align = "left";
-              
-              html += cells.map(c => `<${tag} style="width:${cellWidthPx}px; padding:8px; border:1px solid #d1d5db; font-weight:${weight}; text-align:${align}; vertical-align:top; word-break:break-word;">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</${tag}>`).join("");
-              html += `</tr>`;
+        // Split into lines, find table blocks, convert them
+        const lines = cleanContent.split(/\r?\n/);
+        const processedLines: string[] = [];
+        let i = 0;
+        while (i < lines.length) {
+          const line = lines[i];
+          // Detect start of a markdown table (line starts with |)
+          if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
+            // Collect all consecutive table lines
+            const tableLines: string[] = [];
+            while (i < lines.length && lines[i].trim().startsWith("|")) {
+              tableLines.push(lines[i]);
+              i++;
             }
-            if (tbodyOpen) html += `</tbody>`;
-            else if (headerDone) html += `</thead>`;
-            html += `</table>`;
-            
-            const placeholder = `%%TABLEBLOCK${tableBlocks.length}%%`;
-            tableBlocks.push(html);
-            return _match.replace(tableContent, `\n${placeholder}\n`);
+            if (tableLines.length >= 2) {
+              const isSeparator = (row: string) => /^\|[\s\-:|]+\|$/.test(row.replace(/[^|:\-\s]/g, "").trim());
+              const parseRow = (row: string) =>
+                row.trim().replace(/^\||\|$/g, "").split("|").map(cell => cell.trim());
+
+              const headerCells = parseRow(tableLines[0]);
+              const totalCols = headerCells.length || 1;
+              const availableWidthPx = 712;
+              const cellWidthPx = Math.floor(availableWidthPx / totalCols);
+
+              let html = `<table cellpadding="8" cellspacing="0" style="margin:16px 0; width:${availableWidthPx}px; table-layout:fixed; border-collapse:collapse; font-size:12px; background-color:#ffffff; border:1px solid #d1d5db;">`;
+              let headerDone = false;
+              let tbodyOpen = false;
+
+              for (let j = 0; j < tableLines.length; j++) {
+                if (isSeparator(tableLines[j])) continue;
+                const cells = parseRow(tableLines[j]);
+                const isHeader = !headerDone;
+                if (isHeader) {
+                  headerDone = true;
+                  html += `<thead><tr style="background-color:#e11d48; color:#ffffff;">`;
+                } else {
+                  if (!tbodyOpen) {
+                    html += `</thead><tbody>`;
+                    tbodyOpen = true;
+                  }
+                  const rowBg = (j % 2 === 0) ? "#f9fafb" : "#ffffff";
+                  html += `<tr style="background-color:${rowBg}; color:#111111;">`;
+                }
+                const tag = isHeader ? "th" : "td";
+                const weight = isHeader ? "bold" : "normal";
+                html += cells.map(c => `<${tag} style="width:${cellWidthPx}px; padding:8px; border:1px solid #d1d5db; font-weight:${weight}; text-align:left; vertical-align:top; word-break:break-word;">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</${tag}>`).join("");
+                html += `</tr>`;
+              }
+              if (tbodyOpen) html += `</tbody>`;
+              else if (headerDone) html += `</thead>`;
+              html += `</table>`;
+
+              const placeholder = `%%TABLEBLOCK${tableBlocks.length}%%`;
+              tableBlocks.push(html);
+              processedLines.push(placeholder);
+            } else {
+              processedLines.push(...tableLines);
+            }
+          } else {
+            processedLines.push(line);
+            i++;
           }
-        );
+        }
+        cleanContent = processedLines.join("\n");
 
         // 3. Headings, bold, italic
         cleanContent = cleanContent
