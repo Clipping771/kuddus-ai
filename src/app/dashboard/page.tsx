@@ -2406,9 +2406,9 @@ export default function Dashboard() {
     fetchMessages();
   }, [activeChatId, chats]);
 
-  // 📥 Export Conversation as PDF — clones the live rendered DOM so tables/Bengali text are captured perfectly
+  // 📥 Export Conversation as PDF — Manual DOM builder approach for reliable text and layout
   const handleExportChat = async () => {
-    if (messages.length === 0 || !pdfExportRef.current) return;
+    if (messages.length === 0) return;
 
     try {
       const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
