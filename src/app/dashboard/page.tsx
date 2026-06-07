@@ -2478,7 +2478,8 @@ export default function Dashboard() {
             const parseRow = (row: string) =>
               row.trim().replace(/^\||\|$/g, "").split("|").map(cell => cell.trim());
 
-            let html = `<div style="margin:12px 0;width:100%;overflow:hidden;"><table style="border-collapse:collapse;width:100%;font-size:12px;table-layout:fixed;word-break:break-word;">`;
+            // Use extremely simple standard HTML tables. html2canvas has known bugs with border-collapse and overflow:hidden
+            let html = `<table width="100%" cellpadding="8" cellspacing="0" style="margin:16px 0; width:100%; font-size:12px; border:1px solid #d1d5db; background-color:#ffffff; position:relative;">`;
             let headerDone = false;
             let tbodyOpen = false;
 
@@ -2489,27 +2490,25 @@ export default function Dashboard() {
               const isHeader = !headerDone && (i === 0 || (i === 1 && isSeparator(rows[0])));
               if (isHeader) {
                 headerDone = true;
-                html += `<thead><tr>`;
+                html += `<thead><tr style="background-color:#e11d48; color:#ffffff;">`;
               } else {
                 if (!tbodyOpen) {
                   html += (headerDone ? `</thead>` : '') + `<tbody>`;
                   tbodyOpen = true;
                 }
-                const rowBg = (i % 2 === 0) ? "background:#f9fafb;" : "background:#ffffff;";
-                html += `<tr style="${rowBg}">`;
+                const rowBg = (i % 2 === 0) ? "#f9fafb" : "#ffffff";
+                html += `<tr style="background-color:${rowBg}; color:#111111;">`;
               }
 
               const tag = isHeader ? "th" : "td";
-              const cellStyle = isHeader
-                ? "background:#e11d48;color:#fff;font-weight:700;padding:8px;border:1px solid #d1d5db;text-align:left;"
-                : "padding:8px;border:1px solid #e5e7eb;color:#1f2937;";
+              const weight = isHeader ? "bold" : "normal";
               
-              html += cells.map(c => `<${tag} style="${cellStyle}">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</${tag}>`).join("");
+              html += cells.map(c => `<${tag} style="padding:8px; border:1px solid #d1d5db; font-weight:${weight}; text-align:left; vertical-align:top;">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</${tag}>`).join("");
               html += `</tr>`;
             }
             if (tbodyOpen) html += `</tbody>`;
             else if (headerDone) html += `</thead>`;
-            html += `</table></div>`;
+            html += `</table>`;
             
             const placeholder = `%%TABLEBLOCK${tableBlocks.length}%%`;
             tableBlocks.push(html);
