@@ -2478,8 +2478,8 @@ export default function Dashboard() {
             const parseRow = (row: string) =>
               row.trim().replace(/^\||\|$/g, "").split("|").map(cell => cell.trim());
 
-            // Use flexbox based table to completely bypass html2canvas <table> rendering bugs (empty paint issue)
-            let html = `<div style="margin:16px 0; width:100%; border-top:1px solid #d1d5db; border-left:1px solid #d1d5db; font-size:12px; background-color:#ffffff; display:flex; flex-direction:column; box-sizing:border-box;">`;
+            // Use robust float-based grid to completely bypass html2canvas <table> and <flexbox> rendering bugs off-screen
+            let html = `<div style="margin:16px 0; width:100%; border-top:1px solid #d1d5db; border-left:1px solid #d1d5db; font-size:12px; background-color:#ffffff; box-sizing:border-box;">`;
             let headerDone = false;
 
             for (let i = 0; i < rows.length; i++) {
@@ -2493,12 +2493,12 @@ export default function Dashboard() {
               const color = isHeader ? "#ffffff" : "#111111";
               const weight = isHeader ? "bold" : "normal";
 
-              html += `<div style="display:flex; flex-direction:row; width:100%; background-color:${rowBg}; color:${color}; box-sizing:border-box;">`;
+              html += `<div style="width:100%; clear:both; background-color:${rowBg}; color:${color}; box-sizing:border-box;">`;
               
               const cellWidth = (100 / (cells.length || 1)).toFixed(2) + "%";
               
-              html += cells.map(c => `<div style="flex:1; width:${cellWidth}; padding:8px 10px; border-bottom:1px solid #d1d5db; border-right:1px solid #d1d5db; font-weight:${weight}; text-align:left; word-break:break-word; box-sizing:border-box;">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</div>`).join("");
-              html += `</div>`;
+              html += cells.map(c => `<div style="float:left; width:${cellWidth}; padding:8px 10px; border-bottom:1px solid #d1d5db; border-right:1px solid #d1d5db; font-weight:${weight}; text-align:left; word-break:break-word; box-sizing:border-box;">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</div>`).join("");
+              html += `<div style="clear:both;"></div></div>`;
             }
             html += `</div>`;
             
@@ -2519,10 +2519,10 @@ export default function Dashboard() {
 
         // 5. Restore code blocks and tables
         codeBlocks.forEach((block, i) => {
-          cleanContent = cleanContent.replace(`%%CODEBLOCK${i}%%`, block);
+          cleanContent = cleanContent.replace(`%%CODEBLOCK${i}%%`, () => block);
         });
         tableBlocks.forEach((block, i) => {
-          cleanContent = cleanContent.replace(`%%TABLEBLOCK${i}%%`, block);
+          cleanContent = cleanContent.replace(`%%TABLEBLOCK${i}%%`, () => block);
         });
 
         const msgBlock = document.createElement("div");
