@@ -2454,14 +2454,61 @@ export default function Dashboard() {
           .replace(/__[A-Z_]+__:[^\n]*/g, "")
           .trim();
 
-        // Convert markdown to HTML
+        // ── Convert markdown to HTML ──
+
+        // 1. Code blocks first (protect from other replacements)
+        const codeBlocks: string[] = [];
+        cleanContent = cleanContent.replace(/```([\s\S]*?)```/g, (_m, code) => {
+          const placeholder = `%%CODEBLOCK${codeBlocks.length}%%`;
+          codeBlocks.push(`<pre style="background:#f4f4f4;border:1px solid #ddd;border-radius:6px;padding:10px;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:8px 0;">${code.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`);
+          return placeholder;
+        });
+
+        // 2. Markdown tables — must run BEFORE newline→<br/> conversion
+        cleanContent = cleanContent.replace(
+          /((?:\|.+\|\r?\n)+)/g,
+          (tableBlock) => {
+            const rows = tableBlock.trim().split(/\r?\n/).filter(r => r.trim().startsWith("|"));
+            if (rows.length < 2) return tableBlock;
+
+            const isSeparator = (row: string) => /^\|[\s\-:|]+\|$/.test(row.trim().replace(/[^|:\-\s]/g, ""));
+            const parseRow = (row: string) =>
+              row.trim().replace(/^\||\|$/g, "").split("|").map(cell => cell.trim());
+
+            let html = `<table style="border-collapse:collapse;width:100%;margin:10px 0;font-size:12px;">`;
+            let headerDone = false;
+
+            for (let i = 0; i < rows.length; i++) {
+              if (isSeparator(rows[i])) continue; // skip separator row
+              const cells = parseRow(rows[i]);
+              // First non-separator row = header (th), rest = body (td)
+              const isHeader = !headerDone && (i === 0 || (i === 1 && isSeparator(rows[0])));
+              if (isHeader) headerDone = true;
+              const tag = isHeader ? "th" : "td";
+              const cellStyle = isHeader
+                ? "background:#e11d48;color:#fff;font-weight:700;padding:6px 10px;border:1px solid #ccc;text-align:left;"
+                : "padding:5px 10px;border:1px solid #ddd;color:#1f2937;";
+              const rowBg = !isHeader && (i % 2 === 0) ? "background:#f9fafb;" : "";
+              html += `<tr style="${rowBg}">${cells.map(c => `<${tag} style="${cellStyle}">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</${tag}>`).join("")}</tr>`;
+            }
+            html += `</table>`;
+            return html;
+          }
+        );
+
+        // 3. Headings, bold, italic
         cleanContent = cleanContent
-          .replace(/```([\s\S]*?)```/g, (_m, code) =>
-            `<pre style="background:#f4f4f4;border:1px solid #ddd;border-radius:6px;padding:10px;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:6px 0;">${code.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`)
-          .replace(/#{1,6}\s+(.+)/g, "<strong>$1</strong>")
+          .replace(/#{1,6}\s+(.+)/g, "<strong style='font-size:14px;'>$1</strong>")
           .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-          .replace(/\*(.+?)\*/g, "<em>$1</em>")
-          .replace(/\n/g, "<br/>");
+          .replace(/\*(.+?)\*/g, "<em>$1</em>");
+
+        // 4. Newlines → <br/> (skip lines inside tables — already converted)
+        cleanContent = cleanContent.replace(/\n/g, "<br/>");
+
+        // 5. Restore code blocks
+        codeBlocks.forEach((block, i) => {
+          cleanContent = cleanContent.replace(`%%CODEBLOCK${i}%%`, block);
+        });
 
         const msgBlock = document.createElement("div");
         msgBlock.style.cssText = "margin-bottom:18px;border-bottom:1px solid #e5e7eb;padding-bottom:14px;";
