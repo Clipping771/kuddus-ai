@@ -2475,27 +2475,39 @@ export default function Dashboard() {
         let i = 0;
         while (i < lines.length) {
           const line = lines[i];
-          // Detect start of a markdown table (line starts with |)
-          if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
+          const trimmed = line.trim();
+          // Detect start of a markdown table — line must contain at least one | and start with |
+          if (trimmed.startsWith("|") && trimmed.includes("|", 1)) {
             // Collect all consecutive table lines
             const tableLines: string[] = [];
             while (i < lines.length && lines[i].trim().startsWith("|")) {
               tableLines.push(lines[i]);
               i++;
             }
+            // Need at least 2 rows (header + separator or header + data)
             if (tableLines.length >= 2) {
-              const isSeparator = (row: string) => /^\|[\s\-:|]+\|$/.test(row.replace(/[^|:\-\s]/g, "").trim());
+              const isSeparator = (row: string) => {
+                const cells = row.trim().replace(/^\||\|$/g, "").split("|");
+                return cells.every(c => /^[\s\-:|]+$/.test(c));
+              };
               const parseRow = (row: string) =>
                 row.trim().replace(/^\||\|$/g, "").split("|").map(cell => cell.trim());
 
-              const headerCells = parseRow(tableLines[0]);
-              const totalCols = headerCells.length || 1;
+              const nonSepRows = tableLines.filter(r => !isSeparator(r));
+              if (nonSepRows.length === 0) {
+                processedLines.push(...tableLines);
+                continue;
+              }
+
+              const headerCells = parseRow(nonSepRows[0]);
+              const totalCols = Math.max(headerCells.length, 1);
               const availableWidthPx = 712;
               const cellWidthPx = Math.floor(availableWidthPx / totalCols);
 
               let html = `<table cellpadding="8" cellspacing="0" style="margin:16px 0; width:${availableWidthPx}px; table-layout:fixed; border-collapse:collapse; font-size:12px; background-color:#ffffff; border:1px solid #d1d5db;">`;
               let headerDone = false;
               let tbodyOpen = false;
+              let rowIdx = 0;
 
               for (let j = 0; j < tableLines.length; j++) {
                 if (isSeparator(tableLines[j])) continue;
@@ -2509,12 +2521,18 @@ export default function Dashboard() {
                     html += `</thead><tbody>`;
                     tbodyOpen = true;
                   }
-                  const rowBg = (j % 2 === 0) ? "#f9fafb" : "#ffffff";
+                  const rowBg = (rowIdx % 2 === 0) ? "#f9fafb" : "#ffffff";
+                  rowIdx++;
                   html += `<tr style="background-color:${rowBg}; color:#111111;">`;
                 }
                 const tag = isHeader ? "th" : "td";
                 const weight = isHeader ? "bold" : "normal";
-                html += cells.map(c => `<${tag} style="width:${cellWidthPx}px; padding:8px; border:1px solid #d1d5db; font-weight:${weight}; text-align:left; vertical-align:top; word-break:break-word;">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</${tag}>`).join("");
+                // Pad cells to match header column count
+                const paddedCells = [...cells];
+                while (paddedCells.length < totalCols) paddedCells.push("");
+                html += paddedCells.slice(0, totalCols).map(c =>
+                  `<${tag} style="width:${cellWidthPx}px; padding:8px; border:1px solid #d1d5db; font-weight:${weight}; text-align:left; vertical-align:top; word-break:break-word;">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</${tag}>`
+                ).join("");
                 html += `</tr>`;
               }
               if (tbodyOpen) html += `</tbody>`;
@@ -2544,12 +2562,73 @@ export default function Dashboard() {
         cleanContent = cleanContent.replace(/\n/g, "<br/>");
 
         // 5. Restore code blocks and tables
-        codeBlocks.forEach((block, i) => {
-          cleanContent = cleanContent.replace(`%%CODEBLOCK${i}%%`, () => block);
+        codeBlocks.forEach((block, idx) => {
+          cleanContent = cleanContent.replace(`%%CODEBLOCK${idx}%%`, () => block);
         });
-        tableBlocks.forEach((block, i) => {
-          cleanContent = cleanContent.replace(`%%TABLEBLOCK${i}%%`, () => block);
+        tableBlocks.forEach((block, idx) => {
+          cleanContent = cleanContent.replace(`%%TABLEBLOCK${idx}%%`, () => block);
         });
+
+        // 6. Fallback: detect tables that survived as pipe-separated <br/> lines
+        // This catches cases where the content had non-standard line endings
+        if (tableBlocks.length === 0 && cleanContent.includes("|")) {
+          // Split by <br/> and look for | rows
+          const brLines = cleanContent.split(/<br\s*\/?>/i);
+          const fbProcessed: string[] = [];
+          let bi = 0;
+          while (bi < brLines.length) {
+            const bLine = brLines[bi].trim();
+            if (bLine.startsWith("|") && bLine.includes("|", 1)) {
+              const tLines: string[] = [];
+              while (bi < brLines.length && brLines[bi].trim().startsWith("|")) {
+                tLines.push(brLines[bi].trim());
+                bi++;
+              }
+              if (tLines.length >= 2) {
+                const isSep = (r: string) => {
+                  const cells = r.replace(/^\||\|$/g, "").split("|");
+                  return cells.every(c => /^[\s\-:|]+$/.test(c));
+                };
+                const parseR = (r: string) => r.replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+                const nonSep = tLines.filter(r => !isSep(r));
+                if (nonSep.length > 0) {
+                  const hCells = parseR(nonSep[0]);
+                  const nCols = Math.max(hCells.length, 1);
+                  const colW = Math.floor(712 / nCols);
+                  let thtml = `<table cellpadding="8" cellspacing="0" style="margin:16px 0;width:712px;table-layout:fixed;border-collapse:collapse;font-size:12px;background:#fff;border:1px solid #d1d5db;">`;
+                  let hDone = false; let tbOpen = false; let rIdx = 0;
+                  for (const tl of tLines) {
+                    if (isSep(tl)) continue;
+                    const cells = parseR(tl);
+                    if (!hDone) {
+                      hDone = true;
+                      thtml += `<thead><tr style="background:#e11d48;color:#fff;">`;
+                    } else {
+                      if (!tbOpen) { thtml += `</thead><tbody>`; tbOpen = true; }
+                      thtml += `<tr style="background:${rIdx++ % 2 === 0 ? "#f9fafb" : "#fff"};color:#111;">`;
+                    }
+                    const tag = !tbOpen ? "th" : "td";
+                    const fw = !tbOpen ? "bold" : "normal";
+                    const padded = [...cells];
+                    while (padded.length < nCols) padded.push("");
+                    thtml += padded.slice(0, nCols).map(c =>
+                      `<${tag} style="width:${colW}px;padding:8px;border:1px solid #d1d5db;font-weight:${fw};text-align:left;vertical-align:top;word-break:break-word;">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</${tag}>`
+                    ).join("") + `</tr>`;
+                  }
+                  if (tbOpen) thtml += `</tbody>`; else if (hDone) thtml += `</thead>`;
+                  thtml += `</table>`;
+                  fbProcessed.push(thtml);
+                  continue;
+                }
+              }
+              fbProcessed.push(...tLines.map(l => l + "<br/>"));
+            } else {
+              fbProcessed.push(brLines[bi]);
+              bi++;
+            }
+          }
+          cleanContent = fbProcessed.join("<br/>");
+        }
 
         const msgBlock = document.createElement("div");
         msgBlock.style.cssText = "margin-bottom:18px;border-bottom:1px solid #e5e7eb;padding-bottom:14px;";
