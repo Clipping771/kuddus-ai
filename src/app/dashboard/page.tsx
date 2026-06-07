@@ -2485,27 +2485,39 @@ export default function Dashboard() {
             const availableWidthPx = 712; // 794 container - 48 padding
             const cellWidthPx = Math.floor(availableWidthPx / totalCols);
 
-            // Use simple float layout with explicit widths
-            let html = `<div style="margin:16px 0; width:${availableWidthPx}px; border-top:1px solid #d1d5db; border-left:1px solid #d1d5db; font-size:12px; background-color:#ffffff; box-sizing:border-box;">`;
+            // Use standard table with explicit pixel widths. This avoids html2canvas float collapsing bugs
+            // while also avoiding html2canvas percentage-width border-collapse bugs.
+            let html = `<table cellpadding="8" cellspacing="0" style="margin:16px 0; width:${availableWidthPx}px; table-layout:fixed; border-collapse:collapse; font-size:12px; background-color:#ffffff; border:1px solid #d1d5db;">`;
             let headerDone = false;
+            let tbodyOpen = false;
 
             for (let i = 0; i < rows.length; i++) {
               if (isSeparator(rows[i])) continue; // skip separator row
               const cells = parseRow(rows[i]);
               
               const isHeader = !headerDone && (i === 0 || (i === 1 && isSeparator(rows[0])));
-              if (isHeader) headerDone = true;
+              if (isHeader) {
+                headerDone = true;
+                html += `<thead><tr style="background-color:#e11d48; color:#ffffff;">`;
+              } else {
+                if (!tbodyOpen) {
+                  html += (headerDone ? `</thead>` : '') + `<tbody>`;
+                  tbodyOpen = true;
+                }
+                const rowBg = (i % 2 === 0) ? "#f9fafb" : "#ffffff";
+                html += `<tr style="background-color:${rowBg}; color:#111111;">`;
+              }
 
-              const rowBg = isHeader ? "#e11d48" : (i % 2 === 0 ? "#f9fafb" : "#ffffff");
-              const color = isHeader ? "#ffffff" : "#111111";
+              const tag = isHeader ? "th" : "td";
               const weight = isHeader ? "bold" : "normal";
-
-              html += `<div style="width:100%; clear:both; background-color:${rowBg}; color:${color}; box-sizing:border-box;">`;
+              const align = "left";
               
-              html += cells.map(c => `<div style="float:left; width:${cellWidthPx}px; padding:8px 10px; border-bottom:1px solid #d1d5db; border-right:1px solid #d1d5db; font-weight:${weight}; text-align:left; word-break:break-word; box-sizing:border-box;">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</div>`).join("");
-              html += `<div style="clear:both;"></div></div>`;
+              html += cells.map(c => `<${tag} style="width:${cellWidthPx}px; padding:8px; border:1px solid #d1d5db; font-weight:${weight}; text-align:${align}; vertical-align:top; word-break:break-word;">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</${tag}>`).join("");
+              html += `</tr>`;
             }
-            html += `</div>`;
+            if (tbodyOpen) html += `</tbody>`;
+            else if (headerDone) html += `</thead>`;
+            html += `</table>`;
             
             const placeholder = `%%TABLEBLOCK${tableBlocks.length}%%`;
             tableBlocks.push(html);
