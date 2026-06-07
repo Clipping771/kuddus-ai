@@ -2471,7 +2471,7 @@ export default function Dashboard() {
         cleanContent = cleanContent.replace(
           /(?:^|\n)((?:\|.*?\|\r?(?:\n|$))+)/g,
           (_match, tableContent) => {
-            const rows = tableContent.trim().split(/\r?\n/).filter(r => r.trim().startsWith("|"));
+            const rows = tableContent.trim().split(/\r?\n/).filter((r: string) => r.trim().startsWith("|"));
             if (rows.length < 2) return _match;
 
             const isSeparator = (row: string) => /^\|[\s\-:|]+\|$/.test(row.trim().replace(/[^|:\-\s]/g, ""));
