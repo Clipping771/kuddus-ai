@@ -2467,34 +2467,53 @@ export default function Dashboard() {
         });
 
         // 2. Markdown tables — must run BEFORE newline→<br/> conversion
+        const tableBlocks: string[] = [];
         cleanContent = cleanContent.replace(
-          /((?:\|.+\|\r?\n)+)/g,
-          (tableBlock) => {
-            const rows = tableBlock.trim().split(/\r?\n/).filter(r => r.trim().startsWith("|"));
-            if (rows.length < 2) return tableBlock;
+          /(?:^|\n)((?:\|.*?\|\r?(?:\n|$))+)/g,
+          (_match, tableContent) => {
+            const rows = tableContent.trim().split(/\r?\n/).filter(r => r.trim().startsWith("|"));
+            if (rows.length < 2) return _match;
 
             const isSeparator = (row: string) => /^\|[\s\-:|]+\|$/.test(row.trim().replace(/[^|:\-\s]/g, ""));
             const parseRow = (row: string) =>
               row.trim().replace(/^\||\|$/g, "").split("|").map(cell => cell.trim());
 
-            let html = `<table style="border-collapse:collapse;width:100%;margin:10px 0;font-size:12px;">`;
+            let html = `<div style="margin:12px 0;width:100%;overflow:hidden;"><table style="border-collapse:collapse;width:100%;font-size:12px;table-layout:fixed;word-break:break-word;">`;
             let headerDone = false;
+            let tbodyOpen = false;
 
             for (let i = 0; i < rows.length; i++) {
               if (isSeparator(rows[i])) continue; // skip separator row
               const cells = parseRow(rows[i]);
-              // First non-separator row = header (th), rest = body (td)
+              
               const isHeader = !headerDone && (i === 0 || (i === 1 && isSeparator(rows[0])));
-              if (isHeader) headerDone = true;
+              if (isHeader) {
+                headerDone = true;
+                html += `<thead><tr>`;
+              } else {
+                if (!tbodyOpen) {
+                  html += (headerDone ? `</thead>` : '') + `<tbody>`;
+                  tbodyOpen = true;
+                }
+                const rowBg = (i % 2 === 0) ? "background:#f9fafb;" : "background:#ffffff;";
+                html += `<tr style="${rowBg}">`;
+              }
+
               const tag = isHeader ? "th" : "td";
               const cellStyle = isHeader
-                ? "background:#e11d48;color:#fff;font-weight:700;padding:6px 10px;border:1px solid #ccc;text-align:left;"
-                : "padding:5px 10px;border:1px solid #ddd;color:#1f2937;";
-              const rowBg = !isHeader && (i % 2 === 0) ? "background:#f9fafb;" : "";
-              html += `<tr style="${rowBg}">${cells.map(c => `<${tag} style="${cellStyle}">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</${tag}>`).join("")}</tr>`;
+                ? "background:#e11d48;color:#fff;font-weight:700;padding:8px;border:1px solid #d1d5db;text-align:left;"
+                : "padding:8px;border:1px solid #e5e7eb;color:#1f2937;";
+              
+              html += cells.map(c => `<${tag} style="${cellStyle}">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</${tag}>`).join("");
+              html += `</tr>`;
             }
-            html += `</table>`;
-            return html;
+            if (tbodyOpen) html += `</tbody>`;
+            else if (headerDone) html += `</thead>`;
+            html += `</table></div>`;
+            
+            const placeholder = `%%TABLEBLOCK${tableBlocks.length}%%`;
+            tableBlocks.push(html);
+            return _match.replace(tableContent, `\n${placeholder}\n`);
           }
         );
 
@@ -2507,9 +2526,12 @@ export default function Dashboard() {
         // 4. Newlines → <br/> (skip lines inside tables — already converted)
         cleanContent = cleanContent.replace(/\n/g, "<br/>");
 
-        // 5. Restore code blocks
+        // 5. Restore code blocks and tables
         codeBlocks.forEach((block, i) => {
           cleanContent = cleanContent.replace(`%%CODEBLOCK${i}%%`, block);
+        });
+        tableBlocks.forEach((block, i) => {
+          cleanContent = cleanContent.replace(`%%TABLEBLOCK${i}%%`, block);
         });
 
         const msgBlock = document.createElement("div");
