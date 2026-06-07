@@ -2478,37 +2478,29 @@ export default function Dashboard() {
             const parseRow = (row: string) =>
               row.trim().replace(/^\||\|$/g, "").split("|").map(cell => cell.trim());
 
-            // Use extremely simple standard HTML tables. html2canvas has known bugs with border-collapse and overflow:hidden
-            let html = `<table width="100%" cellpadding="8" cellspacing="0" style="margin:16px 0; width:100%; font-size:12px; border:1px solid #d1d5db; background-color:#ffffff; position:relative;">`;
+            // Use flexbox based table to completely bypass html2canvas <table> rendering bugs (empty paint issue)
+            let html = `<div style="margin:16px 0; width:100%; border-top:1px solid #d1d5db; border-left:1px solid #d1d5db; font-size:12px; background-color:#ffffff; display:flex; flex-direction:column; box-sizing:border-box;">`;
             let headerDone = false;
-            let tbodyOpen = false;
 
             for (let i = 0; i < rows.length; i++) {
               if (isSeparator(rows[i])) continue; // skip separator row
               const cells = parseRow(rows[i]);
               
               const isHeader = !headerDone && (i === 0 || (i === 1 && isSeparator(rows[0])));
-              if (isHeader) {
-                headerDone = true;
-                html += `<thead><tr style="background-color:#e11d48; color:#ffffff;">`;
-              } else {
-                if (!tbodyOpen) {
-                  html += (headerDone ? `</thead>` : '') + `<tbody>`;
-                  tbodyOpen = true;
-                }
-                const rowBg = (i % 2 === 0) ? "#f9fafb" : "#ffffff";
-                html += `<tr style="background-color:${rowBg}; color:#111111;">`;
-              }
+              if (isHeader) headerDone = true;
 
-              const tag = isHeader ? "th" : "td";
+              const rowBg = isHeader ? "#e11d48" : (i % 2 === 0 ? "#f9fafb" : "#ffffff");
+              const color = isHeader ? "#ffffff" : "#111111";
               const weight = isHeader ? "bold" : "normal";
+
+              html += `<div style="display:flex; flex-direction:row; width:100%; background-color:${rowBg}; color:${color}; box-sizing:border-box;">`;
               
-              html += cells.map(c => `<${tag} style="padding:8px; border:1px solid #d1d5db; font-weight:${weight}; text-align:left; vertical-align:top;">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</${tag}>`).join("");
-              html += `</tr>`;
+              const cellWidth = (100 / (cells.length || 1)).toFixed(2) + "%";
+              
+              html += cells.map(c => `<div style="flex:1; width:${cellWidth}; padding:8px 10px; border-bottom:1px solid #d1d5db; border-right:1px solid #d1d5db; font-weight:${weight}; text-align:left; word-break:break-word; box-sizing:border-box;">${c.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</div>`).join("");
+              html += `</div>`;
             }
-            if (tbodyOpen) html += `</tbody>`;
-            else if (headerDone) html += `</thead>`;
-            html += `</table>`;
+            html += `</div>`;
             
             const placeholder = `%%TABLEBLOCK${tableBlocks.length}%%`;
             tableBlocks.push(html);
