@@ -2403,89 +2403,136 @@ export default function Dashboard() {
     fetchMessages();
   }, [activeChatId, chats]);
 
-  // 📥 Export Conversation as PDF
+  // 📥 Export Conversation as PDF — html2canvas approach for full Unicode/Bengali support
   const handleExportChat = async () => {
     if (messages.length === 0) return;
 
     try {
-      const jsPDF = (await import("jspdf")).default;
-      const pdf = new jsPDF("p", "mm", "a4");
-
-      const pageWidth = 210;
-      const margin = 15;
-      const contentWidth = pageWidth - margin * 2;
-      let yPos = 20;
-
-      // Header
-      pdf.setFillColor(225, 29, 72);
-      pdf.rect(0, 0, pageWidth, 14, "F");
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(9);
-      pdf.setFont("helvetica", "bold");
-      pdf.text("🌶️ KACHA MORICH AI — Conversation Export", margin, 9);
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas"),
+      ]);
 
       const activeAgent = allAgents.find((a) => a.id === selectedAgentId);
       const agentLabel = activeAgent?.name || "AI Assistant";
       const dateStr = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-      pdf.setFontSize(7);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(`Agent: ${agentLabel}  |  Date: ${dateStr}  |  Messages: ${messages.length}`, margin, 13);
 
-      yPos = 22;
+      // ── Build off-screen HTML container with Bengali-compatible font ──
+      const container = document.createElement("div");
+      container.style.cssText = [
+        "position:fixed", "left:-9999px", "top:0",
+        "width:794px", "background:#ffffff", "color:#111111",
+        "font-family:'Noto Sans Bengali','Noto Sans',Arial,sans-serif",
+        "font-size:13px", "line-height:1.75", "padding:0",
+      ].join(";");
 
-      // Messages
+      // Google Font for Bengali
+      const fontLink = document.createElement("link");
+      fontLink.rel = "stylesheet";
+      fontLink.href = "https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;700&family=Noto+Sans:wght@400;700&display=swap";
+      container.appendChild(fontLink);
+
+      // Header bar
+      const header = document.createElement("div");
+      header.style.cssText = "background:#e11d48;color:#fff;padding:12px 24px;font-size:14px;font-weight:700;display:flex;justify-content:space-between;align-items:center;";
+      header.innerHTML = `<span>🌶️ ${aiName.toUpperCase()} — Conversation Export</span><span style="font-size:11px;font-weight:400;opacity:0.85">Agent: ${agentLabel} &nbsp;|&nbsp; ${dateStr} &nbsp;|&nbsp; ${messages.length} messages</span>`;
+      container.appendChild(header);
+
+      // Messages body
+      const body = document.createElement("div");
+      body.style.cssText = "padding:16px 24px;";
+
       for (const msg of messages) {
         if (!msg.content || msg.content.trim() === "") continue;
-
-        // Role label
         const isUser = msg.role === "user";
-        pdf.setFontSize(7);
-        pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(isUser ? 59 : 16, isUser ? 130 : 185, isUser ? 246 : 129);
-        pdf.text(isUser ? "YOU" : aiName.toUpperCase(), margin, yPos);
-        yPos += 4;
 
-        // Clean content — strip markdown, base64 images, artifacts
-        const cleanContent = msg.content
-          .replace(/\[IMAGE_BASE64:[^\]]+\]/g, "[Image attached]")
-          .replace(/\[ATTACHED DOCUMENT:[^\]]+\]/g, "[Document attached]")
-          .replace(/```[\s\S]*?```/g, "[Code block]")
-          .replace(/#{1,6}\s/g, "")
-          .replace(/\*\*(.*?)\*\*/g, "$1")
-          .replace(/\*(.*?)\*/g, "$1")
+        // Clean content — strip internal metadata, keep readable text
+        let cleanContent = msg.content
+          .replace(/\[IMAGE_BASE64:[^\]]+\]/g, "[📷 Image]")
+          .replace(/\[ATTACHED DOCUMENT:[^\]]+\]/g, "[📄 Document]")
           .replace(/<thought>[\s\S]*?<\/thought>/g, "")
           .replace(/__[A-Z_]+__:[^\n]*/g, "")
           .trim();
 
-        // Word-wrap and paginate
-        pdf.setFontSize(8.5);
-        pdf.setFont("helvetica", "normal");
-        pdf.setTextColor(30, 30, 30);
+        // Convert markdown to HTML
+        cleanContent = cleanContent
+          .replace(/```([\s\S]*?)```/g, (_m, code) =>
+            `<pre style="background:#f4f4f4;border:1px solid #ddd;border-radius:6px;padding:10px;font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-all;margin:6px 0;">${code.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`)
+          .replace(/#{1,6}\s+(.+)/g, "<strong>$1</strong>")
+          .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+          .replace(/\*(.+?)\*/g, "<em>$1</em>")
+          .replace(/\n/g, "<br/>");
 
-        const lines = pdf.splitTextToSize(cleanContent, contentWidth);
-        for (const line of lines) {
-          if (yPos > 280) {
-            pdf.addPage();
-            yPos = 15;
-          }
-          pdf.text(line, margin, yPos);
-          yPos += 4.5;
-        }
+        const msgBlock = document.createElement("div");
+        msgBlock.style.cssText = "margin-bottom:18px;border-bottom:1px solid #e5e7eb;padding-bottom:14px;";
 
-        // Separator
-        pdf.setDrawColor(220, 220, 220);
-        pdf.line(margin, yPos + 1, pageWidth - margin, yPos + 1);
-        yPos += 6;
+        const roleEl = document.createElement("div");
+        roleEl.style.cssText = `font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px;color:${isUser ? "#2563eb" : "#059669"};`;
+        roleEl.textContent = isUser ? "YOU" : aiName.toUpperCase();
+
+        const contentEl = document.createElement("div");
+        contentEl.style.cssText = "font-size:13px;color:#1f2937;line-height:1.75;";
+        contentEl.innerHTML = cleanContent;
+
+        msgBlock.appendChild(roleEl);
+        msgBlock.appendChild(contentEl);
+        body.appendChild(msgBlock);
       }
 
-      // Footer on last page
-      pdf.setFontSize(7);
-      pdf.setTextColor(150, 150, 150);
-      pdf.text("Generated by Kacha Morich AI — kachamorich.vercel.app", margin, 290);
+      // Footer
+      const footer = document.createElement("div");
+      footer.style.cssText = "border-top:1px solid #e5e7eb;padding:10px 24px;font-size:10px;color:#9ca3af;text-align:center;";
+      footer.textContent = `Generated by ${aiName} — ${new Date().toLocaleString()}`;
 
-      pdf.save(`kacha_morich_chat_${Date.now()}.pdf`);
+      container.appendChild(body);
+      container.appendChild(footer);
+      document.body.appendChild(container);
+
+      // Wait for Google Font to load
+      await new Promise(r => setTimeout(r, 900));
+
+      // Capture with html2canvas — renders via browser so all fonts work
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        width: 794,
+      });
+
+      document.body.removeChild(container);
+
+      // Build PDF — slice canvas into A4 pages
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageW = 210;
+      const pageH = 297;
+      const imgW = pageW;
+      const pageCanvasPx = Math.floor((canvas.width * pageH) / imgW);
+
+      let pageY = 0;
+      let firstPage = true;
+
+      while (pageY < canvas.height) {
+        const sliceH = Math.min(pageCanvasPx, canvas.height - pageY);
+        const sliceCanvas = document.createElement("canvas");
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = sliceH;
+        const ctx = sliceCanvas.getContext("2d")!;
+        ctx.drawImage(canvas, 0, pageY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+
+        if (!firstPage) pdf.addPage();
+        firstPage = false;
+
+        const sliceImgH = (sliceH / canvas.width) * imgW;
+        pdf.addImage(sliceCanvas.toDataURL("image/png"), "PNG", 0, 0, imgW, sliceImgH);
+        pageY += pageCanvasPx;
+      }
+
+      pdf.save(`${aiName.replace(/\s+/g, "_")}_chat_${Date.now()}.pdf`);
     } catch (err) {
       console.error("Export failed:", err);
+      alert("PDF export failed. Please try again.");
     }
   };
 
