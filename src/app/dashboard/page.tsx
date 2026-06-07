@@ -209,7 +209,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Key,
-  RefreshCw
+  RefreshCw,
+  User,
+  SlidersHorizontal
 } from "lucide-react";
 import Link from "next/link";
 import { parseAnyFile } from "@/lib/fileParser";
@@ -3625,15 +3627,15 @@ export default function Dashboard() {
                     }`}
                   title="Manage Account"
                 >
-                  <Settings size={16} />
+                  <User size={16} />
                 </button>
                 <Link
                   href="/settings"
                   className={`p-2 rounded-lg transition duration-200 ${themeMode === "black" ? "text-neutral-500 hover:text-red-400 hover:bg-neutral-900" : "text-neutral-500 hover:text-red-600 hover:bg-neutral-100"
                     }`}
-                  title="OpenRouter API Keys"
+                  title="Settings & Config"
                 >
-                  <Key size={16} />
+                  <Settings size={16} />
                 </Link>
 
                 {/* Export Chat as PDF */}
@@ -4924,7 +4926,7 @@ export default function Dashboard() {
               <div className={`flex items-center justify-between border-b pb-4 ${themeMode === "black" ? "border-white/5" : "border-neutral-150"
                 }`}>
                 <div className="flex items-center gap-2">
-                  <Settings className="text-[#10b981]" size={20} />
+                  <User className="text-[#10b981]" size={20} />
                   <h2 className={`font-bold text-lg tracking-wide ${themeMode === "black" ? "text-white" : "text-neutral-850"}`}>Manage Account</h2>
                 </div>
                 <button
