@@ -75,7 +75,7 @@ export async function parseAnyFile(file: File): Promise<string> {
     let ocrText = "";
     try {
       await loadScript("https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js");
-      const Tesseract = (window as any).Tesseract;
+      const Tesseract = (window as unknown as Record<string, { recognize: (f: File, l: string) => Promise<{ data: { text: string } }> }>).Tesseract;
       if (Tesseract) {
         const result = await Tesseract.recognize(compressedFile, "eng+ben");
         ocrText = result.data.text || "";
@@ -90,14 +90,14 @@ export async function parseAnyFile(file: File): Promise<string> {
   // 2. PDF Documents
   if (extension === ".pdf") {
     await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js");
-    const pdfjsLib = (window as any)["pdfjs-dist/build/pdf"];
+    const pdfjsLib = (window as unknown as Record<string, { GlobalWorkerOptions: { workerSrc: string }; getDocument: (opts: { data: ArrayBuffer }) => { promise: Promise<unknown> } }> )["pdfjs-dist/build/pdf"];
     if (!pdfjsLib) throw new Error("PDF parser failed to load");
 
     // Set worker URL from CDN
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
 
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise as { numPages: number; getPage: (i: number) => Promise<{ getTextContent: () => Promise<{ items: { str: string }[] }> }> };
     let fullText = "";
 
     // Cap at 50 pages max to avoid sending massive payloads that crash the API
@@ -107,7 +107,7 @@ export async function parseAnyFile(file: File): Promise<string> {
     for (let i = 1; i <= maxPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
-      const strings = content.items.map((item: any) => item.str);
+      const strings = content.items.map((item: { str: string }) => item.str);
       fullText += `[Page ${i}]\n${strings.join(" ")}\n\n`;
 
       // Stop early if we've already extracted enough text (30k chars is plenty for AI context)
@@ -127,7 +127,7 @@ export async function parseAnyFile(file: File): Promise<string> {
   // 3. Word Documents (.docx)
   if (extension === ".docx") {
     await loadScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js");
-    const mammoth = (window as any).mammoth;
+    const mammoth = (window as unknown as Record<string, { extractRawText: (opts: { arrayBuffer: ArrayBuffer }) => Promise<{ value: string }> }>).mammoth;
     if (!mammoth) throw new Error("Word parser failed to load");
 
     const arrayBuffer = await file.arrayBuffer();
@@ -138,7 +138,7 @@ export async function parseAnyFile(file: File): Promise<string> {
   // 4. Excel Sheets (.xlsx, .xls)
   if (extension === ".xlsx" || extension === ".xls") {
     await loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js");
-    const XLSX = (window as any).XLSX;
+    const XLSX = (window as unknown as Record<string, { read: (b: ArrayBuffer, o: { type: string }) => { SheetNames: string[], Sheets: Record<string, unknown> }, utils: { sheet_to_csv: (s: unknown) => string } }>).XLSX;
     if (!XLSX) throw new Error("Excel parser failed to load");
 
     const arrayBuffer = await file.arrayBuffer();

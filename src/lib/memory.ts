@@ -55,22 +55,22 @@ export async function getUserMemoryContext(userId: string, omniscienceMode: bool
         }
 
         // Apply importance scoring + time decay
-        const scoredMemories = memories.map((mem: any) => {
-            const baseScore = mem.importance_score ?? 0.5;
-            const accessBoost = Math.log1p(mem.access_count ?? 0) * 0.1;
+        const scoredMemories = memories.map((mem: Record<string, unknown>) => {
+            const baseScore = (mem.importance_score as number) ?? 0.5;
+            const accessBoost = Math.log1p((mem.access_count as number) ?? 0) * 0.1;
             const lastAccessed = mem.last_accessed || mem.updated_at;
             const daysSince = lastAccessed
-                ? (Date.now() - new Date(lastAccessed).getTime()) / (1000 * 60 * 60 * 24)
+                ? (Date.now() - new Date(lastAccessed as string).getTime()) / (1000 * 60 * 60 * 24)
                 : 30;
             const decayFactor = Math.max(0.1, 1 - daysSince / 90);
             const effectiveScore = (baseScore + accessBoost) * decayFactor;
-            return { ...mem, effectiveScore };
+            return { ...mem, effectiveScore } as Record<string, unknown> & { effectiveScore: number };
         });
 
         // Sort by effective score, filter out very low-score memories
         let topMemories = scoredMemories
-            .filter((m: any) => omniscienceMode || m.effectiveScore > 0.05)
-            .sort((a: any, b: any) => b.effectiveScore - a.effectiveScore);
+            .filter((m: Record<string, unknown> & { effectiveScore: number }) => omniscienceMode || m.effectiveScore > 0.05)
+            .sort((a: Record<string, unknown> & { effectiveScore: number }, b: Record<string, unknown> & { effectiveScore: number }) => b.effectiveScore - a.effectiveScore);
             
         if (!omniscienceMode) {
             topMemories = topMemories.slice(0, 30);
@@ -81,9 +81,9 @@ export async function getUserMemoryContext(userId: string, omniscienceMode: bool
         // Group by category for cleaner prompt injection
         const grouped: Record<string, string[]> = {};
         for (const mem of topMemories) {
-            const cat = mem.category || "general";
+            const cat = (mem.category as string) || "general";
             if (!grouped[cat]) grouped[cat] = [];
-            grouped[cat].push(`• ${mem.key}: ${mem.value}`);
+            grouped[cat].push(`• ${mem.key as string}: ${mem.value as string}`);
         }
 
         const sections: string[] = [];
@@ -119,9 +119,9 @@ export async function getUserMemoryContext(userId: string, omniscienceMode: bool
  *
  * This is the difference between "memory stored" and "memory utilized".
  */
-function buildActiveMemoryPrompt(sections: string[], memories: any[]): string {
+function buildActiveMemoryPrompt(sections: string[], memories: Record<string, unknown>[]): string {
     // Derive personalization rules from memory content
-    const allMemoryText = memories.map((m: any) => `${m.key}: ${m.value}`).join(" ").toLowerCase();
+    const allMemoryText = memories.map((m: Record<string, unknown>) => `${m.key}: ${m.value}`).join(" ").toLowerCase();
 
     const personalizationRules: string[] = [];
 
@@ -238,8 +238,8 @@ If no facts to extract, return: []`;
             if (rawContent) {
                 console.log("[Memory] ✅ Groq extraction succeeded");
             }
-        } catch (groqErr: any) {
-            console.warn("[Memory] Groq extraction failed, trying OpenRouter fallback:", groqErr?.message);
+        } catch (groqErr: unknown) {
+            console.warn("[Memory] Groq extraction failed, trying OpenRouter fallback:", groqErr instanceof Error ? groqErr.message : String(groqErr));
         }
 
         // Tier 2: OpenRouter fallback — if Groq failed or returned empty
@@ -264,8 +264,8 @@ If no facts to extract, return: []`;
                 if (rawContent) {
                     console.log("[Memory] ✅ OpenRouter extraction fallback succeeded");
                 }
-            } catch (orErr: any) {
-                console.warn("[Memory] OpenRouter extraction fallback also failed:", orErr?.message);
+            } catch (orErr: unknown) {
+                console.warn("[Memory] OpenRouter extraction fallback also failed:", orErr instanceof Error ? orErr.message : String(orErr));
                 return; // Both failed — skip silently, non-critical
             }
         }

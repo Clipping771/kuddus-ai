@@ -27,17 +27,22 @@ export const runCodeTool: Tool = {
 
     try {
       // Create a secure sandbox
-      const sandbox = await CodeInterpreter.create();
+      const sandbox = await CodeInterpreter.create() as unknown as {
+        notebook: { execCell: (code: string) => Promise<{ text?: string; error?: { name: string; value: string } }> };
+        filesystem: { write: (path: string, code: string) => Promise<void> };
+        process: { startAndWait: (cmd: string) => Promise<{ stdout: string; stderr: string }> };
+        close: () => Promise<void>;
+      };
       
       let result;
       if (args.language === 'python') {
-        result = await (sandbox as any).notebook.execCell(args.code);
+        result = await sandbox.notebook.execCell(args.code);
       } else if (args.language === 'javascript') {
         // E2B code interpreter is natively Jupyter based (Python). 
         // For JS, we can use magic commands or write to a file and run node.
         const tempFile = '/tmp/script.js';
-        await (sandbox as any).filesystem.write(tempFile, args.code);
-        const process = await (sandbox as any).process.startAndWait(`node ${tempFile}`);
+        await sandbox.filesystem.write(tempFile, args.code);
+        const process = await sandbox.process.startAndWait(`node ${tempFile}`);
         
         return `stdout:\n${process.stdout}\nstderr:\n${process.stderr}`;
       } else {
@@ -45,7 +50,7 @@ export const runCodeTool: Tool = {
       }
 
       // Close the sandbox to free resources
-      await (sandbox as any).close();
+      await sandbox.close();
 
       if (args.language === 'python') {
         let output = '';
@@ -56,8 +61,8 @@ export const runCodeTool: Tool = {
       }
       
       return 'Execution completed.';
-    } catch (err: any) {
-      return `[ERROR] Execution failed: ${err.message}`;
+    } catch (err: unknown) {
+      return `[ERROR] Execution failed: ${err instanceof Error ? err.message : String(err)}`;
     }
   },
 };

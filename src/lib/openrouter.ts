@@ -138,7 +138,7 @@ function isKeyExhausted(status: number): boolean {
  */
 export async function openrouterFetchWithFallback(
     models: string[],
-    body: Record<string, any>,
+    body: Record<string, unknown>,
     userId?: string
 ): Promise<{ response: Response; usedKey: string; usedModel: string }> {
     const keys = await getApiKeys(userId);
@@ -198,10 +198,10 @@ export async function openrouterFetchWithFallback(
                 // Other model-level error — skip remaining keys for this model
                 lastError = `Model "${model}" failed (${res.status})`;
                 break;
-            } catch (err: any) {
+            } catch (err: unknown) {
                 const keyLabel = `...${key.slice(-6)}`;
-                console.warn(`[OpenRouter] ❌ Key ${keyLabel} network error:`, err.message);
-                lastError = err.message;
+                console.warn(`[OpenRouter] ❌ Key ${keyLabel} network error:`, err instanceof Error ? err.message : String(err));
+                lastError = err instanceof Error ? err.message : String(err);
                 continue;
             }
         }

@@ -9,17 +9,18 @@
 import { ObservabilityLogger } from '../observability/logger';
 import { MemoryEngine } from '../memory';
 import { groqChatWithFallback, groqStreamWithFallback } from '@/lib/groq';
+import Groq from 'groq-sdk';
 
 type ComplexityLevel = 'simple' | 'complex';
 
 export class AdaptiveOrchestrator {
   private userId: string;
-  private chatHistory: any[];
+  private chatHistory: Record<string, unknown>[];
   private onStreamChunk?: (chunk: string) => void;
   private memoryFetched: boolean = false;
-  private memoryContext: any = null;
+  private memoryContext: unknown = null;
 
-  constructor(userId: string, chatHistory: any[] = []) {
+  constructor(userId: string, chatHistory: Record<string, unknown>[] = []) {
     this.userId = userId;
     this.chatHistory = chatHistory;
   }
@@ -85,21 +86,23 @@ export class AdaptiveOrchestrator {
     if (this.onStreamChunk) {
       const stream = await groqStreamWithFallback({
         model: "llama-3.1-8b-instant", // Fast execution
-        messages: messages as any,
+        messages: messages as unknown as Groq.Chat.ChatCompletionMessageParam[],
         max_tokens: 1000,
         temperature: 0.5,
         stream: true,
-      }, this.userId) as any;
+      }, this.userId) as AsyncIterable<Record<string, unknown>>;
       
       for await (const chunk of stream) {
-        const text = chunk.choices[0]?.delta?.content || "";
+        const choices = chunk.choices as Array<Record<string, unknown>>;
+        const delta = choices?.[0]?.delta as Record<string, unknown>;
+        const text = (delta?.content as string) || "";
         fullResponse += text;
         this.onStreamChunk(text);
       }
     } else {
       const res = await groqChatWithFallback({
         model: "llama-3.1-8b-instant",
-        messages: messages as any,
+        messages: messages as unknown as Groq.Chat.ChatCompletionMessageParam[],
         max_tokens: 1000,
         temperature: 0.5,
       }, this.userId);
@@ -122,7 +125,7 @@ export class AdaptiveOrchestrator {
   private async generateResponse(taskInput: string): Promise<string> {
     const systemPrompt = `You are the Execution Engine. Answer the user's request directly and highly accurately. Do not show internal planning.`;
     
-    const messages: any[] = [
+    const messages: Record<string, unknown>[] = [
       { role: "system", content: systemPrompt }
     ];
 
@@ -140,21 +143,23 @@ export class AdaptiveOrchestrator {
     if (this.onStreamChunk) {
       const stream = await groqStreamWithFallback({
         model: "llama-3.3-70b-versatile", // Use larger model for execution
-        messages: messages as any,
+        messages: messages as unknown as Groq.Chat.ChatCompletionMessageParam[],
         max_tokens: 4000,
         temperature: 0.6,
         stream: true,
-      }, this.userId) as any;
+      }, this.userId) as AsyncIterable<Record<string, unknown>>;
       
       for await (const chunk of stream) {
-        const text = chunk.choices[0]?.delta?.content || "";
+        const choices = chunk.choices as Array<Record<string, unknown>>;
+        const delta = choices?.[0]?.delta as Record<string, unknown>;
+        const text = (delta?.content as string) || "";
         fullResponse += text;
         this.onStreamChunk(text);
       }
     } else {
       const res = await groqChatWithFallback({
         model: "llama-3.3-70b-versatile",
-        messages: messages as any,
+        messages: messages as unknown as Groq.Chat.ChatCompletionMessageParam[],
         max_tokens: 4000,
         temperature: 0.6,
       }, this.userId);

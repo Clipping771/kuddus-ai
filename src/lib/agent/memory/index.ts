@@ -6,22 +6,22 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PU
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export interface MemoryContext {
-  hot: any[];
-  episodic: any[];
-  semantic: any[];
-  failure: any[];
+  hot: Record<string, unknown>[];
+  episodic: Record<string, unknown>[];
+  semantic: Record<string, unknown>[];
+  failure: Record<string, unknown>[];
 }
 
 export class MemoryEngine {
   private userId: string;
-  private hotMemory: any[] = []; // Tier 1: Current session
+  private hotMemory: Record<string, unknown>[] = []; // Tier 1: Current session
 
   constructor(userId: string) {
     this.userId = userId;
   }
 
   // --- TIER 1: HOT MEMORY ---
-  addHotMemory(entry: any) {
+  addHotMemory(entry: Record<string, unknown>) {
     this.hotMemory.push(entry);
     if (this.hotMemory.length > 50) this.hotMemory.shift();
   }
@@ -47,8 +47,8 @@ export class MemoryEngine {
       const { data, error } = await query;
       if (error) throw error;
       return data || [];
-    } catch (err: any) {
-      ObservabilityLogger.log('ERROR', 'MemoryEngine', 'Failed episodic fetch', err.message);
+    } catch (err: unknown) {
+      ObservabilityLogger.log('ERROR', 'MemoryEngine', 'Failed episodic fetch', err instanceof Error ? err.message : String(err));
       return [];
     }
   }
@@ -64,8 +64,8 @@ export class MemoryEngine {
       });
       if (error) throw error;
       return data || [];
-    } catch (err: any) {
-      ObservabilityLogger.log('ERROR', 'MemoryEngine', 'Failed semantic fetch', err.message);
+    } catch (err: unknown) {
+      ObservabilityLogger.log('ERROR', 'MemoryEngine', 'Failed semantic fetch', err instanceof Error ? err.message : String(err));
       return [];
     }
   }
@@ -83,8 +83,8 @@ export class MemoryEngine {
         );
       if (error) throw error;
       ObservabilityLogger.log('INFO', 'MemoryEngine', 'Logged failure to Tier 4', { mistakeType });
-    } catch (err: any) {
-      ObservabilityLogger.log('ERROR', 'MemoryEngine', 'Failed to log failure memory', err.message);
+    } catch (err: unknown) {
+      ObservabilityLogger.log('ERROR', 'MemoryEngine', 'Failed to log failure memory', err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -104,7 +104,7 @@ export class MemoryEngine {
       const { data, error } = await query;
       if (error) throw error;
       return data || [];
-    } catch (err: any) {
+    } catch (err: unknown) {
       return [];
     }
   }

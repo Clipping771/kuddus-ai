@@ -75,16 +75,16 @@ export async function groqChatWithFallback(
         throw new Error("No Groq API keys configured.");
     }
 
-    let lastError: any;
+    let lastError: unknown;
     for (const key of keys) {
         try {
             const client = new Groq({ apiKey: key });
             const result = await client.chat.completions.create(params) as Groq.Chat.ChatCompletion;
             console.log(`[Groq] ✅ Key ...${key.slice(-6)} succeeded`);
             return result;
-        } catch (err: any) {
-            const status = err?.status || err?.statusCode;
-            console.warn(`[Groq] ❌ Key ...${key.slice(-6)} failed (${status}): ${err?.message}`);
+        } catch (err: unknown) {
+            const status = (err as Record<string, unknown>)?.status || (err as Record<string, unknown>)?.statusCode;
+            console.warn(`[Groq] ❌ Key ...${key.slice(-6)} failed (${status}): ${(err as Error)?.message}`);
             lastError = err;
             // Only rotate on rate limit or auth errors
             if (status !== 429 && status !== 401 && status !== 403) throw err;
@@ -106,16 +106,16 @@ export async function groqStreamWithFallback(
         throw new Error("No Groq API keys configured.");
     }
 
-    let lastError: any;
+    let lastError: unknown;
     for (const key of keys) {
         try {
             const client = new Groq({ apiKey: key });
             const result = await client.chat.completions.create({ ...params, stream: true });
             console.log(`[Groq Stream] ✅ Key ...${key.slice(-6)} succeeded`);
             return result;
-        } catch (err: any) {
-            const status = err?.status || err?.statusCode;
-            console.warn(`[Groq Stream] ❌ Key ...${key.slice(-6)} failed (${status}): ${err?.message}`);
+        } catch (err: unknown) {
+            const status = (err as Record<string, unknown>)?.status || (err as Record<string, unknown>)?.statusCode;
+            console.warn(`[Groq Stream] ❌ Key ...${key.slice(-6)} failed (${status}): ${(err as Error)?.message}`);
             lastError = err;
             if (status !== 429 && status !== 401 && status !== 403) throw err;
         }
