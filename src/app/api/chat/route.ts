@@ -2157,8 +2157,8 @@ Apply the following highly advanced analysis steps:
                 ? "CRITICAL: You MUST respond entirely in Bengali (Bangla) script. Do NOT use English in your response."
                 : "CRITICAL: Detect the language of the user's original message and respond ENTIRELY in that exact same language.");
 
-            // Determine total experts (no longer capped at 5)
-            const totalExpertsCount = boardSize > 2 ? boardSize - 2 : Object.keys(AGENT_INSTRUCTIONS).length;
+            // Determine total experts (capped at 3 by default for API optimization)
+            const totalExpertsCount = boardSize > 2 ? Math.min(boardSize - 2, 5) : Math.min(3, Object.keys(AGENT_INSTRUCTIONS).length);
 
             controller.enqueue(encoder.encode(`\n\n> 🧠 **KACHA MORICH BRAIN TRUST ACTIVATED**\n> Assembling ${totalExpertsCount + 2}-Agent Executive Board...\n\n`));
 
@@ -2424,9 +2424,10 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
           } else {
             // 🧠 Final Smart System Plan: Cognitive Control Loop
             // Intercept complex queries and route them through the Orchestrator
-            const isComplex = !isSimpleQuery && !hasImage && !isBrainTrust && !customInstructions;
+            // OPTIMIZATION: Only run the Cognitive Loop if hermes_mode is explicitly enabled.
+            const isComplex = (!isSimpleQuery && !hasImage && !isBrainTrust && !customInstructions && hermes_mode);
             
-            if (isComplex || hermes_mode) {
+            if (isComplex) {
               try {
                 console.log(`[API Chat] 🚀 Routing through AdaptiveOrchestrator...`);
                 const { AdaptiveOrchestrator } = await import("@/lib/agent/core/orchestrator");

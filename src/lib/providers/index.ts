@@ -16,7 +16,7 @@ export async function executeDirectProviderStream(
     provider = "openai";
   } else if (modelId.startsWith("claude-")) {
     provider = "anthropic";
-  } else if (modelId.startsWith("gemini-")) {
+  } else if (modelId.startsWith("gemini-") || modelId.includes("gemini")) {
     provider = "gemini";
   }
 
@@ -25,10 +25,16 @@ export async function executeDirectProviderStream(
   const apiKey = providerKeys?.[provider as keyof typeof providerKeys];
   if (!apiKey) return null; // Fallback if no direct key exists
 
+  // Sanitize modelId for native SDKs (e.g., removing 'google/' prefix for Gemini)
+  let nativeModelId = modelId;
+  if (provider === "gemini" && nativeModelId.startsWith("google/")) {
+    nativeModelId = nativeModelId.replace("google/", "");
+  }
+
   if (provider === "openai") {
     const openai = new OpenAI({ apiKey });
     const stream = await openai.chat.completions.create({
-      model: modelId,
+      model: nativeModelId,
       messages: messages as any,
       temperature,
       max_tokens: maxTokens,
@@ -62,7 +68,7 @@ export async function executeDirectProviderStream(
     const userMessages = messages.filter(m => m.role !== "system");
 
     const stream = await anthropic.messages.create({
-      model: modelId,
+      model: nativeModelId,
       messages: userMessages as any,
       system: systemMessage,
       temperature,
@@ -98,7 +104,7 @@ export async function executeDirectProviderStream(
     }));
     
     const stream = await genai.models.generateContentStream({
-      model: modelId,
+      model: nativeModelId,
       contents: contents as any,
       config: {
         temperature,

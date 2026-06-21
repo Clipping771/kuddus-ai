@@ -228,80 +228,15 @@ export async function classifyIntent(
         }
     }
 
-    // ── LLM fallback for ambiguous messages (only if >40 chars) ─────────────
-    if (trimmed.length < 40) {
-        return {
-            ...defaultResult,
-            intent: "question",
-            suggestedAgent: currentAgentId || INTENT_TO_AGENT["question"],
-            suggestedModel: INTENT_TO_MODEL["question"],
-            reasoning: "Short message — treated as question",
-        };
-    }
-
-    try {
-        const prompt = `Classify this user message into ONE intent category. Reply ONLY with JSON.
-
-Message: "${trimmed.substring(0, 300)}"
-
-Categories:
-- question: factual questions, how-to, explanations
-- research: market research, analysis, data gathering
-- coding: code, debugging, architecture, tech
-- writing: content creation, copywriting, scripts
-- business: strategy, finance, pitch, sales, startup
-- planning: roadmap, project plan, goals, sprints
-- casual: greetings, small talk, thanks
-- creative: brainstorming, ideas, innovation
-- legal: contracts, compliance, legal advice
-- hr: hiring, team building, HR
-- marketing: ads, SEO, social media, campaigns
-
-Return ONLY: {"intent":"business","confidence":"high","reasoning":"brief reason"}`;
-
-        const completion = await groqChatWithFallback(
-            {
-                model: "llama-3.1-8b-instant",
-                messages: [{ role: "user", content: prompt }],
-                temperature: 0.1,
-                max_tokens: 80,
-            },
-            userId
-        );
-
-        const raw = completion.choices[0]?.message?.content?.trim() || "";
-        const jsonMatch = raw.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("No JSON");
-
-        const parsed = JSON.parse(jsonMatch[0]);
-        const intent = (parsed.intent as IntentType) || "unknown";
-        const confidence = (parsed.confidence as "high" | "medium" | "low") || "medium";
-
-        const suggestedAgent = currentAgentId && currentAgentId !== "daily-innovation-idea-agent"
-            ? currentAgentId
-            : INTENT_TO_AGENT[intent] || INTENT_TO_AGENT["unknown"];
-
-        console.log(`[IntentEngine] 🎯 LLM classified: "${intent}" (${confidence}) — ${parsed.reasoning}`);
-
-        return {
-            intent,
-            confidence,
-            suggestedAgent,
-            suggestedModel: INTENT_TO_MODEL[intent] || INTENT_TO_MODEL["unknown"],
-            needsWebSearch: SEARCH_INTENTS.has(intent) && trimmed.length > 30,
-            needsVerification: VERIFICATION_INTENTS.has(intent) && trimmed.length > 60,
-            reasoning: parsed.reasoning || `LLM classified as ${intent}`,
-        };
-    } catch (err) {
-        console.warn("[IntentEngine] LLM fallback failed:", err);
-        return {
-            ...defaultResult,
-            intent: "question",
-            suggestedAgent: currentAgentId || INTENT_TO_AGENT["question"],
-            suggestedModel: INTENT_TO_MODEL["question"],
-            reasoning: "LLM failed — defaulting to question",
-        };
-    }
+    // ── LLM fallback for ambiguous messages (REMOVED FOR API OPTIMIZATION) ─────────────
+    // Instead of burning an API call to classify the intent, we default to "question".
+    return {
+        ...defaultResult,
+        intent: "question",
+        suggestedAgent: currentAgentId || INTENT_TO_AGENT["question"],
+        suggestedModel: INTENT_TO_MODEL["question"],
+        reasoning: "Keyword matching failed — defaulted to question to save API credits",
+    };
 }
 
 /**
