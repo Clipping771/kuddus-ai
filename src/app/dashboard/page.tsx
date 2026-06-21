@@ -167,6 +167,7 @@ const MermaidDiagram = ({ chart }: { chart: string }) => {
   );
 };
 import {
+  Palette,
   Plus,
   Trash2,
   Send,
@@ -1232,6 +1233,7 @@ export default function Dashboard() {
   // Multi-Agent Brain Trust State
   const [isBrainTrust, setIsBrainTrust] = useState(false);
   const [boardSize, setBoardSize] = useState<number>(16);
+  const [isHermesMode, setIsHermesMode] = useState(false);
 
   // Auto-routing — AI automatically selects the best agent based on message content
   const [enableAutoRouting, setEnableAutoRouting] = useState(false);
@@ -1259,10 +1261,40 @@ export default function Dashboard() {
 
   // Theme Mode State: "black" (dark) or "light" (clean light)
   const [themeMode, setThemeMode] = useState<"black" | "light">("black");
+  const [activeThemeName, setActiveThemeName] = useState<string>("Dark Modern");
+  const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
 
   // Set hydration flag on mount
   useEffect(() => {
     setIsHydrated(true);
+
+    // Fetch provider keys from localStorage
+    const savedKeysStr = localStorage.getItem("providerKeys");
+    let loadedKeys = {};
+    if (savedKeysStr) {
+      try {
+        loadedKeys = JSON.parse(savedKeysStr);
+        setProviderKeys(loadedKeys);
+      } catch (e) {}
+    }
+
+    // Fetch direct provider models dynamically
+    fetch("/api/models/providers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ keys: loadedKeys })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.models && data.models.length > 0) {
+          // Merge dynamic direct models with existing models (keeping fallback/openrouter models intact)
+          setModelsList(prev => {
+            const otherModels = prev.filter((m: any) => !m.isDirect);
+            return [...data.models, ...otherModels];
+          });
+        }
+      })
+      .catch(err => console.error("Failed to fetch dynamic models:", err));
   }, []);
 
   // Custom Pull-to-Refresh Gesture State for Nested Scrolls
@@ -1291,6 +1323,10 @@ export default function Dashboard() {
   const [newAgentBanglaDesc, setNewAgentBanglaDesc] = useState("");
   const [newAgentInstructions, setNewAgentInstructions] = useState("");
   const [newAgentIcon, setNewAgentIcon] = useState("🚀");
+
+  // Provider Keys State
+  const [providerKeys, setProviderKeys] = useState<{openai?: string, anthropic?: string, gemini?: string}>({});
+  const [isSavingKeys, setIsSavingKeys] = useState(false);
 
   // Advanced Auto-Generation States
   const [agentConceptPrompt, setAgentConceptPrompt] = useState("");
@@ -1342,6 +1378,7 @@ export default function Dashboard() {
       const savedBrainTrust = localStorage.getItem("kacha_is_braintrust");
       const savedSidebarFolded = localStorage.getItem("kacha_sidebar_folded");
       const savedTheme = localStorage.getItem("kacha_selected_theme") as "black" | "light";
+      const savedThemeName = localStorage.getItem("kacha_extended_theme");
       const savedCustomAgents = localStorage.getItem("kacha_custom_agents");
 
       // Step 1: Load from localStorage immediately (instant UI)
@@ -1425,6 +1462,14 @@ export default function Dashboard() {
         const systemPrefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
         setThemeMode(systemPrefersLight ? "light" : "black");
       }
+      
+      if (savedThemeName) {
+        setActiveThemeName(savedThemeName);
+      } else {
+        // Set default based on core theme
+        const defaultName = (savedTheme || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "black")) === "light" ? "Light Modern" : "Dark Modern";
+        setActiveThemeName(defaultName);
+      }
     }
   }, []);
 
@@ -1447,10 +1492,12 @@ export default function Dashboard() {
     }
   }, [themeMode]);
 
-  const toggleTheme = () => {
-    const nextTheme = themeMode === "black" ? "light" : "black";
-    setThemeMode(nextTheme);
-    localStorage.setItem("kacha_selected_theme", nextTheme);
+  const selectExtendedTheme = (themeName: string, baseMode: "light" | "black") => {
+    setThemeMode(baseMode);
+    setActiveThemeName(themeName);
+    localStorage.setItem("kacha_selected_theme", baseMode);
+    localStorage.setItem("kacha_extended_theme", themeName);
+    setThemeDropdownOpen(false);
   };
 
   const handleSidebarFoldToggle = () => {
@@ -2365,7 +2412,10 @@ export default function Dashboard() {
         if (data.models && data.models.length > 0) {
           // Always prepend the Groq Default option so it's available regardless of OpenRouter list
           const groqDefault = { id: "groq-default", name: "Groq (Default)", icon: "⚡", badge: "Fastest", isFree: true };
-          setModelsList([groqDefault, ...data.models.filter((m: any) => m.id !== "groq-default")]);
+          setModelsList(prev => {
+            const directModels = prev.filter((m: any) => m.isDirect);
+            return [...directModels, groqDefault, ...data.models.filter((m: any) => m.id !== "groq-default")];
+          });
         }
       })
       .catch(err => console.error("Failed to fetch models:", err))
@@ -2772,6 +2822,45 @@ export default function Dashboard() {
   };
 
   // 4b. Delete All Chat Threads
+  const handleSaveProviderKeys = async () => {
+    setIsSavingKeys(true);
+    try {
+      // Save keys securely to backend
+      const saveRes = await fetch("/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keys: providerKeys })
+      });
+      
+      if (!saveRes.ok) {
+        throw new Error("Failed to save keys securely");
+      }
+      
+      // Optionally clean up localStorage so keys aren't lying around plaintext
+      localStorage.removeItem("providerKeys");
+      
+      alert("API keys saved securely to database!");
+
+      // Refetch models dynamically right after saving
+      const res = await fetch("/api/models/providers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keys: providerKeys })
+      });
+      const data = await res.json();
+      if (data.models && data.models.length > 0) {
+        setModelsList(prev => {
+          const otherModels = prev.filter((m: any) => !m.isDirect);
+          return [...data.models, ...otherModels];
+        });
+      }
+    } catch (err) {
+      alert("Error saving API keys locally.");
+    } finally {
+      setIsSavingKeys(false);
+    }
+  };
+
   const handleDeleteAllChats = async () => {
     try {
       const res = await fetch("/api/chats", {
@@ -2826,6 +2915,8 @@ export default function Dashboard() {
           boardSize: boardSize,
           customInstructions: customAgent ? customAgent.instructions : undefined,
           enableAutoRouting: enableAutoRouting,
+          hermes_mode: isHermesMode,
+          providerKeys: providerKeys,
           userMaxTokens: (() => { try { const v = parseInt(localStorage.getItem("kacha_max_tokens") || ""); return isNaN(v) ? undefined : v; } catch { return undefined; } })(),
         }),
       });
@@ -2955,6 +3046,8 @@ export default function Dashboard() {
           boardSize: boardSize,
           customInstructions: customAgent ? customAgent.instructions : undefined,
           enableAutoRouting: enableAutoRouting,
+          hermes_mode: isHermesMode,
+          providerKeys: providerKeys,
           userMaxTokens: (() => { try { const v = parseInt(localStorage.getItem("kacha_max_tokens") || ""); return isNaN(v) ? undefined : v; } catch { return undefined; } })(),
         }),
       });
@@ -3191,7 +3284,7 @@ export default function Dashboard() {
     <>
       <div
         className={`fixed inset-0 flex overflow-hidden font-sans w-full transition-colors duration-300 ${themeMode === "black" ? "bg-black text-neutral-100 theme-black" : "bg-[#F8FAFC] text-neutral-900 theme-light"
-          }`}
+          } theme-${activeThemeName.toLowerCase().replace(/\s+/g, '-')}`}
         style={{ height: "var(--viewport-height, 100%)" }}
       >
         <aside
@@ -3727,17 +3820,85 @@ export default function Dashboard() {
                   Home
                 </Link>
 
-                {/* Theme Toggle Button */}
-                <button
-                  onClick={toggleTheme}
-                  className={`p-2 rounded-lg transition duration-200 ${themeMode === "black"
-                    ? "text-neutral-500 hover:text-amber-400 hover:bg-neutral-900"
-                    : "text-neutral-500 hover:text-amber-650 hover:bg-neutral-100"
-                    }`}
-                  title={themeMode === "black" ? "Switch to System Light Theme" : "Switch to Obsidian Black Theme"}
-                >
-                  {themeMode === "black" ? <Sun size={16} /> : <Moon size={16} />}
-                </button>
+                {/* Extended Theme Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setThemeDropdownOpen(!themeDropdownOpen)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition duration-200 border shadow-sm text-xs font-semibold ${themeMode === "black"
+                        ? "text-neutral-300 border-neutral-800 bg-neutral-900/60 hover:bg-neutral-800"
+                        : "text-neutral-700 border-neutral-200 bg-white hover:bg-neutral-50"
+                      }`}
+                  >
+                    <Palette size={14} className={themeMode === "black" ? "text-amber-400" : "text-amber-500"} />
+                    <span className="mobile-hide">{activeThemeName}</span>
+                    <ChevronDown size={12} className={`transition-transform duration-200 ${themeDropdownOpen ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {themeDropdownOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setThemeDropdownOpen(false)}
+                      />
+                      <div className={`absolute right-0 mt-2 w-48 rounded-xl border p-1 shadow-2xl z-50 divide-y ${themeMode === "black"
+                          ? "bg-[#0A0A0A] border-neutral-800 divide-neutral-800/50"
+                          : "bg-white border-neutral-200 divide-neutral-100"
+                        }`}>
+                        <div className="p-1">
+                          <div className={`px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase mb-0.5 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Light Themes</div>
+                          <button
+                            onClick={() => selectExtendedTheme("Light Modern", "light")}
+                            className={`w-full text-left px-3 py-2 text-xs rounded-lg transition-colors ${activeThemeName === "Light Modern"
+                                ? (themeMode === "black" ? "bg-amber-500/10 text-amber-400 font-bold" : "bg-amber-50 text-amber-600 font-bold")
+                                : (themeMode === "black" ? "text-neutral-300 hover:bg-white/5" : "text-neutral-600 hover:bg-neutral-50")
+                              }`}
+                          >
+                            Light Modern
+                          </button>
+                          <button
+                            onClick={() => selectExtendedTheme("Solarized Light", "light")}
+                            className={`w-full text-left px-3 py-2 text-xs rounded-lg transition-colors ${activeThemeName === "Solarized Light"
+                                ? (themeMode === "black" ? "bg-amber-500/10 text-amber-400 font-bold" : "bg-amber-50 text-amber-600 font-bold")
+                                : (themeMode === "black" ? "text-neutral-300 hover:bg-white/5" : "text-neutral-600 hover:bg-neutral-50")
+                              }`}
+                          >
+                            Solarized Light
+                          </button>
+                        </div>
+                        <div className="p-1">
+                          <div className={`px-2 py-1.5 text-[10px] font-bold tracking-widest uppercase mb-0.5 mt-1 ${themeMode === "black" ? "text-neutral-500" : "text-neutral-400"}`}>Dark Themes</div>
+                          <button
+                            onClick={() => selectExtendedTheme("Dark Modern", "black")}
+                            className={`w-full text-left px-3 py-2 text-xs rounded-lg transition-colors ${activeThemeName === "Dark Modern"
+                                ? (themeMode === "black" ? "bg-amber-500/10 text-amber-400 font-bold" : "bg-amber-50 text-amber-600 font-bold")
+                                : (themeMode === "black" ? "text-neutral-300 hover:bg-white/5" : "text-neutral-600 hover:bg-neutral-50")
+                              }`}
+                          >
+                            Dark Modern
+                          </button>
+                          <button
+                            onClick={() => selectExtendedTheme("Tokyo Night", "black")}
+                            className={`w-full text-left px-3 py-2 text-xs rounded-lg transition-colors ${activeThemeName === "Tokyo Night"
+                                ? (themeMode === "black" ? "bg-amber-500/10 text-amber-400 font-bold" : "bg-amber-50 text-amber-600 font-bold")
+                                : (themeMode === "black" ? "text-neutral-300 hover:bg-white/5" : "text-neutral-600 hover:bg-neutral-50")
+                              }`}
+                          >
+                            Tokyo Night
+                          </button>
+                          <button
+                            onClick={() => selectExtendedTheme("Abyss", "black")}
+                            className={`w-full text-left px-3 py-2 text-xs rounded-lg transition-colors ${activeThemeName === "Abyss"
+                                ? (themeMode === "black" ? "bg-amber-500/10 text-amber-400 font-bold" : "bg-amber-50 text-amber-600 font-bold")
+                                : (themeMode === "black" ? "text-neutral-300 hover:bg-white/5" : "text-neutral-600 hover:bg-neutral-50")
+                              }`}
+                          >
+                            Abyss
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 <button
                   onClick={() => setIsSettingsModalOpen(true)}
@@ -3873,11 +4034,14 @@ export default function Dashboard() {
 
                             const isThinking = (id: string) => id.includes("deepseek-r1") || id.includes("qwen3") || id.includes("thinking") || id.includes("-r1");
                             const cats = [
+                              { label: "🔑 Direct OpenAI", desc: "Models from your saved OpenAI key", color: "emerald", filter: (m: any) => m.isDirect === true && m.provider === "openai" },
+                              { label: "🔑 Direct Anthropic", desc: "Models from your saved Anthropic key", color: "violet", filter: (m: any) => m.isDirect === true && m.provider === "anthropic" },
+                              { label: "🔑 Direct Gemini", desc: "Models from your saved Gemini key", color: "blue", filter: (m: any) => m.isDirect === true && m.provider === "gemini" },
                               { label: "⚡ Groq Default", desc: "Fastest — direct Groq, no quota issues", color: "emerald", filter: (m: any) => m.id === "groq-default" },
-                              { label: "🚀 Fast & Free", desc: "Quick answers", color: "emerald", filter: (m: any) => m.isFree && !isThinking(m.id) && m.id !== "groq-default" && (m.id.includes("llama") || m.id.includes("mistral") || m.id.includes("gemma") || m.id.includes("hermes") || m.id.includes("phi") || m.id.includes("command")) },
-                              { label: "⚡ Reasoning", desc: "Shows thinking — use with Brain Trust", color: "amber", filter: (m: any) => isThinking(m.id) },
-                              { label: "🌐 Other Free", desc: "More free models", color: "violet", filter: (m: any) => m.isFree && !isThinking(m.id) && m.id !== "groq-default" && !m.id.includes("llama") && !m.id.includes("mistral") && !m.id.includes("gemma") && !m.id.includes("hermes") && !m.id.includes("phi") && !m.id.includes("command") },
-                              { label: "💎 Premium", desc: "Paid — fastest & most capable", color: "blue", filter: (m: any) => !m.isFree },
+                              { label: "🚀 Fast & Free", desc: "Quick answers", color: "emerald", filter: (m: any) => m.isFree && !isThinking(m.id) && m.id !== "groq-default" && (m.id.includes("llama") || m.id.includes("mistral") || m.id.includes("gemma") || m.id.includes("hermes") || m.id.includes("phi") || m.id.includes("command")) && !m.isDirect },
+                              { label: "⚡ Reasoning", desc: "Shows thinking — use with Brain Trust", color: "amber", filter: (m: any) => isThinking(m.id) && !m.isDirect },
+                              { label: "🌐 Other Free", desc: "More free models", color: "violet", filter: (m: any) => m.isFree && !isThinking(m.id) && m.id !== "groq-default" && !m.id.includes("llama") && !m.id.includes("mistral") && !m.id.includes("gemma") && !m.id.includes("hermes") && !m.id.includes("phi") && !m.id.includes("command") && !m.isDirect },
+                              { label: "💎 Premium", desc: "Paid — fastest & most capable", color: "blue", filter: (m: any) => !m.isFree && !m.isDirect },
                             ];
                             const cMap: Record<string, string> = { emerald: themeMode === "black" ? "text-emerald-400" : "text-emerald-600", amber: themeMode === "black" ? "text-amber-400" : "text-amber-600", violet: themeMode === "black" ? "text-violet-400" : "text-violet-600", blue: themeMode === "black" ? "text-blue-400" : "text-blue-600" };
                             const bMap: Record<string, string> = { emerald: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20", amber: "bg-amber-500/15 text-amber-400 border-amber-500/20", violet: "bg-violet-500/15 text-violet-400 border-violet-500/20", blue: "bg-blue-500/15 text-blue-400 border-blue-500/20" };
@@ -4881,18 +5045,34 @@ export default function Dashboard() {
                     <div className="flex items-center gap-1.5 ml-2">
                       <button
                         type="button"
+                        onClick={() => setIsHermesMode(!isHermesMode)}
+                        disabled={isLoading || isFileParsing}
+                        title="Deep Memory Mode: Remember everything across all sessions"
+                        className={`hidden sm:flex items-center justify-center p-2 rounded-xl border transition-all duration-300 relative ${isHermesMode
+                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
+                          : themeMode === "black"
+                            ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-white"
+                            : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800"
+                          }`}
+                      >
+                        <span className="text-sm">🧠</span>
+                        {isHermesMode && <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)] animate-pulse"></div>}
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => handleBrainTrustToggle(!isBrainTrust)}
                         disabled={isLoading || isFileParsing}
                         title="Executive Board: Massively Parallel Deep Analysis"
-                        className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${isBrainTrust
-                          ? "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                        className={`hidden sm:flex items-center justify-center p-2 rounded-xl border transition-all duration-300 relative ${isBrainTrust
+                          ? "bg-red-500/10 border-red-500/30 text-red-500"
                           : themeMode === "black"
-                            ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-600"
-                            : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:border-neutral-300 shadow-sm"
+                            ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-white"
+                            : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800"
                           }`}
                       >
-                        <span>🧠 {boardSize}-Agent Board</span>
-                        <div className={`w-2 h-2 rounded-full ${isBrainTrust ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)] animate-ping" : "bg-neutral-700"}`}></div>
+                        <span className="text-sm">🤖</span>
+                        {isBrainTrust && <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,1)] animate-ping"></div>}
                       </button>
                       {isBrainTrust && (
                         <select
@@ -4917,15 +5097,15 @@ export default function Dashboard() {
                       onClick={() => setEnableAutoRouting((prev) => !prev)}
                       disabled={isLoading || isFileParsing}
                       title={enableAutoRouting ? "Auto-Routing ON: AI selects the best agent automatically" : "Auto-Routing OFF: Click to let AI pick the best agent"}
-                      className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${enableAutoRouting
-                        ? "bg-gradient-to-r from-violet-500/20 to-blue-500/20 border-violet-500/50 text-violet-400 shadow-[0_0_12px_rgba(139,92,246,0.25)]"
+                      className={`hidden sm:flex items-center justify-center p-2 rounded-xl border transition-all duration-300 relative ${enableAutoRouting
+                        ? "bg-violet-500/10 border-violet-500/30 text-violet-500"
                         : themeMode === "black"
-                          ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-violet-400 hover:border-violet-500/30"
-                          : "bg-white border-neutral-200 text-neutral-500 hover:text-violet-600 hover:border-violet-200 shadow-sm"
+                          ? "bg-neutral-900/40 border-neutral-800 text-neutral-500 hover:text-white"
+                          : "bg-white border-neutral-200 text-neutral-500 hover:text-neutral-800"
                         }`}
                     >
-                      <span>⚡ Auto</span>
-                      <div className={`w-1.5 h-1.5 rounded-full ${enableAutoRouting ? "bg-violet-400 shadow-[0_0_6px_rgba(139,92,246,0.8)]" : "bg-neutral-700"}`}></div>
+                      <span className="text-sm">⚡</span>
+                      {enableAutoRouting && <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-violet-500 shadow-[0_0_6px_rgba(139,92,246,0.8)]"></div>}
                     </button>
 
                     {/* Mic Button */}
@@ -5038,7 +5218,7 @@ export default function Dashboard() {
         isSettingsModalOpen && (
           <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in ${themeMode === "black" ? "bg-black/90 backdrop-blur-md" : "bg-neutral-900/60 backdrop-blur-sm"
             }`}>
-            <div className={`relative w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col p-6 space-y-6 transition-all duration-300 border ${themeMode === "black" ? "bg-[#0A0A0A] border-white/10" : "bg-white border-neutral-200"
+            <div className={`relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl flex flex-col p-6 space-y-6 transition-all duration-300 border ${themeMode === "black" ? "bg-[#0A0A0A] border-white/10" : "bg-white border-neutral-200"
               }`}>
               {/* Header */}
               <div className={`flex items-center justify-between border-b pb-4 ${themeMode === "black" ? "border-white/5" : "border-neutral-150"
@@ -5108,7 +5288,69 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                {/* 2. Delete All Conversations */}
+                {/* 2. API Keys Management */}
+                <div className="flex flex-col space-y-2 pt-2">
+                  <span className={`text-xs font-bold ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>Direct API Keys (Optional)</span>
+                  <div className={`p-4 rounded-2xl border space-y-3 ${themeMode === "black" ? "bg-neutral-900/30 border-neutral-800" : "bg-neutral-50 border-neutral-200"}`}>
+                    <p className={`text-xs leading-relaxed ${themeMode === "black" ? "text-neutral-400" : "text-neutral-605"}`}>
+                      Add your own API keys to bypass OpenRouter and fetch models dynamically from providers. Keys are stored securely.
+                    </p>
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-1">
+                        <label className={`text-[10px] font-bold uppercase tracking-wider ${themeMode === "black" ? "text-neutral-500" : "text-neutral-500"}`}>OpenAI API Key</label>
+                        <input
+                          type="password"
+                          value={providerKeys.openai || ""}
+                          onChange={(e) => setProviderKeys(p => ({ ...p, openai: e.target.value }))}
+                          placeholder="sk-proj-..."
+                          className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${
+                            themeMode === "black" 
+                              ? "bg-neutral-900 border-neutral-800 text-white placeholder-neutral-600" 
+                              : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400"
+                          }`}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className={`text-[10px] font-bold uppercase tracking-wider ${themeMode === "black" ? "text-neutral-500" : "text-neutral-500"}`}>Anthropic API Key</label>
+                        <input
+                          type="password"
+                          value={providerKeys.anthropic || ""}
+                          onChange={(e) => setProviderKeys(p => ({ ...p, anthropic: e.target.value }))}
+                          placeholder="sk-ant-api03-..."
+                          className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${
+                            themeMode === "black" 
+                              ? "bg-neutral-900 border-neutral-800 text-white placeholder-neutral-600" 
+                              : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400"
+                          }`}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className={`text-[10px] font-bold uppercase tracking-wider ${themeMode === "black" ? "text-neutral-500" : "text-neutral-500"}`}>Gemini API Key</label>
+                        <input
+                          type="password"
+                          value={providerKeys.gemini || ""}
+                          onChange={(e) => setProviderKeys(p => ({ ...p, gemini: e.target.value }))}
+                          placeholder="AIzaSy..."
+                          className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${
+                            themeMode === "black" 
+                              ? "bg-neutral-900 border-neutral-800 text-white placeholder-neutral-600" 
+                              : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400"
+                          }`}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSaveProviderKeys}
+                        disabled={isSavingKeys}
+                        className="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-xs transition duration-300 flex items-center justify-center gap-2"
+                      >
+                        {isSavingKeys ? "Saving..." : "Save API Keys"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Delete All Conversations */}
                 <div className="flex flex-col space-y-2 pt-2">
                   <span className={`text-xs font-bold ${themeMode === "black" ? "text-neutral-400" : "text-neutral-500"}`}>Danger Zone</span>
                   <div className={`p-4 rounded-2xl border space-y-3 ${themeMode === "black" ? "bg-red-500/5 border-red-500/10" : "bg-red-500/5 border-red-200"

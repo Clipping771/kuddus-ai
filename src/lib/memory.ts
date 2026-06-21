@@ -32,17 +32,23 @@ export interface MemoryEntry {
  * Uses importance scoring — high-score memories first, decayed ones filtered.
  * Returns null if no memories exist.
  */
-export async function getUserMemoryContext(userId: string): Promise<string | null> {
+export async function getUserMemoryContext(userId: string, omniscienceMode: boolean = false): Promise<string | null> {
     try {
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const limitCount = omniscienceMode ? 1000 : 50;
 
         // Fetch with scoring — importance_score column may not exist yet (graceful fallback)
-        const { data: memories, error } = await supabase
+        let query = supabase
             .from("user_memory")
             .select("key, value, category, importance_score, access_count, last_accessed, updated_at")
             .eq("user_id", userId)
-            .order("updated_at", { ascending: false })
-            .limit(50);
+            .order("updated_at", { ascending: false });
+
+        if (limitCount > 0) {
+            query = query.limit(limitCount);
+        }
+
+        const { data: memories, error } = await query;
 
         if (error || !memories || memories.length === 0) {
             return null;
@@ -62,10 +68,13 @@ export async function getUserMemoryContext(userId: string): Promise<string | nul
         });
 
         // Sort by effective score, filter out very low-score memories
-        const topMemories = scoredMemories
-            .filter((m: any) => m.effectiveScore > 0.05)
-            .sort((a: any, b: any) => b.effectiveScore - a.effectiveScore)
-            .slice(0, 30);
+        let topMemories = scoredMemories
+            .filter((m: any) => omniscienceMode || m.effectiveScore > 0.05)
+            .sort((a: any, b: any) => b.effectiveScore - a.effectiveScore);
+            
+        if (!omniscienceMode) {
+            topMemories = topMemories.slice(0, 30);
+        }
 
         if (topMemories.length === 0) return null;
 

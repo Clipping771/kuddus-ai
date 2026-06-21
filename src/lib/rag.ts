@@ -11,6 +11,7 @@
  */
 
 import { supabase } from "@/lib/supabase";
+import { decryptText } from "@/lib/encryption";
 
 const CHUNK_SIZE = 400;       // tokens per chunk (approx 1600 chars)
 const CHUNK_OVERLAP = 50;     // overlap between chunks to preserve context
@@ -62,7 +63,7 @@ export function chunkText(text: string): string[] {
 // ─── Embedding ────────────────────────────────────────────────────────────────
 
 /**
- * Generate embedding for a text using OpenRouter's nomic-embed-text model.
+ * Generate embedding for a text using Gemini's text-embedding-004 model.
  * Returns null if embedding fails (graceful degradation to keyword search).
  */
 export async function generateEmbedding(
@@ -70,35 +71,37 @@ export async function generateEmbedding(
     userId?: string
 ): Promise<number[] | null> {
     try {
-        // Get OpenRouter API key
-        let apiKey = process.env.OPENROUTER_API_KEY_1 || process.env.OPENROUTER_API_KEY;
+        let apiKey = process.env.GEMINI_API_KEY;
 
         // Try DB keys if available
         if (userId) {
             const { data: keys } = await supabase
-                .from("openrouter_keys")
+                .from("provider_keys")
                 .select("api_key")
                 .eq("user_id", userId)
+                .eq("provider", "gemini")
                 .eq("is_active", true)
                 .limit(1)
                 .single();
-            if (keys?.api_key) apiKey = keys.api_key;
+            if (keys?.api_key) apiKey = decryptText(keys.api_key);
         }
 
         if (!apiKey) {
-            console.warn("[RAG] No OpenRouter API key for embedding");
+            console.warn("[RAG] No Gemini API key for embedding");
             return null;
         }
 
-        const response = await fetch("https://openrouter.ai/api/v1/embeddings", {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`, {
             method: "POST",
             headers: {
-                Authorization: `Bearer ${apiKey}`,
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: "nomic-ai/nomic-embed-text-v1.5",
-                input: text.substring(0, 2000), // max input length
+                model: "models/text-embedding-004",
+                content: {
+                    parts: [{ text: text.substring(0, 8000) }] // Gemini handles much larger context
+                },
+                taskType: "RETRIEVAL_DOCUMENT"
             }),
         });
 
@@ -108,7 +111,7 @@ export async function generateEmbedding(
         }
 
         const data = await response.json();
-        const embedding = data.data?.[0]?.embedding;
+        const embedding = data.embedding?.values;
 
         if (!Array.isArray(embedding) || embedding.length !== EMBEDDING_DIM) {
             console.warn("[RAG] Invalid embedding dimensions:", embedding?.length);

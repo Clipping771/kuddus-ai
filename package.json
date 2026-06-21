@@ -1,5 +1,5 @@
 {
-  "name": "kuddus-ali-ai",
+  "name": "kacha-morich-ai",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,7 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.105.0",
     "@clerk/nextjs": "^5.7.6",
+    "@e2b/code-interpreter": "^2.6.1",
+    "@google/genai": "^2.9.0",
     "@supabase/supabase-js": "^2.105.4",
     "groq-sdk": "^1.2.0",
     "html2canvas": "^1.4.1",
@@ -17,6 +20,7 @@
     "lucide-react": "^1.16.0",
     "mermaid": "^10.9.1",
     "next": "14.2.3",
+    "openai": "^6.44.0",
     "pdf-parse": "^1.1.1",
     "react": "^18",
     "react-dom": "^18",

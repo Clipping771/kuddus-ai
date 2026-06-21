@@ -8,19 +8,21 @@
 
 import Groq from "groq-sdk";
 import { supabase } from "@/lib/supabase";
+import { decryptText } from "@/lib/encryption";
 
 /** Fetch active Groq keys from DB for a user */
 async function getDbGroqKeys(userId: string): Promise<string[]> {
     try {
         const { data, error } = await supabase
-            .from("groq_keys")
+            .from("provider_keys")
             .select("api_key")
             .eq("user_id", userId)
+            .eq("provider", "groq")
             .eq("is_active", true)
             .order("created_at", { ascending: true });
 
         if (error) return [];
-        return (data || []).map((k) => k.api_key).filter(Boolean);
+        return (data || []).map((k) => decryptText(k.api_key)).filter(Boolean);
     } catch {
         return [];
     }

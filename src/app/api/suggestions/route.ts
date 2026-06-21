@@ -78,20 +78,23 @@ export async function POST(req: Request) {
             ? `The conversation is about: ${intent}. Generate suggestions that go DEEPER into this specific domain.`
             : "";
 
-        const systemPrompt = `You are a smart follow-up question generator for an AI business assistant.
-Based on the conversation below, generate exactly 3 short, highly relevant follow-up questions.
+        const systemPrompt = `You are a tactical follow-up question generator.
+Based on the conversation below, generate exactly 3 short, HIGHLY CONTEXTUAL follow-up questions.
 
 Rules:
-- Questions must be directly related to what was just discussed
-- Each question should explore a different angle (deeper dive / related topic / practical next step)
-- Keep each question SHORT — max 12 words
-- Make them ACTIONABLE — things the AI can actually do, not just explain
-- ${isBangla ? "Write questions in Bangla (Bengali script)" : "Write questions in English"}
-- ${intentContext}
-- Return ONLY a valid JSON array of 3 strings. No explanation, no markdown.
+1. CRITICAL: NEVER ask generic starter questions (e.g. "What's your top priority?", "What's the biggest problem?", "Tell me more"). 
+2. Questions MUST be based on specific entities, numbers, or concepts mentioned in the assistant's response.
+3. Keep each question SHORT — max 12 words.
+4. Make them ACTIONABLE (e.g., "Draft the code for the X function", "Calculate the ROI if we change Y").
+5. ${isBangla ? "Write questions in Bangla (Bengali script)" : "Write questions in English"}
+6. ${intentContext}
+7. Return ONLY a valid JSON array of 3 strings. No explanation.
 
-Example output:
-["Build a financial model for this", "What are the top 3 risks?", "Create a step-by-step action plan"]`;
+Example of GOOD output:
+["Show me the exact CSS for the dark mode", "What is the CAC payback period?", "Draft a cold email for the CTO persona"]
+
+Example of BAD output (DO NOT DO THIS):
+["What's your biggest problem?", "What is your business strategy?", "Can you tell me more?"]`;
 
         const userPrompt = `User asked: "${userMessage.substring(0, 300)}"
 AI responded: "${assistantResponse.substring(0, 400)}"

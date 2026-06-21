@@ -8,6 +8,7 @@
  */
 
 import { supabase } from "@/lib/supabase";
+import { decryptText } from "@/lib/encryption";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const HTTP_REFERER = "https://kachamorich.vercel.app";
@@ -68,9 +69,10 @@ export function getDeadModels(): Set<string> {
 async function getDbKeys(userId: string): Promise<string[]> {
     try {
         const { data: keys, error } = await supabase
-            .from("openrouter_keys")
+            .from("provider_keys")
             .select("api_key")
             .eq("user_id", userId)
+            .eq("provider", "openrouter")
             .eq("is_active", true)
             .order("created_at", { ascending: true });
 
@@ -79,7 +81,7 @@ async function getDbKeys(userId: string): Promise<string[]> {
             return [];
         }
 
-        return (keys || []).map((k) => k.api_key).filter(Boolean);
+        return (keys || []).map((k) => decryptText(k.api_key)).filter(Boolean);
     } catch (err) {
         console.error("[OpenRouter] DB fetch exception:", err);
         return [];

@@ -1409,7 +1409,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { message, chatId, agentId: rawAgentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust, boardSize = 16, customInstructions, enableAutoRouting, isCollabMode, userMaxTokens } = await req.json();
+    const { message, chatId, agentId: rawAgentId, toneId, aiName = "Specialist AI", tonePrompt, modelId, isBrainTrust, boardSize = 16, customInstructions, enableAutoRouting, isCollabMode, userMaxTokens, hermes_mode = false } = await req.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
@@ -1609,7 +1609,7 @@ export async function POST(req: Request) {
     const searchQuery = needsSearch ? extractSearchQuery(message, agentId) : "";
 
     const [memoryContext, ragContext, webSearchContext, orchestrationResult, intentResult, knowledgeGraphContext] = await Promise.all([
-      getUserMemoryContext(dbUser.id).catch(() => null),
+      getUserMemoryContext(dbUser.id, hermes_mode).catch(() => null),
       hasImage ? Promise.resolve(null) : retrieveRelevantChunks(dbUser.id, message, agentId).catch(() => null),
       needsSearch ? performWebSearch(searchQuery, agentId).catch(() => null) : Promise.resolve(null),
       // 🧠 Orchestration — only for complex queries (>60 chars) to save latency
@@ -2128,8 +2128,8 @@ Apply the following highly advanced analysis steps:
                 ? "CRITICAL: You MUST respond entirely in Bengali (Bangla) script. Do NOT use English in your response."
                 : "CRITICAL: Detect the language of the user's original message and respond ENTIRELY in that exact same language.");
 
-            // Cap experts at 5 max to avoid rate limit timeouts on free tier
-            const totalExpertsCount = Math.max(1, Math.min(5, boardSize - 2));
+            // Determine total experts (no longer capped at 5)
+            const totalExpertsCount = boardSize > 2 ? boardSize - 2 : Object.keys(AGENT_INSTRUCTIONS).length;
 
             controller.enqueue(encoder.encode(`\n\n> 🧠 **KACHA MORICH BRAIN TRUST ACTIVATED**\n> Assembling ${totalExpertsCount + 2}-Agent Executive Board...\n\n`));
 
@@ -2210,10 +2210,14 @@ Apply the following highly advanced analysis steps:
               }
             };
 
-            const expertPromises = [];
+            // Execute expert promises in batches to avoid overwhelming free tier rate limits
+            const BATCH_SIZE = 5;
+            const BATCH_DELAY_MS = 1500;
+            const expertResults = [];
+            
             let modelIndex = 0;
-
             const slicedAgents = Object.entries(AGENT_INSTRUCTIONS).slice(0, totalExpertsCount);
+            const expertPromisesFunctions = [];
 
             for (const [agentId, agentInstruction] of slicedAgents) {
               const assignedModel = freeModels[modelIndex % freeModels.length];
@@ -2225,10 +2229,19 @@ Apply the following highly advanced analysis steps:
                 { role: "user", content: `You are the specialized agent for: ${agentId}.\n\nYour instructions are:\n${agentInstruction}\n\nCritically review the Architect's draft above from the strict perspective of your specialized role. Identify flaws, propose improvements, and provide highly actionable advice that ONLY someone with your expertise would know. ${langInstruction}` }
               ];
 
-              expertPromises.push(safeFetch(assignedModel, msgs, agentId));
+              expertPromisesFunctions.push(() => safeFetch(assignedModel, msgs, agentId));
             }
-
-            const expertResults = await Promise.all(expertPromises);
+            
+            for (let i = 0; i < expertPromisesFunctions.length; i += BATCH_SIZE) {
+              const batchFunctions = expertPromisesFunctions.slice(i, i + BATCH_SIZE);
+              const batchPromises = batchFunctions.map(fn => fn());
+              const batchResults = await Promise.all(batchPromises);
+              expertResults.push(...batchResults);
+              
+              if (i + BATCH_SIZE < expertPromisesFunctions.length) {
+                await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
+              }
+            }
 
             controller.enqueue(encoder.encode(`\n> ✅ **Ultimate Expert Panel** → All ${totalExpertsCount} Deep Reviews Completed.\n\n`));
 
@@ -2418,7 +2431,51 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
               }
             }
 
-            // ── TIER 2: OpenRouter fallback (if Groq unavailable or failed) ──
+            // ── TIER 1.5: Direct Provider Integration ──
+            if (!groqStreamed && dbUser?.id) {
+              const { executeDirectProviderStream } = require("@/lib/providers");
+              try {
+                const directRes = await executeDirectProviderStream(
+                  primaryModel,
+                  formattedMessages,
+                  temp,
+                  maxTok,
+                  dbUser.id,
+                  providerKeys
+                );
+
+                if (directRes && directRes.body) {
+                  console.log(`[API Chat] 🚀 Direct Provider stream: "${primaryModel}"`);
+                  const reader = directRes.body.getReader();
+                  const decoder = new TextDecoder();
+                  while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+                    for (const line of lines) {
+                      if (line.startsWith('data: ') && line.trim() !== 'data: [DONE]') {
+                        try {
+                          const data = JSON.parse(line.substring(6));
+                          const text = data.choices?.[0]?.delta?.content || "";
+                          if (text) {
+                            assistantResponse += text;
+                            controller.enqueue(encoder.encode(text));
+                          }
+                        } catch(e) {}
+                      }
+                    }
+                  }
+                  groqStreamed = true; // Pretend it streamed to skip OpenRouter fallback
+                  console.log(`[API Chat] ✅ Direct Provider stream done (${assistantResponse.length} chars)`);
+                }
+              } catch (providerErr: any) {
+                console.warn(`[API Chat] Direct Provider stream failed, falling back:`, providerErr.message);
+                assistantResponse = ""; // Reset
+              }
+            }
+
+            // ── TIER 2: OpenRouter fallback (if Groq/Direct unavailable or failed) ──
             if (!groqStreamed) {
               let selectedModel = hasImage ? (primaryModel || "google/gemini-2.5-flash") : primaryModel;
               const fallbackModels = (hasImage

@@ -1,6 +1,6 @@
-# Kuddus Ali AI — Brutally Honest Personal Business Advisor
+# Kacha Morich AI — Brutally Honest Personal Business Advisor
 
-Kuddus Ali AI is a full-stack, premium web application that gives entrepreneurs unfiltered, battle-tested, and brutally honest business advice. Inspired by 20+ years of experience across 4 continents, Kuddus Ali analyzes your startup idea, targets your specific country/market, flags critical regulatory & economic risks, and crafts a concrete 7-day action plan.
+Kacha Morich AI is a full-stack, premium web application that gives entrepreneurs unfiltered, battle-tested, and brutally honest business advice. Inspired by 20+ years of experience across 4 continents, Kacha Morich analyzes your startup idea, targets your specific country/market, flags critical regulatory & economic risks, and crafts a concrete 7-day action plan.
 
 Powered by **Anthropic's Claude AI** (`claude-sonnet-4-20250514`), authenticated via **Clerk**, and persisted in **Supabase (PostgreSQL)**.
 
@@ -91,4 +91,4 @@ npm run build
 
 ## 📄 License
 
-Made with 💛 by the Kuddus Ali AI Team. Built for founders serious about building something real.
+Made with 💛 by the Kacha Morich AI Team. Built for founders serious about building something real.

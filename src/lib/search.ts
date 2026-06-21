@@ -53,11 +53,19 @@ export function needsWebSearch(message: string, agentId?: string): boolean {
 
   const lowerMsg = message.toLowerCase();
 
-  // Check English trigger keywords
+  // Check explicit trigger keywords
   if (SEARCH_TRIGGER_KEYWORDS_EN.some(kw => lowerMsg.includes(kw))) return true;
-
-  // Check Bengali trigger keywords
   if (SEARCH_TRIGGER_KEYWORDS_BN.some(kw => message.includes(kw))) return true;
+
+  // Check fact-seeking patterns (who, what, founder, ceo, etc.)
+  const factSeekingEn = /\b(who is|who are|what is|what are|where is|when did|how many|founder|ceo|creator|owner|director|president|history|biography|weather|temperature)\b/i;
+  const factSeekingBn = /(কে|কী|কোথায়|কবে|কেন|কিভাবে|প্রতিষ্ঠাতা|মালিক|আবিষ্কারক|ইতিহাস|আবহাওয়া)/;
+  const factSeekingBanglish = /\b(ke|kothay|kobe|kivabe|founder|ceo|owner|history)\b/i;
+
+  if (factSeekingEn.test(lowerMsg)) return true;
+  if (factSeekingBn.test(message)) return true;
+  // Make sure it's a question format for Banglish to avoid false positives
+  if (factSeekingBanglish.test(lowerMsg) && lowerMsg.includes("?")) return true;
 
   return false;
 }
@@ -69,6 +77,11 @@ export async function performWebSearch(
   query: string,
   agentId?: string
 ): Promise<string | null> {
+  // Intercept for Pain Point Scraper Agent using actual Reddit JSON endpoint
+  if (agentId === "pain-point-scraper-agent") {
+    return scrapeReddit(query);
+  }
+
   const apiKey = process.env.TAVILY_API_KEY;
   if (!apiKey) {
     console.warn("TAVILY_API_KEY not set — skipping web search.");
@@ -163,4 +176,51 @@ export function extractSearchQuery(message: string, agentId?: string): string {
   }
 
   return clean;
+}
+
+/**
+ * Scrapes Reddit directly using the public JSON endpoints.
+ * Specifically pulls real user complaints and frustrations for the Pain Point Scraper agent.
+ */
+async function scrapeReddit(query: string): Promise<string | null> {
+  try {
+    // We clean the query to remove generic words and focus on the product/topic
+    const cleanQuery = query.replace(/(complaints|problems|frustrations|Reddit|forum|reviews)/gi, "").trim();
+    if (!cleanQuery) return null;
+
+    const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(cleanQuery + " issue OR problem OR complain OR suck")}&sort=relevance&limit=8`;
+    
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "KachaMorichAI/1.0 (Web Scraper for Pain Point Analysis)"
+      }
+    });
+
+    if (!response.ok) {
+      console.warn(`Reddit scraper failed: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    const posts = data?.data?.children || [];
+
+    if (posts.length === 0) return null;
+
+    const formattedResults = posts.map((post: any, i: number) => {
+      const p = post.data;
+      const desc = p.selftext ? p.selftext.substring(0, 500) + (p.selftext.length > 500 ? "..." : "") : "No text (Title only/Link)";
+      return `[${i + 1}] **r/${p.subreddit}**: ${p.title}\nUpvotes: ${p.score} | Comments: ${p.num_comments}\n${desc}`;
+    }).join("\n\n---\n\n");
+
+    return `## 🔴 RAW REDDIT PAIN POINT DATA (${new Date().toLocaleDateString()})
+**Source:** Direct Reddit Scrape for query "${cleanQuery}"
+
+${formattedResults}
+
+---
+INSTRUCTION: These are REAL, unfiltered complaints and discussions from Reddit users. Use this raw qualitative data to identify genuine pain points, user frustrations, and unmet needs. Quote specific frustrations (anonymously) to prove your points.`;
+  } catch (err) {
+    console.error("Reddit scrape error:", err);
+    return null;
+  }
 }

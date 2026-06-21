@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     const headersList = headers();
     const bypassToken = headersList.get("x-admin-bypass");
 
-    if (bypassToken !== "kuddus-secret-bypass-key-2026") {
+    if (bypassToken !== "kachamorich-secret-bypass-key-2026") {
       const { userId: clerkId } = await auth();
       const user = await currentUser();
       if (!clerkId || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -144,7 +144,7 @@ export async function DELETE(req: Request) {
   try {
     const headersList = headers();
     const bypassToken = headersList.get("x-admin-bypass");
-    if (bypassToken !== "kuddus-secret-bypass-key-2026") {
+    if (bypassToken !== "kachamorich-secret-bypass-key-2026") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const { userId } = await req.json();

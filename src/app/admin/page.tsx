@@ -20,9 +20,9 @@ interface ChatRow { id: string; title: string; created_at: string; userEmail: st
 interface AgentStat { id: string; count: number; }
 interface ToneStat { id: string; count: number; }
 
-const SECRET_USERNAME = "kuddus_admin";
+const SECRET_USERNAME = "kachamorich_admin";
 const SECRET_PASSWORD = "kacha_morich_secret_2026";
-const BYPASS = "kuddus-secret-bypass-key-2026";
+const BYPASS = "kachamorich-secret-bypass-key-2026";
 
 const AGENT_LABELS: Record<string, string> = {
   "daily-innovation-idea-agent": "💡 Innovation", "personal-cfo-finance-agent": "💰 CFO",
@@ -88,7 +88,7 @@ export default function AdminHub() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
-  useEffect(() => { if (sessionStorage.getItem("kuddus_admin_auth") === "true") setAuth(true); }, []);
+  useEffect(() => { if (sessionStorage.getItem("kachamorich_admin_auth") === "true") setAuth(true); }, []);
 
   const showToast = (msg: string, type: "success" | "error") => {
     setToast({ msg, type });
@@ -113,11 +113,11 @@ export default function AdminHub() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault(); setLoginErr("");
     if (user === SECRET_USERNAME && pass === SECRET_PASSWORD) {
-      sessionStorage.setItem("kuddus_admin_auth", "true"); setAuth(true);
+      sessionStorage.setItem("kachamorich_admin_auth", "true"); setAuth(true);
     } else setLoginErr("Invalid credentials. Access denied.");
   };
 
-  const handleLogout = () => { sessionStorage.removeItem("kuddus_admin_auth"); setAuth(false); };
+  const handleLogout = () => { sessionStorage.removeItem("kachamorich_admin_auth"); setAuth(false); };
 
   const handleDeleteUser = async (userId: string) => {
     setDeleteLoading(true);

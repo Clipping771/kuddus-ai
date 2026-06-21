@@ -1,4 +1,4 @@
--- Create the schema for Kuddus Ali AI
+-- Create the schema for Kacha Morich AI
 
 -- Enable UUID extension if not enabled
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
