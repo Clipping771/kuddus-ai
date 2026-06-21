@@ -2467,7 +2467,7 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                   temp,
                   maxTok,
                   dbUser.id,
-                  providerKeys
+                  undefined
                 );
 
                 if (directRes && directRes.body) {

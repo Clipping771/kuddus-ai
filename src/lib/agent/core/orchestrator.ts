@@ -115,7 +115,8 @@ Reply with ONLY the word: simple, medium, or complex.
         messages: messages as any,
         max_tokens: 1000,
         temperature: 0.5,
-      }, this.userId);
+        stream: true,
+      }, this.userId) as any;
       
       for await (const chunk of stream) {
         const text = chunk.choices[0]?.delta?.content || "";
@@ -228,7 +229,8 @@ Provide the final, clean answer. Do not show the plan.
         messages: messages as any,
         max_tokens: 4000,
         temperature: 0.6,
-      }, this.userId);
+        stream: true,
+      }, this.userId) as any;
       
       for await (const chunk of stream) {
         const text = chunk.choices[0]?.delta?.content || "";
