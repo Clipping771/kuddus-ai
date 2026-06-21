@@ -66,32 +66,55 @@ const MermaidDiagram = ({ chart }: { chart: string }) => {
     const svgElement = containerRef.current.querySelector("svg");
     if (!svgElement) return;
 
-    // Convert SVG to XML string and create binary blob
-    const svgString = new XMLSerializer().serializeToString(svgElement);
-    const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-    const URL = window.URL || window.webkitURL || window;
-    const blobURL = URL.createObjectURL(svgBlob);
+    // Get dimensions
+    const width = svgElement.clientWidth || svgElement.getBoundingClientRect().width || 1000;
+    const height = svgElement.clientHeight || svgElement.getBoundingClientRect().height || 700;
+
+    // Clone to avoid modifying the live DOM
+    const clone = svgElement.cloneNode(true) as SVGSVGElement;
+    clone.setAttribute("width", width.toString());
+    clone.setAttribute("height", height.toString());
+    if (!clone.getAttribute("xmlns")) {
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    }
+
+    // Convert SVG to XML string and encode
+    const svgString = new XMLSerializer().serializeToString(clone);
+    const encodedSvg = encodeURIComponent(svgString);
+    const blobURL = `data:image/svg+xml;charset=utf-8,${encodedSvg}`;
 
     const image = new Image();
     image.onload = () => {
       const canvas = document.createElement("canvas");
       // Scale up by 2.5x for crisp high-resolution images
-      canvas.width = (svgElement.clientWidth || 1000) * 2.5;
-      canvas.height = (svgElement.clientHeight || 700) * 2.5;
+      canvas.width = width * 2.5;
+      canvas.height = height * 2.5;
       const context = canvas.getContext("2d");
       if (context) {
         context.fillStyle = "#0D0D0D"; // Dark futuristic background for enterprise diagrams
         context.fillRect(0, 0, canvas.width, canvas.height);
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        const png = canvas.toDataURL("image/png");
-
-        const a = document.createElement("a");
-        a.href = png;
-        a.download = `kacha_morich_uml_${Date.now()}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        
+        // Scale context before drawing image to maintain high resolution
+        context.scale(2.5, 2.5);
+        context.drawImage(image, 0, 0, width, height);
+        
+        try {
+          const png = canvas.toDataURL("image/png");
+          const a = document.createElement("a");
+          a.href = png;
+          a.download = `kacha_morich_uml_${Date.now()}.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        } catch (err) {
+          console.error("Failed to export PNG (canvas tainted?):", err);
+          alert("Failed to export PNG. Try downloading as SVG instead.");
+        }
       }
+    };
+    image.onerror = (err) => {
+      console.error("Failed to load SVG into image:", err);
+      alert("Failed to render image for PNG download.");
     };
     image.src = blobURL;
   };
