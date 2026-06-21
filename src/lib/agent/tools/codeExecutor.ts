@@ -31,7 +31,7 @@ export const runCodeTool: Tool = {
       
       let result;
       if (args.language === 'python') {
-        result = await sandbox.notebook.execCell(args.code);
+        result = await (sandbox as any).notebook.execCell(args.code);
       } else if (args.language === 'javascript') {
         // E2B code interpreter is natively Jupyter based (Python). 
         // For JS, we can use magic commands or write to a file and run node.
