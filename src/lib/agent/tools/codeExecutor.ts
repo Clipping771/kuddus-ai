@@ -1,5 +1,5 @@
 import { Tool } from './index';
-import { CodeInterpreter } from '@e2b/code-interpreter';
+import CodeInterpreter from '@e2b/code-interpreter';
 
 export const runCodeTool: Tool = {
   name: 'runCode',
