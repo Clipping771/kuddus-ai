@@ -191,6 +191,7 @@ import {
   Mail,
   Search,
   Eye,
+  EyeOff,
   Calendar,
   Share2,
   GraduationCap,
@@ -1268,26 +1269,43 @@ export default function Dashboard() {
   useEffect(() => {
     setIsHydrated(true);
 
-    // Fetch provider keys from localStorage
-    const savedKeysStr = localStorage.getItem("providerKeys");
-    let loadedKeys = {};
-    if (savedKeysStr) {
-      try {
-        loadedKeys = JSON.parse(savedKeysStr);
-        setProviderKeys(loadedKeys);
-      } catch (e) {}
-    }
-
-    // Fetch direct provider models dynamically
-    fetch("/api/models/providers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ keys: loadedKeys })
-    })
-      .then(res => res.json())
+    // Fetch provider keys from backend securely
+    fetch("/api/keys")
+      .then(res => res.ok ? res.json() : null)
       .then(data => {
-        if (data.models && data.models.length > 0) {
-          // Merge dynamic direct models with existing models (keeping fallback/openrouter models intact)
+        let loadedKeys = {};
+        if (data && data.keys && Object.keys(data.keys).length > 0) {
+          loadedKeys = data.keys;
+          setProviderKeys(loadedKeys);
+        } else {
+          // Fallback to local storage if needed
+          const savedKeysStr = localStorage.getItem("providerKeys");
+          if (savedKeysStr) {
+            try {
+              loadedKeys = JSON.parse(savedKeysStr);
+              setProviderKeys(loadedKeys);
+            } catch (e) {}
+          }
+        }
+
+        // Fetch direct provider models dynamically using the loaded keys
+        fetch("/api/models/providers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ keys: loadedKeys })
+        })
+          .then(res => res.json())
+          .then(modelData => {
+            if (modelData.models && modelData.models.length > 0) {
+              setModelsList(prev => {
+                const otherModels = prev.filter((m: any) => !m.isDirect);
+                return [...modelData.models, ...otherModels];
+              });
+            }
+          })
+          .catch(() => {});
+      })
+      .catch(() => {});
           setModelsList(prev => {
             const otherModels = prev.filter((m: any) => !m.isDirect);
             return [...data.models, ...otherModels];
@@ -1318,14 +1336,17 @@ export default function Dashboard() {
   const [apiBannerMessage, setApiBannerMessage] = useState<string>("");
   const [apiBannerKeyStatus, setApiBannerKeyStatus] = useState<any>(null);
 
+  // 4. API Keys
+  const [isSavingKeys, setIsSavingKeys] = useState(false);
+  const [providerKeys, setProviderKeys] = useState<{openai?: string, anthropic?: string, gemini?: string}>({});
+  const [showProviderKeys, setShowProviderKeys] = useState(false);
+
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentBanglaName, setNewAgentBanglaName] = useState("");
   const [newAgentBanglaDesc, setNewAgentBanglaDesc] = useState("");
   const [newAgentInstructions, setNewAgentInstructions] = useState("");
   const [newAgentIcon, setNewAgentIcon] = useState("🚀");
 
-  // Provider Keys State
-  const [providerKeys, setProviderKeys] = useState<{openai?: string, anthropic?: string, gemini?: string}>({});
   const [isSavingKeys, setIsSavingKeys] = useState(false);
 
   // Advanced Auto-Generation States
@@ -2836,7 +2857,7 @@ export default function Dashboard() {
         throw new Error("Failed to save keys securely");
       }
       
-      // Optionally clean up localStorage so keys aren't lying around plaintext
+      // We keep localStorage cleanup just in case, but rely on backend fetch now
       localStorage.removeItem("providerKeys");
       
       alert("API keys saved securely to database!");
@@ -5298,45 +5319,72 @@ export default function Dashboard() {
                     <div className="space-y-3">
                       <div className="flex flex-col gap-1">
                         <label className={`text-[10px] font-bold uppercase tracking-wider ${themeMode === "black" ? "text-neutral-500" : "text-neutral-500"}`}>OpenAI API Key</label>
-                        <input
-                          type="password"
-                          value={providerKeys.openai || ""}
-                          onChange={(e) => setProviderKeys(p => ({ ...p, openai: e.target.value }))}
-                          placeholder="sk-proj-..."
-                          className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${
-                            themeMode === "black" 
-                              ? "bg-neutral-900 border-neutral-800 text-white placeholder-neutral-600" 
-                              : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400"
-                          }`}
-                        />
+                        <div className="relative">
+                          <input
+                            type={showProviderKeys ? "text" : "password"}
+                            value={providerKeys.openai || ""}
+                            onChange={(e) => setProviderKeys(p => ({ ...p, openai: e.target.value }))}
+                            placeholder="sk-proj-..."
+                            className={`w-full px-3 py-2 pr-10 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${
+                              themeMode === "black" 
+                                ? "bg-neutral-900 border-neutral-800 text-white placeholder-neutral-600" 
+                                : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400"
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowProviderKeys(!showProviderKeys)}
+                            className={`absolute right-3 top-1/2 -translate-y-1/2 ${themeMode === "black" ? "text-neutral-500 hover:text-neutral-300" : "text-neutral-400 hover:text-neutral-600"}`}
+                          >
+                            {showProviderKeys ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
                       </div>
                       <div className="flex flex-col gap-1">
                         <label className={`text-[10px] font-bold uppercase tracking-wider ${themeMode === "black" ? "text-neutral-500" : "text-neutral-500"}`}>Anthropic API Key</label>
-                        <input
-                          type="password"
-                          value={providerKeys.anthropic || ""}
-                          onChange={(e) => setProviderKeys(p => ({ ...p, anthropic: e.target.value }))}
-                          placeholder="sk-ant-api03-..."
-                          className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${
-                            themeMode === "black" 
-                              ? "bg-neutral-900 border-neutral-800 text-white placeholder-neutral-600" 
-                              : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400"
-                          }`}
-                        />
+                        <div className="relative">
+                          <input
+                            type={showProviderKeys ? "text" : "password"}
+                            value={providerKeys.anthropic || ""}
+                            onChange={(e) => setProviderKeys(p => ({ ...p, anthropic: e.target.value }))}
+                            placeholder="sk-ant-api03-..."
+                            className={`w-full px-3 py-2 pr-10 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${
+                              themeMode === "black" 
+                                ? "bg-neutral-900 border-neutral-800 text-white placeholder-neutral-600" 
+                                : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400"
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowProviderKeys(!showProviderKeys)}
+                            className={`absolute right-3 top-1/2 -translate-y-1/2 ${themeMode === "black" ? "text-neutral-500 hover:text-neutral-300" : "text-neutral-400 hover:text-neutral-600"}`}
+                          >
+                            {showProviderKeys ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
                       </div>
                       <div className="flex flex-col gap-1">
                         <label className={`text-[10px] font-bold uppercase tracking-wider ${themeMode === "black" ? "text-neutral-500" : "text-neutral-500"}`}>Gemini API Key</label>
-                        <input
-                          type="password"
-                          value={providerKeys.gemini || ""}
-                          onChange={(e) => setProviderKeys(p => ({ ...p, gemini: e.target.value }))}
-                          placeholder="AIzaSy..."
-                          className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${
-                            themeMode === "black" 
-                              ? "bg-neutral-900 border-neutral-800 text-white placeholder-neutral-600" 
-                              : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400"
-                          }`}
-                        />
+                        <div className="relative">
+                          <input
+                            type={showProviderKeys ? "text" : "password"}
+                            value={providerKeys.gemini || ""}
+                            onChange={(e) => setProviderKeys(p => ({ ...p, gemini: e.target.value }))}
+                            placeholder="AIzaSy..."
+                            className={`w-full px-3 py-2 pr-10 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${
+                              themeMode === "black" 
+                                ? "bg-neutral-900 border-neutral-800 text-white placeholder-neutral-600" 
+                                : "bg-white border-neutral-200 text-neutral-900 placeholder-neutral-400"
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowProviderKeys(!showProviderKeys)}
+                            className={`absolute right-3 top-1/2 -translate-y-1/2 ${themeMode === "black" ? "text-neutral-500 hover:text-neutral-300" : "text-neutral-400 hover:text-neutral-600"}`}
+                          >
+                            {showProviderKeys ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
                       </div>
                       <button
                         type="button"
