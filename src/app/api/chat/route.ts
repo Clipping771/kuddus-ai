@@ -17,6 +17,7 @@ import { checkResponseConfidence } from "@/lib/confidenceCheck";
 import { classifyIntent, buildIntentPrefix } from "@/lib/intentEngine";
 import { verifyAndImprove, shouldVerify } from "@/lib/verificationLayer";
 import { extractKnowledgeGraph, getKnowledgeGraphContext } from "@/lib/knowledgeGraph";
+import { dynamicallyRouteModel, Provider } from "@/lib/agent/core/modelRouter";
 
 // ── Shared output rules injected into EVERY agent (no identity, no "Executive Board") ──
 const SHARED_OUTPUT_RULES = `## CRITICAL OUTPUT RULES (NON-NEGOTIABLE)
@@ -1988,6 +1989,27 @@ Apply the following highly advanced analysis steps:
         resolvedModelId = costRec.recommendedModel;
         console.log(`[CostControl] Complexity: ${costRec.complexity} → Model: ${resolvedModelId} (${costRec.reason})`);
       }
+    }
+
+    // ── Intelligent Auto-Routing (Dynamic API Keys Fallback) ──
+    const activeProviders = new Set<Provider>();
+    const { data: directKeys } = await supabase.from('provider_keys').select('provider').eq('user_id', dbUser.id).eq('is_active', true);
+    if (directKeys) directKeys.forEach(k => activeProviders.add(k.provider as Provider));
+    
+    const { data: orKeys } = await supabase.from('openrouter_keys').select('id').eq('user_id', dbUser.id).eq('is_active', true).limit(1);
+    if (orKeys && orKeys.length > 0) activeProviders.add('openrouter');
+    
+    const { data: groqKeys } = await supabase.from('groq_keys').select('id').eq('user_id', dbUser.id).eq('is_active', true).limit(1);
+    if (groqKeys && groqKeys.length > 0) activeProviders.add('groq');
+
+    // Also check env variables
+    if (process.env.OPENROUTER_API_KEY && !process.env.OPENROUTER_API_KEY.includes('placeholder')) activeProviders.add('openrouter');
+    if (process.env.GROQ_API_KEY && !process.env.GROQ_API_KEY.includes('placeholder')) activeProviders.add('groq');
+
+    const dynamicallyRoutedModel = dynamicallyRouteModel(resolvedModelId, activeProviders);
+    if (dynamicallyRoutedModel !== resolvedModelId) {
+      console.log(`[AutoRouter] 🔄 Dynamically rerouted ${resolvedModelId} -> ${dynamicallyRoutedModel}`);
+      resolvedModelId = dynamicallyRoutedModel;
     }
 
     const primaryModel = resolvedModelId;
