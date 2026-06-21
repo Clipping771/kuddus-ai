@@ -2393,6 +2393,32 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
               }
             }
           } else {
+            // 🧠 Final Smart System Plan: Cognitive Control Loop
+            // Intercept complex queries and route them through the Orchestrator
+            const isComplex = !isSimpleQuery && !hasImage && !isBrainTrust && !customInstructions;
+            
+            if (isComplex || hermes_mode) {
+              try {
+                console.log(`[API Chat] 🚀 Routing through AdaptiveOrchestrator...`);
+                const { AdaptiveOrchestrator } = await import("@/lib/agent/core/orchestrator");
+                
+                // Pass history up to the current message
+                const historyForOrchestrator = formattedMessages.slice(0, -1);
+                const orchestrator = new AdaptiveOrchestrator(dbUser?.id, historyForOrchestrator);
+                
+                const finalResponse = await orchestrator.run(message, hermes_mode, (chunk) => {
+                  assistantResponse += chunk;
+                  controller.enqueue(encoder.encode(chunk));
+                });
+                
+                console.log(`[API Chat] ✅ Cognitive Loop completed`);
+                return; // Exit here, skipping standard streaming
+              } catch (orchestratorErr: any) {
+                console.warn(`[API Chat] ⚠️ Cognitive Loop failed, falling back to standard pipeline:`, orchestratorErr);
+                // Fallback to standard pipeline
+              }
+            }
+
             // NORMAL SINGLE-MODEL PIPELINE — Groq first (fastest), OpenRouter fallback
             // userMaxTokens: user-defined override from Settings (takes priority over auto-calc)
             const maxTok = (userMaxTokens && typeof userMaxTokens === "number" && userMaxTokens >= 256 && userMaxTokens <= 32000)
