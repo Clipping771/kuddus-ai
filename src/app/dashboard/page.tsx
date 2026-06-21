@@ -1306,13 +1306,6 @@ export default function Dashboard() {
           .catch(() => {});
       })
       .catch(() => {});
-          setModelsList(prev => {
-            const otherModels = prev.filter((m: any) => !m.isDirect);
-            return [...data.models, ...otherModels];
-          });
-        }
-      })
-      .catch(err => console.error("Failed to fetch dynamic models:", err));
   }, []);
 
   // Custom Pull-to-Refresh Gesture State for Nested Scrolls
@@ -1346,8 +1339,6 @@ export default function Dashboard() {
   const [newAgentBanglaDesc, setNewAgentBanglaDesc] = useState("");
   const [newAgentInstructions, setNewAgentInstructions] = useState("");
   const [newAgentIcon, setNewAgentIcon] = useState("🚀");
-
-  const [isSavingKeys, setIsSavingKeys] = useState(false);
 
   // Advanced Auto-Generation States
   const [agentConceptPrompt, setAgentConceptPrompt] = useState("");
