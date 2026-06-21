@@ -18,6 +18,7 @@ import { classifyIntent, buildIntentPrefix } from "@/lib/intentEngine";
 import { verifyAndImprove, shouldVerify } from "@/lib/verificationLayer";
 import { extractKnowledgeGraph, getKnowledgeGraphContext } from "@/lib/knowledgeGraph";
 import { dynamicallyRouteModel, Provider } from "@/lib/agent/core/modelRouter";
+import { decryptText } from "@/lib/encryption";
 
 // ── Shared output rules injected into EVERY agent (no identity, no "Executive Board") ──
 const SHARED_OUTPUT_RULES = `## CRITICAL OUTPUT RULES (NON-NEGOTIABLE)
@@ -1993,8 +1994,14 @@ Apply the following highly advanced analysis steps:
 
     // ── Intelligent Auto-Routing (Dynamic API Keys Fallback) ──
     const activeProviders = new Set<Provider>();
-    const { data: directKeys } = await supabase.from('provider_keys').select('provider').eq('user_id', dbUser.id).eq('is_active', true);
-    if (directKeys) directKeys.forEach(k => activeProviders.add(k.provider as Provider));
+    const decryptedProviderKeys: Record<string, string> = {};
+    const { data: directKeys } = await supabase.from('provider_keys').select('provider, api_key').eq('user_id', dbUser.id).eq('is_active', true);
+    if (directKeys) {
+      directKeys.forEach(k => {
+        activeProviders.add(k.provider as Provider);
+        decryptedProviderKeys[k.provider] = decryptText(k.api_key);
+      });
+    }
     
     const { data: orKeys } = await supabase.from('openrouter_keys').select('id').eq('user_id', dbUser.id).eq('is_active', true).limit(1);
     if (orKeys && orKeys.length > 0) activeProviders.add('openrouter');
@@ -2489,7 +2496,7 @@ As the CEO, combine the best parts of the foundational draft, resolve all the fl
                   temp,
                   maxTok,
                   dbUser.id,
-                  undefined
+                  decryptedProviderKeys
                 );
 
                 if (directRes && directRes.body) {
