@@ -4504,7 +4504,7 @@ export default function Dashboard() {
                               const contentToRender = finalContent;
 
                               return (
-                                <div className="w-full max-w-full overflow-hidden break-words [&_*]:max-w-full [&_pre]:overflow-x-auto [&_code]:break-all [&_p]:break-words [&_li]:break-words">
+                                <div className={`w-full max-w-full overflow-hidden break-words [&_*]:max-w-full [&_pre]:overflow-x-auto [&_code]:break-all [&_p]:break-words [&_li]:break-words ${isMessageLast && isLoading && finalContent ? 'scifi-typing-cursor' : ''}`}>
                                   {showSpinner ? (
                                     // Show a clean, premium spinner while generating, hiding raw internal thoughts
                                     <div className="flex items-center gap-2.5 py-2.5">
