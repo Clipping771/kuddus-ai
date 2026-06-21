@@ -18,10 +18,20 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { data: dbUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("clerk_id", userId)
+      .single();
+
+    if (!dbUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
     const { data, error } = await supabase
       .from("provider_keys")
       .select("provider, api_key")
-      .eq("user_id", userId)
+      .eq("user_id", dbUser.id)
       .eq("is_active", true);
 
     if (error) {
@@ -55,6 +65,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { data: dbUser } = await supabase
+      .from("users")
+      .select("id")
+      .eq("clerk_id", userId)
+      .single();
+
+    if (!dbUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
     const { keys } = await req.json();
     if (!keys || typeof keys !== "object") {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
@@ -65,7 +85,7 @@ export async function POST(req: Request) {
     await supabase
       .from("provider_keys")
       .update({ is_active: false })
-      .eq("user_id", userId);
+      .eq("user_id", dbUser.id);
 
     const validProviders = ['openai', 'anthropic', 'gemini', 'openrouter', 'groq'];
     const insertData = [];
@@ -77,7 +97,7 @@ export async function POST(req: Request) {
       const encryptedKey = encryptText(plaintextKey.trim());
       
       insertData.push({
-        user_id: userId,
+        user_id: dbUser.id,
         provider: provider,
         api_key: encryptedKey,
         is_active: true
@@ -101,7 +121,7 @@ export async function POST(req: Request) {
           await supabase
             .from("provider_keys")
             .update({ is_active: true })
-            .eq("user_id", userId)
+            .eq("user_id", dbUser.id)
             .eq("provider", row.provider)
             .eq("api_key", row.api_key);
         }
