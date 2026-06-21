@@ -36,8 +36,8 @@ export const runCodeTool: Tool = {
         // E2B code interpreter is natively Jupyter based (Python). 
         // For JS, we can use magic commands or write to a file and run node.
         const tempFile = '/tmp/script.js';
-        await sandbox.filesystem.write(tempFile, args.code);
-        const process = await sandbox.process.startAndWait(`node ${tempFile}`);
+        await (sandbox as any).filesystem.write(tempFile, args.code);
+        const process = await (sandbox as any).process.startAndWait(`node ${tempFile}`);
         
         return `stdout:\n${process.stdout}\nstderr:\n${process.stderr}`;
       } else {
@@ -45,7 +45,7 @@ export const runCodeTool: Tool = {
       }
 
       // Close the sandbox to free resources
-      await sandbox.close();
+      await (sandbox as any).close();
 
       if (args.language === 'python') {
         let output = '';
