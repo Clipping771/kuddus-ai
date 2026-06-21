@@ -21,6 +21,7 @@ export async function GET() {
         const result = {
             groq: { ok: false, checked: false },
             openrouter: { ok: false, checked: false, activeKeys: 0, exhaustedKeys: 0 },
+            directKeys: { ok: false, checked: false },
             needsAttention: false,
             reason: "" as string,
         };
@@ -76,8 +77,23 @@ export async function GET() {
             }
         }
 
+        // ── 1.5. Check Direct Provider DB keys ─────────────────────────────────────
+        if (dbUserForGroq) {
+            const { data: directDbKeys } = await supabase
+                .from("provider_keys")
+                .select("provider")
+                .eq("user_id", dbUserForGroq.id)
+                .in("provider", ["openai", "anthropic", "gemini"])
+                .eq("is_active", true);
+
+            if (directDbKeys && directDbKeys.length > 0) {
+                result.directKeys.checked = true;
+                result.directKeys.ok = true; // Assume true if configured
+            }
+        }
+
         // ── 2. Check OpenRouter DB keys ────────────────────────────────────────────
-        // Reuse the same dbUser fetched above for Groq
+        // Reuse the same dbUser fetched above
         const dbUser = dbUserForGroq;
 
         if (dbUser) {
@@ -153,8 +169,8 @@ export async function GET() {
         const groqNotConfigured = !result.groq.checked;
         const openrouterNotConfigured = !result.openrouter.checked;
 
-        // App is functional if at least one provider is OK
-        const appFunctional = result.groq.ok || result.openrouter.ok;
+        // App is functional if at least one provider is OK OR direct keys are configured
+        const appFunctional = result.groq.ok || result.openrouter.ok || result.directKeys.ok;
 
         if (!appFunctional) {
             result.needsAttention = true;
@@ -171,7 +187,7 @@ export async function GET() {
             // App is functional — clear any previously set needsAttention flags from individual checks
             result.needsAttention = false;
             // Soft warning: some keys exhausted but app still works
-            if (result.openrouter.exhaustedKeys > 0 && result.openrouter.ok) {
+            if (result.openrouter.exhaustedKeys > 0 && result.openrouter.ok && !result.directKeys.ok) {
                 result.reason = `${result.openrouter.exhaustedKeys} OpenRouter key${result.openrouter.exhaustedKeys > 1 ? "s" : ""} exhausted — consider adding a fresh key.`;
             } else {
                 result.reason = "";
