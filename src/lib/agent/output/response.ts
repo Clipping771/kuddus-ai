@@ -3,8 +3,6 @@
 // Principle: Strict 5-part structured format
 // ==========================================
 
-import { HardenedState } from '../core/orchestrator';
-
 export interface StructuredResponse {
   direct_answer: string;
   reasoning_summary: string;
@@ -14,7 +12,7 @@ export interface StructuredResponse {
 }
 
 export class ResponseEngine {
-  static format(state: HardenedState): StructuredResponse {
+  static format(state: any): StructuredResponse {
     let directAnswer = state.status === 'success' 
       ? 'Task successfully completed.' 
       : 'Task was degraded or aborted to maintain safety.';
@@ -25,7 +23,7 @@ export class ResponseEngine {
 
     return {
       direct_answer: directAnswer,
-      reasoning_summary: `Executed ${state.retries} retries utilizing ${state.cost_used.toFixed(4)} USD.`,
+      reasoning_summary: `Executed ${state.retries || 0} retries utilizing ${(state.cost_used || 0).toFixed(4)} USD.`,
       risk_warning: state.risk_level > 0.6 ? 'High risk actions were mitigated via the Sandbox Gate.' : null,
       action_steps: state.contract?.steps || [],
       confidence_score: state.status === 'success' ? 0.95 : 0.4
