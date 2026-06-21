@@ -3317,6 +3317,20 @@ export default function Dashboard() {
 
   return (
     <>
+      {/* Sci-Fi Typing Cursor CSS */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .scifi-typing-cursor p:last-of-type::after {
+          content: ' ▋';
+          display: inline-block;
+          color: #f59e0b; /* Amber 500 */
+          animation: scifi-blink 0.8s step-start infinite;
+          text-shadow: 0 0 10px rgba(245, 158, 11, 0.8);
+          vertical-align: baseline;
+        }
+        @keyframes scifi-blink {
+          50% { opacity: 0; }
+        }
+      `}} />
       <div
         className={`fixed inset-0 flex overflow-hidden font-sans w-full transition-colors duration-300 ${themeMode === "black" ? "bg-black text-neutral-100 theme-black" : "bg-[#F8FAFC] text-neutral-900 theme-light"
           } theme-${activeThemeName.toLowerCase().replace(/\s+/g, '-')}`}
