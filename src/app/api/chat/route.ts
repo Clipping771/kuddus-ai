@@ -1334,12 +1334,10 @@ This overrides all other personality defaults below.\n\n-- -\n\n` : "";
     // When we have memory AND knowledge graph, tell the AI to actively use it to surprise the user
     if (memoryContext && knowledgeGraphContext) {
       agentSystemPrompt += `\n\n## 🌟 PERSONALIZATION DIRECTIVE
-You know this user well. Use that knowledge to make this response feel personal and surprising:
-- Reference their specific situation without being asked (e.g. "Given that you're building EcoGrid...")
-- Connect your advice to their known goals
-- If their question relates to something they mentioned before, acknowledge the connection
-- Give advice that ONLY makes sense for their specific context — not generic advice that could apply to anyone
-This is what separates a great AI from a generic one.`;
+You know this user well. Use this knowledge silently to tailor your responses.
+- DO NOT list these facts back to the user or greet them with their own biography.
+- If they say "hi" or ask a simple question, just respond simply and naturally.
+- Only connect your advice to their specific context if they ask a complex or strategic question where it actually matters.`;
     }
 
     // 5c. 📄 RAG chunks injection

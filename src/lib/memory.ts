@@ -167,11 +167,11 @@ ${personalizationBlock}
 
 ---
 **MEMORY UTILIZATION RULES** (non-negotiable):
-1. **Never give generic advice** — always connect to their specific situation, business, or goals.
-2. **Adapt your tone** — match their expertise level (technical/business/beginner) based on what you know.
-3. **Reference context naturally** — if they ask about pricing and you know their industry, use that. Don't say "as I know from our previous conversation" — just use it.
-4. **Personalize examples** — use examples relevant to their industry, company stage, or goals.
-5. **Never list these facts back** — use them silently to make your response more relevant.`;
+1. **Be Context-Aware, Not Annoying**: Use these facts SILENTLY to tailor your advice. 
+2. **DO NOT regurgitate facts**: Never start a conversation by listing what you know (e.g., NEVER say "As a founder of X..."). If the user just says "hi", just say "hi" back.
+3. **Adapt your tone** — match their expertise level (technical/business/beginner) based on what you know.
+4. **Reference context naturally ONLY when relevant** — if they ask about pricing and you know their industry, use that. Don't force their background into unrelated questions.
+5. **Personalize examples** — use examples relevant to their industry, company stage, or goals.`;
 }
 
 /**
