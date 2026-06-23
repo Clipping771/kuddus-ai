@@ -159,18 +159,10 @@ function buildActiveMemoryPrompt(sections: string[], memories: Record<string, un
         : "";
 
     return `## 🧠 LONG-TERM MEMORY
-The following facts are available about the user. 
-CRITICAL INSTRUCTION: You must keep these facts completely secret. Do NOT mention them unless the user explicitly asks a question that requires them.
+Here is what you know about the user. Use this context naturally to make your responses more relevant, just like a human assistant would.
 
 ${sections.join("\n\n")}
-${personalizationBlock}
-
----
-**STRICT MEMORY RULES** (CRITICAL):
-1. **ABSOLUTELY NO REGURGITATION**: NEVER greet the user by mentioning their background, their university, or their projects (like EcoGrid, NOVA, etc.). 
-2. **BE NATURAL**: If the user just says "hi" or asks a general question, respond generally without bringing up their personal details.
-3. **ONLY USE WHEN FORCED**: Only reference their specific projects or background if their prompt is directly related to it. Otherwise, pretend you don't know it.
-4. **NO BIOS**: Never write a biography or summary of the user in your response.`;
+${personalizationBlock}`;
 }
 
 /**
