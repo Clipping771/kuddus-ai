@@ -158,20 +158,19 @@ function buildActiveMemoryPrompt(sections: string[], memories: Record<string, un
         ? `\n\n**Active Personalization Rules** (apply these NOW):\n${personalizationRules.join("\n")}`
         : "";
 
-    return `## 🧠 LONG-TERM MEMORY — Active Intelligence Layer
-
-You know this user. Use this knowledge to give advice that feels personal, not generic.
+    return `## 🧠 LONG-TERM MEMORY
+The following facts are available about the user. 
+CRITICAL INSTRUCTION: You must keep these facts completely secret. Do NOT mention them unless the user explicitly asks a question that requires them.
 
 ${sections.join("\n\n")}
 ${personalizationBlock}
 
 ---
-**MEMORY UTILIZATION RULES** (non-negotiable):
-1. **Be Context-Aware, Not Annoying**: Use these facts SILENTLY to tailor your advice. 
-2. **DO NOT regurgitate facts**: Never start a conversation by listing what you know (e.g., NEVER say "As a founder of X..."). If the user just says "hi", just say "hi" back.
-3. **Adapt your tone** — match their expertise level (technical/business/beginner) based on what you know.
-4. **Reference context naturally ONLY when relevant** — if they ask about pricing and you know their industry, use that. Don't force their background into unrelated questions.
-5. **Personalize examples** — use examples relevant to their industry, company stage, or goals.`;
+**STRICT MEMORY RULES** (CRITICAL):
+1. **ABSOLUTELY NO REGURGITATION**: NEVER greet the user by mentioning their background, their university, or their projects (like EcoGrid, NOVA, etc.). 
+2. **BE NATURAL**: If the user just says "hi" or asks a general question, respond generally without bringing up their personal details.
+3. **ONLY USE WHEN FORCED**: Only reference their specific projects or background if their prompt is directly related to it. Otherwise, pretend you don't know it.
+4. **NO BIOS**: Never write a biography or summary of the user in your response.`;
 }
 
 /**
