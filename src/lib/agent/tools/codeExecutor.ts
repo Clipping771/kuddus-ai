@@ -34,17 +34,19 @@ export const runCodeTool: Tool = {
         close: () => Promise<void>;
       };
       
-      let result;
+      let resultText = '';
       if (args.language === 'python') {
-        result = await sandbox.notebook.execCell(args.code);
+        const result = await sandbox.notebook.execCell(args.code);
+        if (result.text) resultText += `stdout:\n${result.text}\n`;
+        if (result.error) resultText += `stderr:\n${result.error.name}: ${result.error.value}\n`;
+        if (!resultText) resultText = 'Execution completed with no output.';
       } else if (args.language === 'javascript') {
         // E2B code interpreter is natively Jupyter based (Python). 
         // For JS, we can use magic commands or write to a file and run node.
         const tempFile = '/tmp/script.js';
         await sandbox.filesystem.write(tempFile, args.code);
         const process = await sandbox.process.startAndWait(`node ${tempFile}`);
-        
-        return `stdout:\n${process.stdout}\nstderr:\n${process.stderr}`;
+        resultText = `stdout:\n${process.stdout}\nstderr:\n${process.stderr}`;
       } else {
         throw new Error('Unsupported language. Use python or javascript.');
       }
@@ -52,15 +54,7 @@ export const runCodeTool: Tool = {
       // Close the sandbox to free resources
       await sandbox.close();
 
-      if (args.language === 'python') {
-        let output = '';
-        if (result.text) output += `stdout:\n${result.text}\n`;
-        if (result.error) output += `stderr:\n${result.error.name}: ${result.error.value}\n`;
-        
-        return output || 'Execution completed with no output.';
-      }
-      
-      return 'Execution completed.';
+      return resultText;
     } catch (err: unknown) {
       return `[ERROR] Execution failed: ${err instanceof Error ? err.message : String(err)}`;
     }
