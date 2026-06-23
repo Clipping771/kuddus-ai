@@ -1222,7 +1222,7 @@ export async function POST(req: Request) {
     let intentBasedModel: string | null = null;
     if (intentResult && intentResult.confidence !== "low") {
       // Only auto-route agent if user hasn't explicitly chosen one
-      if (enableAutoRouting && intentResult.suggestedAgent !== agentId && agentId === "daily-innovation-idea-agent") {
+      if (enableAutoRouting && intentResult.suggestedAgent !== agentId && agentId === "general-purpose-agent") {
         agentId = intentResult.suggestedAgent;
         autoRoutedAgent = intentResult.suggestedAgent;
         console.log(`[IntentEngine] 🎯 Routed to "${agentId}" based on intent: "${intentResult.intent}"`);

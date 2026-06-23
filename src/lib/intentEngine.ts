@@ -41,18 +41,18 @@ export interface IntentResult {
 // ─── Intent → Agent mapping ──────────────────────────────────────────────────
 
 const INTENT_TO_AGENT: Record<IntentType, string> = {
-    question: "daily-innovation-idea-agent",   // general fallback
+    question: "general-purpose-agent",   // general fallback
     research: "research-agent",
     coding: "devmind-agent",
     writing: "content-creator-agent",
     business: "personal-cfo-finance-agent",
     planning: "project-manager-agent",
-    casual: "daily-innovation-idea-agent",
+    casual: "general-purpose-agent",
     creative: "daily-innovation-idea-agent",
     legal: "legal-compliance-agent",
     hr: "hr-recruiting-agent",
     marketing: "performance-marketer-agent",
-    unknown: "daily-innovation-idea-agent",
+    unknown: "general-purpose-agent",
 };
 
 // ─── Intent → Model mapping ──────────────────────────────────────────────────
@@ -179,7 +179,7 @@ export async function classifyIntent(
     const defaultResult: IntentResult = {
         intent: "unknown",
         confidence: "low",
-        suggestedAgent: currentAgentId || "daily-innovation-idea-agent",
+        suggestedAgent: currentAgentId || "general-purpose-agent",
         suggestedModel: INTENT_TO_MODEL["unknown"],
         needsWebSearch: false,
         needsVerification: false,
@@ -212,7 +212,7 @@ export async function classifyIntent(
             topScore >= 6 ? "high" : topScore >= 2 ? "medium" : "low";
 
         if (confidence !== "low") {
-            const suggestedAgent = currentAgentId && currentAgentId !== "daily-innovation-idea-agent"
+            const suggestedAgent = currentAgentId && currentAgentId !== "general-purpose-agent"
                 ? currentAgentId  // respect user's explicit agent choice
                 : INTENT_TO_AGENT[topIntent];
 
