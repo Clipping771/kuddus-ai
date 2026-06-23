@@ -1020,7 +1020,7 @@ export async function POST(req: Request) {
     // automatically classify the best agent based on message content
     let agentId = rawAgentId;
     let autoRoutedAgent: string | null = null;
-    if (enableAutoRouting && rawAgentId === "daily-innovation-idea-agent") {
+    if (enableAutoRouting && rawAgentId === "general-purpose-agent") {
       const routeResult = classifyAgentByKeywords(message);
       if (routeResult && routeResult.confidence !== "low" && routeResult.primaryAgent !== rawAgentId) {
         agentId = routeResult.primaryAgent;
@@ -1063,7 +1063,7 @@ export async function POST(req: Request) {
       let cleanTitle = message.length > 40 ? `${message.substring(0, 40)}...` : message;
       if (cleanTitle.startsWith("[ATTACHED DOCUMENT:")) cleanTitle = "Document Analysis";
 
-      const serializedTitle = `${cleanTitle} | agentId:${agentId || "daily-innovation-idea-agent"} | toneId:${toneId || "brutally-honest"} `;
+      const serializedTitle = `${cleanTitle} | agentId:${agentId || "general-purpose-agent"} | toneId:${toneId || "brutally-honest"} `;
       const insertPayload: any = { user_id: dbUser.id, title: serializedTitle };
 
       // Only store agent_id for custom agents that actually exist in DB

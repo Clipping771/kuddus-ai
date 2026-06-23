@@ -264,5 +264,5 @@ export function buildIntentPrefix(intent: IntentResult): string {
     const label = intentLabels[intent.intent];
     if (!label) return "";
 
-    return `## 🎯 DETECTED INTENT: ${label}\n\n`;
+    return `\n\n## 🎯 CURRENT MODE\nYou are currently in ${label} mode. Tailor your response structure and tone accordingly.\n\n`;
 }
